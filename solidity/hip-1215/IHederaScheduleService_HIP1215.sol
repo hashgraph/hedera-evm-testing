@@ -9,7 +9,7 @@ interface IHederaScheduleService_HIP1215 {
 
     function executeCallOnSenderSignature(address to, address sender, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) returns (int64 responseCode, address scheduleAddress);
 
-    function scheduleDeleteTransaction(address) returns (int64 responseCode);
+    function deleteSchedule(address) returns (int64 responseCode);
 
     function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) view returns (bool hasCapacity);
 
