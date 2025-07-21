@@ -15,7 +15,7 @@ interface IHederaScheduleService_HIP1215 {
     /// arguments being passed to the function.
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
     /// @return scheduleAddress The address of the newly created schedule transaction.
-    function scheduleCall(address to, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) returns (int64 responseCode, address scheduleAddress);
+    function scheduleCall(address to, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) external returns (int64 responseCode, address scheduleAddress);
 
     /// Allows for the creation of a schedule transaction to schedule any contract call for a given smart contract
     /// address, with a sender for the scheduled transaction, expiration time, the gas limit for the future call,
@@ -31,7 +31,7 @@ interface IHederaScheduleService_HIP1215 {
     /// arguments being passed to the function.
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
     /// @return scheduleAddress The address of the newly created schedule transaction.
-    function scheduleCallWithSender(address to, address sender, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) returns (int64 responseCode, address scheduleAddress);
+    function scheduleCallWithSender(address to, address sender, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) external returns (int64 responseCode, address scheduleAddress);
 
     /// Allows for the creation of a schedule transaction to schedule any contract call for a given smart contract
     /// address, with a sender for the scheduled transaction, expiration time, the gas limit for the future call,
@@ -47,18 +47,18 @@ interface IHederaScheduleService_HIP1215 {
     /// arguments being passed to the function.
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
     /// @return scheduleAddress The address of the newly created schedule transaction.
-    function executeCallOnSenderSignature(address to, address sender, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) returns (int64 responseCode, address scheduleAddress);
+    function executeCallOnSenderSignature(address to, address sender, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) external returns (int64 responseCode, address scheduleAddress);
 
     /// Delete the targeted schedule transaction.
     /// @param scheduleAddress the address of the schedule transaction.
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
-    function deleteSchedule(address scheduleAddress) returns (int64 responseCode);
+    function deleteSchedule(address scheduleAddress) external returns (int64 responseCode);
 
     /// Allows to check if the given second still has capacity to schedule a contract call with the specified gas limit.
     /// @param expirySecond an expiration time of the future call
     /// @param gasLimit a maximum limit to the amount of gas to use for future call
     /// @return hasCapacity returns `true` iff the given second still has capacity to schedule a contract call
     /// with the specified gas limit.
-    function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) view returns (bool hasCapacity);
+    function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) view external returns (bool hasCapacity);
 
 }

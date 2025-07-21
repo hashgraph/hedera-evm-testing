@@ -40,7 +40,7 @@ abstract contract HederaScheduleService_HIP1215 {
     /// arguments being passed to the function.
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
     /// @return scheduleAddress The address of the newly created schedule transaction.
-    function scheduleCallWithSender(address to, address sender, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) returns (int64 responseCode, address scheduleAddress) {
+    function scheduleCallWithSender(address to, address sender, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) internal returns (int64 responseCode, address scheduleAddress) {
         (bool success, bytes memory result) = scheduleSystemContractAddress.call(
             abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCallWithSender.selector, to, sender, expiry, gasLimit, value, callData));
         (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
@@ -60,7 +60,7 @@ abstract contract HederaScheduleService_HIP1215 {
     /// arguments being passed to the function.
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
     /// @return scheduleAddress The address of the newly created schedule transaction.
-    function executeCallOnSenderSignature(address to, address sender, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) returns (int64 responseCode, address scheduleAddress) {
+    function executeCallOnSenderSignature(address to, address sender, uint256 expiry, uint256 gasLimit, uint64 value, bytes memory callData) internal returns (int64 responseCode, address scheduleAddress) {
         (bool success, bytes memory result) = scheduleSystemContractAddress.call(
             abi.encodeWithSelector(IHederaScheduleService_HIP1215.executeCallOnSenderSignature.selector, to, sender, expiry, gasLimit, value, callData));
         (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
@@ -69,7 +69,7 @@ abstract contract HederaScheduleService_HIP1215 {
     /// Delete the targeted schedule transaction.
     /// @param scheduleAddress the address of the schedule transaction.
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
-    function deleteSchedule(address scheduleAddress) returns (int64 responseCode) {
+    function deleteSchedule(address scheduleAddress) internal returns (int64 responseCode) {
         (bool success, bytes memory result) = scheduleSystemContractAddress.call(
             abi.encodeWithSelector(IHederaScheduleService_HIP1215.deleteSchedule.selector, scheduleAddress));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
@@ -80,7 +80,7 @@ abstract contract HederaScheduleService_HIP1215 {
     /// @param gasLimit a maximum limit to the amount of gas to use for future call
     /// @return hasCapacity returns `true` iff the given second still has capacity to schedule a contract call
     /// with the specified gas limit.
-    function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) view returns (bool hasCapacity) {
+    function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) internal returns (bool hasCapacity) {
         (bool success, bytes memory result) = scheduleSystemContractAddress.call(
             abi.encodeWithSelector(IHederaScheduleService_HIP1215.hasScheduleCapacity.selector, expirySecond, gasLimit));
         hasCapacity = success ? abi.decode(result, (bool)) : false;
