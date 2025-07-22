@@ -53,6 +53,35 @@
         "internalType": "uint256",
         "name": "expiry",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expiryShift",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "executionIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "scheduleCallCycleExample",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "expiry",
+        "type": "uint256"
       }
     ],
     "name": "scheduleCallExample",
