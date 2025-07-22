@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "../contracts/impl/HederaScheduleService_HIP1215.sol";
-import "../contracts/impl/HRC755ScheduleFacade_HIP1215.sol";
+import "../contracts/impl/HRC1215ScheduleFacade.sol";
 
 contract HIP1215Contract is HederaScheduleService_HIP1215 {
 
@@ -43,7 +43,7 @@ contract HIP1215Contract is HederaScheduleService_HIP1215 {
     }
 
     function deleteScheduleProxyExample(address scheduleAddress) external returns (int64 responseCode) {
-        responseCode = IHRC755ScheduleFacade_HIP1215(scheduleAddress).deleteSchedule();
+        responseCode = IHRC1215ScheduleFacade(scheduleAddress).deleteSchedule();
         if (responseCode != HederaResponseCodes.SUCCESS) {
             revert("Failed to delete schedule");
         }
