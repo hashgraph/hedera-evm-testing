@@ -1,2 +1,15 @@
-### Ignore all Jetbrains IDE files
-.idea/
+# Gradle
+.gradle/
+build/
+
+# IntelliJ
+.idea
+*.ipr
+*.iml
+*.iws
+
+# OSX
+.DS_Store
+
+# Local environment
+.env
