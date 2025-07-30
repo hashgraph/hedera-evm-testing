@@ -1,5 +1,10 @@
 [
   {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -7,7 +12,7 @@
         "type": "address"
       }
     ],
-    "name": "deleteScheduleProxyExample",
+    "name": "deleteSchedule",
     "outputs": [
       {
         "internalType": "int64",
@@ -15,11 +20,16 @@
         "type": "int64"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
       {
         "internalType": "address",
         "name": "sender",
@@ -29,9 +39,24 @@
         "internalType": "uint256",
         "name": "expirySecond",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "gasLimit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint64",
+        "name": "value",
+        "type": "uint64"
+      },
+      {
+        "internalType": "bytes",
+        "name": "callData",
+        "type": "bytes"
       }
     ],
-    "name": "executeCallOnSenderSignatureExample",
+    "name": "executeCallOnSenderSignature",
     "outputs": [
       {
         "internalType": "int64",
@@ -44,7 +69,7 @@
         "type": "address"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -56,35 +81,50 @@
       },
       {
         "internalType": "uint256",
-        "name": "expiryShift",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "executionIndex",
+        "name": "gasLimit",
         "type": "uint256"
       }
     ],
-    "name": "scheduleCallCycleExample",
+    "name": "hasScheduleCapacity",
     "outputs": [
       {
-        "internalType": "int64",
-        "name": "responseCode",
-        "type": "int64"
+        "internalType": "bool",
+        "name": "hasCapacity",
+        "type": "bool"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
         "internalType": "uint256",
         "name": "expirySecond",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "gasLimit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint64",
+        "name": "value",
+        "type": "uint64"
+      },
+      {
+        "internalType": "bytes",
+        "name": "callData",
+        "type": "bytes"
       }
     ],
-    "name": "scheduleCallExample",
+    "name": "scheduleCall",
     "outputs": [
       {
         "internalType": "int64",
@@ -97,30 +137,16 @@
         "type": "address"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "expirySecond",
-        "type": "uint256"
-      }
-    ],
-    "name": "scheduleCallWithCapacityCheckAndDeleteExample",
-    "outputs": [
-      {
-        "internalType": "int64",
-        "name": "responseCode",
-        "type": "int64"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
       {
         "internalType": "address",
         "name": "sender",
@@ -130,9 +156,24 @@
         "internalType": "uint256",
         "name": "expirySecond",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "gasLimit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint64",
+        "name": "value",
+        "type": "uint64"
+      },
+      {
+        "internalType": "bytes",
+        "name": "callData",
+        "type": "bytes"
       }
     ],
-    "name": "scheduleCallWithSenderExample",
+    "name": "scheduleCallWithSender",
     "outputs": [
       {
         "internalType": "int64",
@@ -145,6 +186,19 @@
         "type": "address"
       }
     ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "_isSuccess",
+        "type": "bool"
+      }
+    ],
+    "name": "setResponse",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   }

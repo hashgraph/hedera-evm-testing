@@ -1,0 +1,275 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "contract IHederaScheduleService_HIP1215",
+        "name": "_scheduleServiceAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      }
+    ],
+    "name": "ResponseCode",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "scheduleAddress",
+        "type": "address"
+      }
+    ],
+    "name": "ScheduleCall",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "scheduleAddress",
+        "type": "address"
+      }
+    ],
+    "name": "deleteScheduleProxyExample",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expirySecond",
+        "type": "uint256"
+      }
+    ],
+    "name": "executeCallOnSenderSignatureExample",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      },
+      {
+        "internalType": "address",
+        "name": "scheduleAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "expirySecond",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "gasLimit",
+        "type": "uint256"
+      }
+    ],
+    "name": "hasScheduleCapacity",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "hasCapacity",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "expirySecond",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expiryShift",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "executionIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "scheduleCallCycleExample",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "expirySecond",
+        "type": "uint256"
+      }
+    ],
+    "name": "scheduleCallExample",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      },
+      {
+        "internalType": "address",
+        "name": "scheduleAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "expirySecond",
+        "type": "uint256"
+      }
+    ],
+    "name": "scheduleCallWithCapacityCheckAndDeleteExample",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expirySecond",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "gasLimit",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint64",
+        "name": "value",
+        "type": "uint64"
+      },
+      {
+        "internalType": "bytes",
+        "name": "callData",
+        "type": "bytes"
+      }
+    ],
+    "name": "scheduleCallWithFullParam",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      },
+      {
+        "internalType": "address",
+        "name": "scheduleAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expirySecond",
+        "type": "uint256"
+      }
+    ],
+    "name": "scheduleCallWithSenderExample",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      },
+      {
+        "internalType": "address",
+        "name": "scheduleAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "scheduleService",
+    "outputs": [
+      {
+        "internalType": "contract IHederaScheduleService_HIP1215",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
