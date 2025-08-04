@@ -195,6 +195,11 @@
         "internalType": "bool",
         "name": "_isSuccess",
         "type": "bool"
+      },
+      {
+        "internalType": "int64",
+        "name": "_responseCode",
+        "type": "int64"
       }
     ],
     "name": "setResponse",

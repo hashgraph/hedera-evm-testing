@@ -75,6 +75,7 @@ const Events = {
   const GWEI = 1e9;
   const HTS_SYSTEM_CONTRACT_ID = '0.0.359';
   const HAS_SYSTEM_CONTRACT_ID = '0.0.362';
+  const MAX_EXPIRY = 8_000_001; // 3 months in seconds
   
   module.exports = {
     Events,
@@ -104,4 +105,5 @@ const Events = {
     HTS_SYSTEM_CONTRACT_ID,
     HAS_SYSTEM_CONTRACT_ID,
     ONE_HBAR,
+    MAX_EXPIRY,
   };
