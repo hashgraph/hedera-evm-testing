@@ -1,5 +1,5 @@
 {
-  "name": "@hashgraph/hedera-evm-testing/system-contract-testing",
+  "name": "hashgraph-hedera-evm-testing-system-contract-testing",
   "version": "0.1.0",
   "description": "Solidity side testing of Hedera's System Contracts",
   "main": "index.js",
@@ -25,11 +25,16 @@
     "@openzeppelin/contracts": "^5.3.0",
     "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@openzeppelin/hardhat-upgrades": "^3.9.1",
-    "hardhat": "^2.26.1",
+    "hardhat": "^2.26.2",
     "hardhat-abi-exporter": "^2.11.0",
     "husky": "^9.1.7",
     "mocha-junit-reporter": "^2.2.0",
     "mocha-multi-reporters": "^1.5.1",
     "prettier": "3.6.2"
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "keywords": [],
+  "type": "commonjs"
 }
