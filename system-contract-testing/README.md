@@ -9,4 +9,5 @@
 
 ### Run
 - `npx hardhat coverage`
+- `npx hardhat test`
 
