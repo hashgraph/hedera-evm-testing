@@ -1,5 +1,5 @@
 {
-  "name": "hashgraph-hedera-evm-testing-system-contract-testing",
+  "name": "system-contract-testing",
   "version": "0.1.0",
   "description": "Solidity side testing of Hedera's System Contracts",
   "main": "index.js",
