@@ -8,15 +8,19 @@ contract HIP1215Contract {
 
     IHederaScheduleService_HIP1215 public scheduleService;
 
+     receive() external payable {}
+
     event ResponseCode(int64 responseCode);
     event ScheduleCall(int64 responseCode, address scheduleAddress);
 
     address internal constant HSS = address(0x16b);
     uint256 internal constant SCHEDULE_GAS_LIMIT = 2_000_000;
     uint256 internal constant HAS_SCHEDULE_CAPACITY_GAS_LIMIT = 10_000;
+    int internal variableValue;
 
     constructor(IHederaScheduleService_HIP1215 _scheduleServiceAddress) {
         scheduleService = _scheduleServiceAddress;
+        variableValue = 0;
     }
 
     function scheduleCallExample(uint256 expiryShift)
@@ -118,11 +122,21 @@ contract HIP1215Contract {
     }
 
     function scheduleCallWithFullParam(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
-    external returns (int64 responseCode, address scheduleAddress) {
+    external payable returns (int64 responseCode, address scheduleAddress) {
         (responseCode, scheduleAddress) = scheduleService.scheduleCall(to, expirySecond, gasLimit, value, callData);
-        if (responseCode != HederaResponseCodes.SUCCESS) {
-            revert("Failed to schedule");
-        }
+        emit ScheduleCall(responseCode, scheduleAddress);
+        return (responseCode, scheduleAddress);
+    }
+
+    function scheduleCallWithPayerWithFullParam(address to, address sender, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
+    external payable returns (int64 responseCode, address scheduleAddress) {
+        (responseCode, scheduleAddress) = scheduleService.scheduleCallWithSender(to, sender, expirySecond, gasLimit, value, callData);
+        emit ScheduleCall(responseCode, scheduleAddress);
+        return (responseCode, scheduleAddress);
+    }
+    function executeCallOnSenderSignatureWithFullParam(address to, address sender, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
+    external payable returns (int64 responseCode, address scheduleAddress) {
+        (responseCode, scheduleAddress) = scheduleService.executeCallOnSenderSignature(to, sender, expirySecond, gasLimit, value, callData);
         emit ScheduleCall(responseCode, scheduleAddress);
         return (responseCode, scheduleAddress);
     }
@@ -130,5 +144,13 @@ contract HIP1215Contract {
     function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) view external returns (bool hasCapacity) {
         hasCapacity = scheduleService.hasScheduleCapacity(expirySecond, gasLimit);
         return hasCapacity;
+    }
+
+    function setValue(int _value) external {
+        variableValue = _value;
+    }
+
+    function getValue() view external returns (int) {
+        return variableValue;
     }
 }
