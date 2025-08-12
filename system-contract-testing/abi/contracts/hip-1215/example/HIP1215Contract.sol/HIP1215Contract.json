@@ -50,6 +50,25 @@
         "type": "address"
       }
     ],
+    "name": "deleteScheduleExample",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "scheduleAddress",
+        "type": "address"
+      }
+    ],
     "name": "deleteScheduleProxyExample",
     "outputs": [
       {
@@ -70,7 +89,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "expirySecond",
+        "name": "expiryShift",
         "type": "uint256"
       }
     ],
@@ -118,6 +137,25 @@
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "expiryShift",
+        "type": "uint256"
+      }
+    ],
+    "name": "hasScheduleCapacityExample",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "hasCapacity",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "expirySecond",
         "type": "uint256"
       },
@@ -147,7 +185,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "expirySecond",
+        "name": "expiryShift",
         "type": "uint256"
       }
     ],
@@ -171,7 +209,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "expirySecond",
+        "name": "expiryShift",
         "type": "uint256"
       }
     ],
@@ -181,6 +219,11 @@
         "internalType": "int64",
         "name": "responseCode",
         "type": "int64"
+      },
+      {
+        "internalType": "address",
+        "name": "scheduleAddress",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -239,7 +282,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "expirySecond",
+        "name": "expiryShift",
         "type": "uint256"
       }
     ],
