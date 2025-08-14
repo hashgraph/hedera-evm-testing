@@ -44,16 +44,23 @@ module.exports = {
         runOnCompile: true
     },
     defaultNetwork: 'hardhat',
-    // defaultNetwork: 'solo_local',
-    // see https://hardhat.org/hardhat-runner/docs/config
+    // see https://v2.hardhat.org/hardhat-runner/docs/config
     networks: {
         hardhat: {},
-        solo_local: {
+        local: {
             url: NETWORKS.local.url,
-            gas: NETWORKS.local.gas,
-            timeout: NETWORKS.local.timeout,
             chainId: NETWORKS.local.chainId,
-            accounts: ['0x91132178e72057a1d7528025956fe39b0b847f200ab59b2fdd367017f3087137']
+            timeout: NETWORKS.local.timeout,
+            accounts: [
+                '0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68'
+            ]
+        },
+        testnet: {
+            url: NETWORKS.testnet.url,
+            chainId: NETWORKS.testnet.chainId,
+            accounts: [
+                // add your HEX Encoded Private Key
+            ]
         },
     }
 };

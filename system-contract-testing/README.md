@@ -12,7 +12,7 @@
 - `npx hardhat test`
 
 ### Run with local Hedera Network (using solo)
-`npx hardhat test --network solo_local`
+`npx hardhat test --network local`
 
 ## Run solo
 

@@ -29,6 +29,7 @@ check_k8s_context() {
 solo_start() {
   # base setup
   kind create cluster -n "${SOLO_CLUSTER_NAME}" || true
+
   # solo deploy
   check_k8s_context
   solo init --dev
@@ -43,13 +44,20 @@ solo_start() {
   cd "${WORK_DIR}"
   # ----------------------------------------------------------------------------
   # network components
+  # TODO
   solo network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
+#  solo network deploy --deployment "${SOLO_DEPLOYMENT}" --dev
   solo node setup -i node1 --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
   solo node start -i node1 --deployment "${SOLO_DEPLOYMENT}" --dev
   solo mirror-node deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --enable-ingress --dev
   solo relay deploy -i node1 --deployment "${SOLO_DEPLOYMENT}" --dev
   # explorer is not needed for test runs
   #solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+
+  # add test account to the network
+  # solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --generate-ecdsa-key --hbar-amount 1000 --private-key --set-alias
+  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount 1000 --private-key --set-alias --ecdsa-private-key 3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68
+  # solo account get --deployment "${SOLO_DEPLOYMENT}" --account-id 0.0.1002
 }
 
 solo_stop() {
