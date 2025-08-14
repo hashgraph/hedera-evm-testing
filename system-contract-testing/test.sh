@@ -2,13 +2,79 @@
 # exit when any command fails
 set -e
 
+# solo -> required solo
 # required git, zip, kubectl
 
 WORK_DIR="$(pwd)"
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
+APP_PROPERTIES_PATH="local/application.properties"
 LATEST_CONSENSUS_COMMIT=""
 
+export SOLO_BASE_NAME=hedera
+export SOLO_CLUSTER_NAME="solo-${SOLO_BASE_NAME}"
+export SOLO_NAMESPACE="solo-ns-${SOLO_BASE_NAME}"
+export SOLO_CLUSTER_SETUP_NAMESPACE="solo-setup-ns-${SOLO_BASE_NAME}"
+export SOLO_DEPLOYMENT="solo-deployment-${SOLO_BASE_NAME}"
+
 ######################### functions #########################
+
+check_k8s_context() {
+  CURRENT_CONTEXT=$(kubectl config current-context)
+  if [ "$CURRENT_CONTEXT" != "kind-${SOLO_CLUSTER_NAME}" ]; then
+    printf "Current context: %s is not equals to targeted context: %s\n" "$CURRENT_CONTEXT" "kind-${SOLO_CLUSTER_NAME}"
+    exit 1
+  fi
+}
+
+solo_start() {
+  # base setup
+  kind create cluster -n "${SOLO_CLUSTER_NAME}" || true
+  # solo deploy
+  check_k8s_context
+  solo init --dev
+  solo cluster-ref connect --cluster-ref kind-${SOLO_CLUSTER_NAME} --context kind-${SOLO_CLUSTER_NAME} --dev
+  solo deployment create -n "${SOLO_NAMESPACE}" --deployment "${SOLO_DEPLOYMENT}" --dev
+  solo deployment add-cluster --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --num-consensus-nodes 1 --dev
+  solo node keys --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
+  solo cluster-ref setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
+  # --------- build (./gradlew assemble) in consensus node dir
+  cd "${CONSENSUS_NODE_DIR}"
+  ./gradlew assemble
+  cd "${WORK_DIR}"
+  # ----------------------------------------------------------------------------
+  # network components
+  solo network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
+  solo node setup -i node1 --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
+  solo node start -i node1 --deployment "${SOLO_DEPLOYMENT}" --dev
+  solo mirror-node deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --enable-ingress --dev
+  solo relay deploy -i node1 --deployment "${SOLO_DEPLOYMENT}" --dev
+  # explorer is not needed for test runs
+  #solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+}
+
+solo_stop() {
+  solo relay destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --node-aliases node1 || true
+  solo mirror-node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force || true
+  solo node stop --deployment="${SOLO_DEPLOYMENT}" || true
+  solo network destroy --deployment="${SOLO_DEPLOYMENT}" --force --delete-pvcs --delete-secrets || true
+  # next step is hanging and not ending by itself. Do we need it?
+  # solo cluster-ref reset --cluster-ref kind-${SOLO_CLUSTER_NAME} -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --force || true
+  solo cluster-ref disconnect --cluster-ref kind-${SOLO_CLUSTER_NAME} || true
+  solo_destroy
+}
+
+solo_status() {
+  cat ~/.solo/local-config.yaml || true
+  echo "-------------------------------------------------------------------------"
+  kubectl get pods -n "${SOLO_NAMESPACE}"
+}
+
+solo_destroy() {
+  kubectl delete namespace "${SOLO_NAMESPACE}"
+  kubectl delete namespace "${SOLO_CLUSTER_SETUP_NAMESPACE}"
+  kind delete cluster -n "${SOLO_CLUSTER_NAME}"
+  rm -rf ~/.solo
+}
 
 # Building consensus node from local sources
 # Build logic is taken from https://github.com/hiero-ledger/hiero-consensus-node/blob/main/.github/workflows/node-zxc-build-release-artifact.yaml
@@ -69,6 +135,27 @@ upgrade_solo_consensus() {
 ######################### main #########################
 case "$1" in
 
+  solo)
+    case "$2" in
+      start)
+        solo_start
+        ;;
+      stop)
+        solo_stop
+        ;;
+      status)
+        solo_status
+        ;;
+      destroy)
+        solo_destroy
+        ;;
+    	*)
+    		echo "Usage: [start|stop|status|destroy]"
+    		exit 1
+    		;;
+    esac
+    ;;
+
 	build)
 		build_consensus_release
 		;;
@@ -78,7 +165,7 @@ case "$1" in
     ;;
 
 	*)
-		echo "Usage: [build|upgrade]"
+		echo "Usage: [solo|build|upgrade]"
 		exit 1
 		;;
 esac

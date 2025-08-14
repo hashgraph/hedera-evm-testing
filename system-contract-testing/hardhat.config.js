@@ -43,7 +43,9 @@ module.exports = {
         path: './abi',
         runOnCompile: true
     },
-    defaultNetwork: 'solo_local',
+    defaultNetwork: 'hardhat',
+    // defaultNetwork: 'solo_local',
+    // see https://hardhat.org/hardhat-runner/docs/config
     networks: {
         hardhat: {},
         solo_local: {
@@ -51,6 +53,7 @@ module.exports = {
             gas: NETWORKS.local.gas,
             timeout: NETWORKS.local.timeout,
             chainId: NETWORKS.local.chainId,
+            accounts: ['0x91132178e72057a1d7528025956fe39b0b847f200ab59b2fdd367017f3087137']
         },
     }
 };
