@@ -12,7 +12,6 @@ describe("HIP-1215 System Contract testing", () => {
     ethers.provider.estimateGas = async() => 1_000_000;
     // Extract this to a fixture and run
     const HIP1215MockFactory = await ethers.getContractFactory("HIP1215MockContract");
-      HIP1215MockFactory.memo
     console.log("Deploy mock:");
     mock1215 = await HIP1215MockFactory.deploy();
     const HIP1215Factory = await ethers.getContractFactory("HIP1215Contract");

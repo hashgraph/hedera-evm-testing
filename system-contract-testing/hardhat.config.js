@@ -73,7 +73,7 @@ module.exports = {
             chainId: NETWORKS.testnet.chainId,
             accounts: [
                 // add your HEX Encoded Private Key
-                '0x26c72d3f17af64a62948c1475dc2dd1b099eefd349686246809fa20a6d876983'
+
             ]
         },
     }
