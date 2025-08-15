@@ -16,6 +16,13 @@ export SOLO_NAMESPACE="solo-ns-${SOLO_BASE_NAME}"
 export SOLO_CLUSTER_SETUP_NAMESPACE="solo-setup-ns-${SOLO_BASE_NAME}"
 export SOLO_DEPLOYMENT="solo-deployment-${SOLO_BASE_NAME}"
 
+# alias f70febf7420398c3892ce79fdc393c1a5487ad27
+TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1=3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68
+# alias dbe82db504ca6701fbe59e638ceaddbdb691067b
+TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2=3030020100300706052b8104000a04220420748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04
+# alias 84b4d82e6ed64102d0faa6c29bf4e9f541db442f
+TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3=3030020100300706052b8104000a042204203bcb2fbd18610f44eda2bfd58df63d053e2a6b165617a2ef5e5cca079e0c588a
+
 ######################### functions #########################
 
 check_k8s_context() {
@@ -44,30 +51,28 @@ solo_start() {
   cd "${WORK_DIR}"
   # ----------------------------------------------------------------------------
   # network components
-  # TODO
   solo network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
-#  solo network deploy --deployment "${SOLO_DEPLOYMENT}" --dev
   solo node setup -i node1 --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
   solo node start -i node1 --deployment "${SOLO_DEPLOYMENT}" --dev
   solo mirror-node deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --enable-ingress --dev
   solo relay deploy -i node1 --deployment "${SOLO_DEPLOYMENT}" --dev
-  # explorer is not needed for test runs
-  #solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+  solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
-  # add test account to the network
-  # solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --generate-ecdsa-key --hbar-amount 1000 --private-key --set-alias
-  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount 1000 --private-key --set-alias --ecdsa-private-key 3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68
-  # solo account get --deployment "${SOLO_DEPLOYMENT}" --account-id 0.0.1002
+  # add test accounts to the network
+  #  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --generate-ecdsa-key --hbar-amount 1000 --private-key --set-alias
+  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount 1000 --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
+  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount 1000 --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
+  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount 1000 --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
 }
 
 solo_stop() {
-  solo relay destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --node-aliases node1 || true
-  solo mirror-node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force || true
-  solo node stop --deployment="${SOLO_DEPLOYMENT}" || true
-  solo network destroy --deployment="${SOLO_DEPLOYMENT}" --force --delete-pvcs --delete-secrets || true
+  solo relay destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
+  solo mirror-node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
+  solo node stop --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
+  solo network destroy --deployment="${SOLO_DEPLOYMENT}" --force --delete-pvcs --delete-secrets --dev || true
   # next step is hanging and not ending by itself. Do we need it?
   # solo cluster-ref reset --cluster-ref kind-${SOLO_CLUSTER_NAME} -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --force || true
-  solo cluster-ref disconnect --cluster-ref kind-${SOLO_CLUSTER_NAME} || true
+  solo cluster-ref disconnect --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev || true
   solo_destroy
 }
 

@@ -15,7 +15,7 @@ const {
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
     mocha: {
-        timeout: 3600000,
+        timeout: 60000,
         color: true,
         failZero: Boolean(process.env.CI),
         forbidOnly: Boolean(process.env.CI),
@@ -43,13 +43,15 @@ module.exports = {
         path: './abi',
         runOnCompile: true
     },
-    defaultNetwork: 'hardhat',
+    // defaultNetwork: 'hardhat',
+    defaultNetwork: 'local',
     // see https://v2.hardhat.org/hardhat-runner/docs/config
     networks: {
         hardhat: {},
         local: {
             url: NETWORKS.local.url,
             chainId: NETWORKS.local.chainId,
+            gas: NETWORKS.local.gas,
             timeout: NETWORKS.local.timeout,
             accounts: [
                 '0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68'
