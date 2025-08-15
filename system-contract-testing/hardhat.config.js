@@ -6,58 +6,75 @@ require('@nomicfoundation/hardhat-chai-matchers');
 require('solidity-coverage');
 
 const {
-  OPERATOR_ID_A,
-  OPERATOR_KEY_A,
-  NETWORKS,
-  PRIVATE_KEYS,
+    OPERATOR_ID_A,
+    OPERATOR_KEY_A,
+    NETWORKS,
+    PRIVATE_KEYS,
 } = require('./utils/environemnt');
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  mocha: {
-    timeout: 3600000,
-    color: true,
-    failZero: Boolean(process.env.CI),
-    forbidOnly: Boolean(process.env.CI),
-    reporter: 'mocha-multi-reporters',
-    reporterOption: {
-      reporterEnabled: 'spec, mocha-junit-reporter',
-      mochaJunitReporterReporterOptions: {
-        mochaFile: 'test-results.[hash].xml',
-        includePending: true,
-        outputs: true,
-      },
+    mocha: {
+        timeout: 600000,
+        color: true,
+        failZero: Boolean(process.env.CI),
+        forbidOnly: Boolean(process.env.CI),
+        reporter: 'mocha-multi-reporters',
+        reporterOption: {
+            reporterEnabled: 'spec, mocha-junit-reporter',
+            mochaJunitReporterReporterOptions: {
+                mochaFile: 'test-results.[hash].xml',
+                includePending: true,
+                outputs: true,
+            },
+        },
     },
-  },
-  solidity: {
-    version: '0.8.24',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 500,
-      },
-      evmVersion: 'cancun',
+    solidity: {
+        version: '0.8.24',
+        settings: {
+            optimizer: {
+                enabled: true,
+                runs: 500,
+            },
+            evmVersion: 'cancun',
+        },
     },
-  },
-  abiExporter: {
-    path: './abi',
-    runOnCompile: true
-  },
-  // defaultNetwork: 'besu_local',
-  networks: {
-    besu_local: {
-      url: NETWORKS.besu.url,
-      allowUnlimitedContractSize: NETWORKS.besu.allowUnlimitedContractSize,
-      blockGasLimit: NETWORKS.besu.blockGasLimit,
-      gas: NETWORKS.besu.gas,
-      timeout: NETWORKS.besu.timeout,
-      chainId: NETWORKS.besu.chainId,
-      accounts: [
-        // private keys are configured in the genesis file https://github.com/hyperledger/besu/blob/main/config/src/main/resources/dev.json#L20
-        '0xae6ae8e5ccbfb04590405997ee2d52d2b330726137b875053c36d94e974d162f',
-        '0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3',
-        '0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63'
-      ],
+    abiExporter: {
+        path: './abi',
+        runOnCompile: true
     },
-  }
+    // defaultNetwork: 'hardhat',
+    defaultNetwork: 'local',
+    // see https://v2.hardhat.org/hardhat-runner/docs/config
+    networks: {
+        hardhat: {},
+        local: {
+            url: NETWORKS.local.url,
+            chainId: NETWORKS.local.chainId,
+            gas: NETWORKS.local.gas,
+            timeout: NETWORKS.local.timeout,
+            accounts: [
+                '0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68',
+                // '0x748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04',
+            ]
+        },
+        local2: {
+            url: NETWORKS.local.url,
+            chainId: NETWORKS.local.chainId,
+            gas: NETWORKS.local.gas,
+            timeout: NETWORKS.local.timeout,
+            accounts: [
+                // '0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68',
+                '0x748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04',
+            ]
+        },
+        testnet: {
+            url: NETWORKS.testnet.url,
+            chainId: NETWORKS.testnet.chainId,
+            accounts: [
+                // add your HEX Encoded Private Key
+
+            ]
+        },
+    }
 };
