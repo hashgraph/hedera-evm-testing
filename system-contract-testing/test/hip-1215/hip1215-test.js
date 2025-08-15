@@ -80,12 +80,12 @@ describe("HIP-1215 System Contract testing", () => {
     });
 
     it("Should return false for valid expiry and max gas limit", async () => {
-      await mock1215.setResponse(true);
+      await mock1215.setResponse(false);
       const tx = await hip1215.hasScheduleCapacity(
         new Date().getUTCMilliseconds() + 100,
         GAS_LIMIT_15M.gasLimit - 1,
       );
-      expect(tx).to.be.true;
+      expect(tx).to.be.false;
     });
   });
 
