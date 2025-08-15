@@ -48,4 +48,3 @@ solo quick-start single deploy --cluster-ref="kind-${SOLO_CLUSTER_NAME}" --clust
 
 ### TODO
 - Need some sort of 'heartbeat' event for solo running nodes
-- INVALID_TRANSACTION_BODY

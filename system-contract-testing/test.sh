@@ -17,11 +17,11 @@ export SOLO_CLUSTER_SETUP_NAMESPACE="solo-setup-ns-${SOLO_BASE_NAME}"
 export SOLO_DEPLOYMENT="solo-deployment-${SOLO_BASE_NAME}"
 
 # alias f70febf7420398c3892ce79fdc393c1a5487ad27
-TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1=3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68
+export TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1=3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68
 # alias dbe82db504ca6701fbe59e638ceaddbdb691067b
-TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2=3030020100300706052b8104000a04220420748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04
+export TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2=3030020100300706052b8104000a04220420748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04
 # alias 84b4d82e6ed64102d0faa6c29bf4e9f541db442f
-TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3=3030020100300706052b8104000a042204203bcb2fbd18610f44eda2bfd58df63d053e2a6b165617a2ef5e5cca079e0c588a
+export TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3=3030020100300706052b8104000a042204203bcb2fbd18610f44eda2bfd58df63d053e2a6b165617a2ef5e5cca079e0c588a
 
 ######################### functions #########################
 
@@ -46,21 +46,21 @@ solo_start() {
   solo node keys --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
   solo cluster-ref setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
   # --------- build (./gradlew assemble) in consensus node dir
-#  cd "${CONSENSUS_NODE_DIR}"
-#  ./gradlew assemble
-#  cd "${WORK_DIR}"
-  build_consensus_release
+  cd "${CONSENSUS_NODE_DIR}"
+  ./gradlew assemble
+  cd "${WORK_DIR}"
+#  build_consensus_release
   # ----------------------------------------------------------------------------
   # network components
-  # --------- with local consensus build with release package
+  # --------- with local consensus build
   solo network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
-  solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --release-tag "v0.64.2" --dev
-  upgrade_solo_consensus
+  solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
   solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
   # ----------------------------------------------------------------------------
-  # --------- with local consensus build
+  # --------- with local consensus build and release package
 #  solo network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
-#  solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
+#  solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --release-tag "v0.64.2" --dev
+#  upgrade_solo_consensus
 #  solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
   # ----------------------------------------------------------------------------
   # --------- with latest release version
@@ -138,7 +138,7 @@ build_consensus_release() {
   printf "\n"
 
   # Create Artifact Archive
-  printf "Artifact Folder=%s\n" ${BUILD_BASE_DIR}
+  printf "Artifact Folder=%s\n" "${BUILD_BASE_DIR}"
   ARTIFACT="build-${LATEST_CONSENSUS_COMMIT}.zip"
   # we should zip from BUILD_BASE_DIR to get zip w/o any additional directories, for correct unzip on the node
   cd "${BUILD_BASE_DIR}"
@@ -153,16 +153,16 @@ build_consensus_release() {
   printf "Build Done. Artifact %s\n" "${ARTIFACT}"
 }
 
+# push release archive to node and unzip to /opt/hgcapp/services-hedera/HapiApp2.0
 upgrade_solo_consensus() {
   cd "${CONSENSUS_NODE_DIR}"
   LATEST_CONSENSUS_COMMIT="$(git log -n 1 --pretty=format:"%H")"
   cd "${WORK_DIR}"
 
-  kubectl cp "build-${LATEST_CONSENSUS_COMMIT}.zip" network-node1-0:/home/hedera -n solo-ns-glib
-  kubectl cp "build-${LATEST_CONSENSUS_COMMIT}.sha384" network-node1-0:/home/hedera -n solo-ns-glib
-  kubectl exec network-node1-0 -n solo-ns-glib -- bash /home/hedera/extract-platform.sh "${LATEST_CONSENSUS_COMMIT}"
+  kubectl cp "build-${LATEST_CONSENSUS_COMMIT}.zip" network-node1-0:/home/hedera -n "${SOLO_NAMESPACE}"
+  kubectl cp "build-${LATEST_CONSENSUS_COMMIT}.sha384" network-node1-0:/home/hedera -n "${SOLO_NAMESPACE}"
+  kubectl exec network-node1-0 -n "${SOLO_NAMESPACE}" -- bash /home/hedera/extract-platform.sh "${LATEST_CONSENSUS_COMMIT}"
 }
-
 
 ######################### main #########################
 case "$1" in
@@ -188,8 +188,23 @@ case "$1" in
     esac
     ;;
 
+    node)
+      case "$2" in
+        release)
+          build_consensus_release
+          ;;
+        upgrade)
+          upgrade_solo_consensus
+          ;;
+      	*)
+      		echo "Usage: [release|upgrade]"
+      		exit 1
+      		;;
+      esac
+      ;;
+
 	*)
-		echo "Usage: [solo|build|upgrade]"
+		echo "Usage: [solo|node]"
 		exit 1
 		;;
 esac
