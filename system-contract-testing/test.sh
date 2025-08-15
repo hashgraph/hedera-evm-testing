@@ -46,16 +46,35 @@ solo_start() {
   solo node keys --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
   solo cluster-ref setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
   # --------- build (./gradlew assemble) in consensus node dir
-  cd "${CONSENSUS_NODE_DIR}"
-  ./gradlew assemble
-  cd "${WORK_DIR}"
+#  cd "${CONSENSUS_NODE_DIR}"
+#  ./gradlew assemble
+#  cd "${WORK_DIR}"
+  build_consensus_release
   # ----------------------------------------------------------------------------
   # network components
+  # --------- with local consensus build with release package
   solo network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
-  solo node setup -i node1 --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
-  solo node start -i node1 --deployment "${SOLO_DEPLOYMENT}" --dev
+  solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --release-tag "v0.64.2" --dev
+  upgrade_solo_consensus
+  solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+  # ----------------------------------------------------------------------------
+  # --------- with local consensus build
+#  solo network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
+#  solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
+#  solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+  # ----------------------------------------------------------------------------
+  # --------- with latest release version
+#  solo network deploy --deployment "${SOLO_DEPLOYMENT}" --dev
+#  solo node setup -i node1 --deployment "${SOLO_DEPLOYMENT}" --release-tag "v0.64.2" --dev
+#  solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+  # ----------------------------------------------------------------------------
+  # --------- with remote debug and local consensus build
+#  solo network deploy --deployment "${SOLO_DEPLOYMENT}" -i node1 --debug-node-alias node1 --dev
+#  solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
+#  solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --debug-node-alias node1 --dev
+  # ----------------------------------------------------------------------------
   solo mirror-node deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --enable-ingress --dev
-  solo relay deploy -i node1 --deployment "${SOLO_DEPLOYMENT}" --dev
+  solo relay deploy --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
   solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # add test accounts to the network
@@ -167,14 +186,6 @@ case "$1" in
     		exit 1
     		;;
     esac
-    ;;
-
-	build)
-		build_consensus_release
-		;;
-
-  upgrade)
-    upgrade_solo_consensus
     ;;
 
 	*)

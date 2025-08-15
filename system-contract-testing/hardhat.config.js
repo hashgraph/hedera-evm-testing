@@ -15,7 +15,7 @@ const {
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
     mocha: {
-        timeout: 60000,
+        timeout: 600000,
         color: true,
         failZero: Boolean(process.env.CI),
         forbidOnly: Boolean(process.env.CI),
@@ -54,7 +54,18 @@ module.exports = {
             gas: NETWORKS.local.gas,
             timeout: NETWORKS.local.timeout,
             accounts: [
-                '0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68'
+                '0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68',
+                // '0x748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04',
+            ]
+        },
+        local2: {
+            url: NETWORKS.local.url,
+            chainId: NETWORKS.local.chainId,
+            gas: NETWORKS.local.gas,
+            timeout: NETWORKS.local.timeout,
+            accounts: [
+                // '0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68',
+                '0x748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04',
             ]
         },
         testnet: {
@@ -62,6 +73,7 @@ module.exports = {
             chainId: NETWORKS.testnet.chainId,
             accounts: [
                 // add your HEX Encoded Private Key
+                '0x26c72d3f17af64a62948c1475dc2dd1b099eefd349686246809fa20a6d876983'
             ]
         },
     }
