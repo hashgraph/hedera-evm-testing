@@ -45,6 +45,3 @@ solo quick-start single deploy --cluster-ref="kind-${SOLO_CLUSTER_NAME}" --clust
 
 ### Force Destroy
 `./test.sh solo destroy`
-
-### TODO
-- Need some sort of 'heartbeat' event for solo running nodes

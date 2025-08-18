@@ -75,7 +75,7 @@ solo_start() {
   # ----------------------------------------------------------------------------
   solo mirror-node deploy --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --enable-ingress --dev
   solo relay deploy --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
-  solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+#  solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # add test accounts to the network
   #  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --generate-ecdsa-key --hbar-amount 1000 --private-key --set-alias
