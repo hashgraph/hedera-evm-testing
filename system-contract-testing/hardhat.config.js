@@ -10,7 +10,7 @@ const {
     OPERATOR_KEY_A,
     NETWORKS,
     PRIVATE_KEYS,
-} = require('./utils/environemnt');
+} = require('./utils/environment');
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
