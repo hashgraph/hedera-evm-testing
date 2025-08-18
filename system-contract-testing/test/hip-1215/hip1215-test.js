@@ -16,7 +16,7 @@ describe("HIP-1215 System Contract testing", () => {
   const tenSecondsFromNow = Date.now() + 10 * 1000;
   const callData = "0x5b8f8584"; // token freeze signature
   async function setSuccessResponse() {
-    console.log("Set mock status success");
+    console.info("Set mock status success");
     await mock1215.setResponse(true, 22);
   }
 
@@ -30,10 +30,10 @@ describe("HIP-1215 System Contract testing", () => {
     );
     mock1215 = await HIP1215MockFactory.deploy();
     const HIP1215Factory = await ethers.getContractFactory("HIP1215Contract");
-    console.log("Deploy hip1215 with mock:", mock1215.target);
+    console.info("Deploy hip1215 with mock:", mock1215.target);
     hip1215 = await HIP1215Factory.deploy(mock1215.target);
     await hip1215.waitForDeployment();
-    console.log("Done hip1215:", hip1215.target);
+    console.info("Done hip1215:", hip1215.target);
     ethers.provider.estimateGas = async () => 100_000;
   });
 
@@ -1066,8 +1066,11 @@ describe("HIP-1215 System Contract testing", () => {
     });
 
     describe("negative cases", () => {
+      before(async () => {
+        return mock1215.setResponse(false, 1);
+      });
+
       it("should return false for expiry in the past", async () => {
-        await mock1215.setResponse(false, 1);
         const tx = await hip1215.hasScheduleCapacity(
           1716666666,
           GAS_LIMIT_1_000_000.gasLimit
@@ -1076,13 +1079,11 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("Should return false for valid expiry and 0 gas limit", async () => {
-        await mock1215.setResponse(false, 1);
         const tx = await hip1215.hasScheduleCapacity(tenSecondsFromNow, 0);
         expect(tx).to.be.false;
       });
 
       it("Should return false for valid expiry and max gas limit", async () => {
-        await mock1215.setResponse(false, 1);
         const tx = await hip1215.hasScheduleCapacity(
           tenSecondsFromNow,
           GAS_LIMIT_15M.gasLimit
