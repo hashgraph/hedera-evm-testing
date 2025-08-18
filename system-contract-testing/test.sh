@@ -2,9 +2,6 @@
 # exit when any command fails
 set -e
 
-# solo -> required solo
-# required git, zip, kubectl
-
 WORK_DIR="$(pwd)"
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
 APP_PROPERTIES_PATH="local/application.properties"
@@ -33,6 +30,7 @@ check_k8s_context() {
   fi
 }
 
+# solo -> required solo, kubectl, kind
 solo_start() {
   # base setup
   kind create cluster -n "${SOLO_CLUSTER_NAME}" || true
@@ -116,6 +114,7 @@ solo_destroy() {
 # - Write Artifact Version Descriptor
 # - Create Artifact Archive
 # - Compute SHA Hash
+# build_consensus_release -> additionally required git, zip
 build_consensus_release() {
   # Gradle Assemble
   cd "${CONSENSUS_NODE_DIR}"
