@@ -1,17 +1,21 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const Utils = require('../../utils/utils');
-const { GAS_LIMIT_1_000_000, GAS_LIMIT_15M, Events } = require("../../utils/constants");
-
+const {
+  GAS_LIMIT_1_000_000,
+  GAS_LIMIT_15M,
+  Events,
+} = require("../../utils/constants");
 
 describe("HIP-1215 System Contract testing", () => {
   let hip1215, mock1215;
 
   before(async () => {
     // provider configs override
-    ethers.provider.estimateGas = async() => 1_000_000;
+    ethers.provider.estimateGas = async () => 1_000_000;
     // Extract this to a fixture and run
-    const HIP1215MockFactory = await ethers.getContractFactory("HIP1215MockContract");
+    const HIP1215MockFactory = await ethers.getContractFactory(
+      "HIP1215MockContract",
+    );
     console.log("Deploy mock:");
     mock1215 = await HIP1215MockFactory.deploy();
     const HIP1215Factory = await ethers.getContractFactory("HIP1215Contract");
@@ -29,14 +33,16 @@ describe("HIP-1215 System Contract testing", () => {
         new Date().getUTCMilliseconds() + 100,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        "0x5b8f8584"
+        "0x5b8f8584",
       );
       const transaction = await tx.wait();
       const log = transaction.logs.find(
-        e => e.fragment.name === Events.ScheduleCall
+        (e) => e.fragment.name === Events.ScheduleCall,
       );
       expect(log.args[0]).to.equal(22n);
-      expect(log.args[1]).to.equal('0x000000000000000000000000000000000000007B');
+      expect(log.args[1]).to.equal(
+        "0x000000000000000000000000000000000000007B",
+      );
       // With mocked setup we can only verify that the txn was success/revert
       expect(transaction.status).to.equal(1);
     });
@@ -88,5 +94,4 @@ describe("HIP-1215 System Contract testing", () => {
       expect(tx).to.be.false;
     });
   });
-
-}); 
+});
