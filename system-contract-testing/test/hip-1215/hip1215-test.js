@@ -1037,46 +1037,52 @@ describe("HIP-1215 System Contract testing", () => {
   });
 
   describe("hasScheduleCapacity()", () => {
-    it("should have enough capacity", async () => {
-      await mock1215.setResponse(true, 22);
-      const tx = await hip1215.hasScheduleCapacity(
-        tenSecondsFromNow,
-        GAS_LIMIT_1_000_000.gasLimit
-      );
-      expect(tx).to.be.true;
+    describe("positive cases", () => {
+      before(async () => {
+        setSuccessResponse();
+      });
+
+      it("should have enough capacity", async () => {
+        const tx = await hip1215.hasScheduleCapacity(
+          tenSecondsFromNow,
+          GAS_LIMIT_1_000_000.gasLimit
+        );
+        expect(tx).to.be.true;
+      });
+
+      it("Should return true for valid expiry and max gas limit - 1", async () => {
+        const tx = await hip1215.hasScheduleCapacity(
+          tenSecondsFromNow,
+          GAS_LIMIT_15M.gasLimit - 1
+        );
+        expect(tx).to.be.true;
+      });
     });
 
-    it("should return false for expiry in the past", async () => {
-      await mock1215.setResponse(false, 1);
-      const tx = await hip1215.hasScheduleCapacity(
-        1716666666,
-        GAS_LIMIT_1_000_000.gasLimit
-      );
-      expect(tx).to.be.false;
-    });
+    describe("negative cases", () => {
+      it("should return false for expiry in the past", async () => {
+        await mock1215.setResponse(false, 1);
+        const tx = await hip1215.hasScheduleCapacity(
+          1716666666,
+          GAS_LIMIT_1_000_000.gasLimit
+        );
+        expect(tx).to.be.false;
+      });
 
-    it("Should return false for valid expiry and 0 gas limit", async () => {
-      await mock1215.setResponse(false, 1);
-      const tx = await hip1215.hasScheduleCapacity(tenSecondsFromNow, 0);
-      expect(tx).to.be.false;
-    });
+      it("Should return false for valid expiry and 0 gas limit", async () => {
+        await mock1215.setResponse(false, 1);
+        const tx = await hip1215.hasScheduleCapacity(tenSecondsFromNow, 0);
+        expect(tx).to.be.false;
+      });
 
-    it("Should return false for valid expiry and max gas limit", async () => {
-      await mock1215.setResponse(false, 1);
-      const tx = await hip1215.hasScheduleCapacity(
-        tenSecondsFromNow,
-        GAS_LIMIT_15M.gasLimit
-      );
-      expect(tx).to.be.false;
-    });
-
-    it("Should return true for valid expiry and max gas limit - 1", async () => {
-      await mock1215.setResponse(true, 22);
-      const tx = await hip1215.hasScheduleCapacity(
-        tenSecondsFromNow,
-        GAS_LIMIT_15M.gasLimit - 1
-      );
-      expect(tx).to.be.true;
+      it("Should return false for valid expiry and max gas limit", async () => {
+        await mock1215.setResponse(false, 1);
+        const tx = await hip1215.hasScheduleCapacity(
+          tenSecondsFromNow,
+          GAS_LIMIT_15M.gasLimit
+        );
+        expect(tx).to.be.false;
+      });
     });
   });
 });
