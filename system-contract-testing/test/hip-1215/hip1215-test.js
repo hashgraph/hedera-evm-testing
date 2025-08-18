@@ -16,10 +16,13 @@ describe("HIP-1215 System Contract testing", () => {
   const tenSecondsFromNow = Date.now() + 10 * 1000;
   const callData = "0x5b8f8584"; // token freeze signature
   async function setSuccessResponse() {
+    console.info("Set mock status success");
     await mock1215.setResponse(true, 22);
   }
 
   before(async () => {
+    // provider configs override
+    ethers.provider.estimateGas = async () => 1_200_000;
     signers = await ethers.getSigners();
     // Extract this to a fixture and run
     const HIP1215MockFactory = await ethers.getContractFactory(
@@ -27,14 +30,17 @@ describe("HIP-1215 System Contract testing", () => {
     );
     mock1215 = await HIP1215MockFactory.deploy();
     const HIP1215Factory = await ethers.getContractFactory("HIP1215Contract");
+    console.info("Deploy hip1215 with mock:", mock1215.target);
     hip1215 = await HIP1215Factory.deploy(mock1215.target);
     await hip1215.waitForDeployment();
+    console.info("Done hip1215:", hip1215.target);
+    ethers.provider.estimateGas = async () => 100_000;
   });
 
   describe("scheduleCall", () => {
-    describe("positive cases", () => {
+    describe("positive cases", async () => {
       before(async () => {
-        setSuccessResponse();
+        return setSuccessResponse();
       });
 
       it("should schedule a call", async () => {
@@ -47,7 +53,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -65,7 +71,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -83,7 +89,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -102,7 +108,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -120,7 +126,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -138,7 +144,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -157,7 +163,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -182,7 +188,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(15n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -201,7 +207,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(30n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -220,7 +226,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(30n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -239,7 +245,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(366n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -261,7 +267,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(10n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -280,7 +286,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(370n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -299,7 +305,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(370n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -318,7 +324,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(370n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -331,7 +337,7 @@ describe("HIP-1215 System Contract testing", () => {
   describe("scheduleCallWithPayer()", () => {
     describe("positive cases", () => {
       before(async () => {
-        setSuccessResponse();
+        return setSuccessResponse();
       });
 
       it("should schedule a call with payer", async () => {
@@ -345,7 +351,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -363,7 +369,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -381,7 +387,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -400,7 +406,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -418,7 +424,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -436,7 +442,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -455,7 +461,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -478,7 +484,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(15n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -497,7 +503,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(15n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -516,7 +522,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(30n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -535,7 +541,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(30n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -554,7 +560,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(366n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -576,7 +582,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(10n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -595,7 +601,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(370n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -614,7 +620,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(370n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -633,7 +639,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(370n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -652,7 +658,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(15n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -671,7 +677,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(15n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -683,7 +689,7 @@ describe("HIP-1215 System Contract testing", () => {
   describe("executeCallOnSenderSignature()", () => {
     describe("positive cases", () => {
       before(async () => {
-        setSuccessResponse();
+        return setSuccessResponse();
       });
 
       it("should schedule a call with sender signature", async () => {
@@ -697,7 +703,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -715,7 +721,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -733,7 +739,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -752,7 +758,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -770,7 +776,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -788,7 +794,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -807,7 +813,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(22n);
         expect(log.args[1]).to.equal(mockedResponseAddress);
@@ -830,7 +836,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(15n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -849,7 +855,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(15n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -868,7 +874,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(30n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -887,7 +893,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(30n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -906,7 +912,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(366n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -928,7 +934,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(10n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -947,7 +953,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(370n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -966,7 +972,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(370n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -985,7 +991,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(370n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -1004,7 +1010,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(15n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -1023,7 +1029,7 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const transaction = await tx.wait();
         const log = transaction.logs.find(
-          (e) => e.fragment.name == Events.ScheduleCall
+          (e) => e.fragment.name === Events.ScheduleCall
         );
         expect(log.args[0]).to.equal(15n);
         expect(log.args[1]).to.equal(ethers.ZeroAddress);
@@ -1039,7 +1045,7 @@ describe("HIP-1215 System Contract testing", () => {
   describe("hasScheduleCapacity()", () => {
     describe("positive cases", () => {
       before(async () => {
-        setSuccessResponse();
+        return setSuccessResponse();
       });
 
       it("should have enough capacity", async () => {
@@ -1060,8 +1066,11 @@ describe("HIP-1215 System Contract testing", () => {
     });
 
     describe("negative cases", () => {
+      before(async () => {
+        return mock1215.setResponse(false, 1);
+      });
+
       it("should return false for expiry in the past", async () => {
-        await mock1215.setResponse(false, 1);
         const tx = await hip1215.hasScheduleCapacity(
           1716666666,
           GAS_LIMIT_1_000_000.gasLimit
@@ -1070,13 +1079,11 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("Should return false for valid expiry and 0 gas limit", async () => {
-        await mock1215.setResponse(false, 1);
         const tx = await hip1215.hasScheduleCapacity(tenSecondsFromNow, 0);
         expect(tx).to.be.false;
       });
 
       it("Should return false for valid expiry and max gas limit", async () => {
-        await mock1215.setResponse(false, 1);
         const tx = await hip1215.hasScheduleCapacity(
           tenSecondsFromNow,
           GAS_LIMIT_15M.gasLimit
