@@ -3,7 +3,6 @@
 ## Run tests
 
 ### Requirements
-- `npm init -y`
 - `npm install --save-dev hardhat`
 
 ### Run
