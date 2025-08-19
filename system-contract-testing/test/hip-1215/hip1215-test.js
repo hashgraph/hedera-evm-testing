@@ -35,6 +35,13 @@ describe("HIP-1215 System Contract testing", () => {
       console.log("Mock: disabled");
     }
   }
+  function wait(milliseconds) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve("resolved");
+      }, milliseconds);
+    });
+  }
 
   before(async () => {
     // provider configs override
@@ -1084,7 +1091,10 @@ describe("HIP-1215 System Contract testing", () => {
 
     describe("negative cases", () => {
       before(async () => {
-        await setFailResponse(1);
+        return setFailResponse(1)
+          // somehow Mock state change not always appears just after this call returns on local node.
+          // so we are adding 1s wait as a temp fix for this
+          .then(() => MOCK_ENABLED ? wait(1000) : Promise.resolve("resolved") );
       });
 
       it("should return false for expiry in the past", async () => {
