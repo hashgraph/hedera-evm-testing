@@ -4,7 +4,7 @@ pragma solidity >=0.5.0 <0.9.0;
 import "./HederaResponseCodes.sol";
 import "../IHederaScheduleService_HIP1215.sol";
 
-abstract contract HederaScheduleService_HIP1215 is IHederaScheduleService_HIP1215 {
+contract HederaScheduleService_HIP1215 is IHederaScheduleService_HIP1215 {
 
     address internal constant HSS = address(0x16b);
 

@@ -1,3 +1,5 @@
+const asyncUtils = require('../../utils/async.js');
+
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
@@ -15,34 +17,47 @@ describe("HIP-1215 System Contract testing", () => {
   let hip1215, impl1215, signers;
   const htsAddress = "0x0000000000000000000000000000000000000167";
   const mockedResponseAddress = "0x000000000000000000000000000000000000007B";
-  const tenSecondsFromNow = Date.now() + 10 * 1000;
+  const dayFromNowSeconds = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
   const callData = "0x5b8f8584"; // token freeze signature
 
-  // Mock update functions
-  function setSuccessResponse() {
+  // ----------------- Mock update functions
+  function mockSetSuccessResponse() {
     if (MOCK_ENABLED) {
       console.log("Mock: set status success:", 22);
       return impl1215.setResponse(true, 22);
     } else {
-      console.log("Mock: disabled");
+      return Promise.resolve("resolved");
     }
   }
-  function setFailResponse(_responseCode) {
+  function mockSetFailResponse(_responseCode) {
     if (MOCK_ENABLED) {
       console.log("Mock: set status fail:", _responseCode);
       return impl1215.setResponse(false, _responseCode);
     } else {
-      console.log("Mock: disabled");
+      return Promise.resolve("resolved");
     }
   }
-  function wait(milliseconds) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve("resolved");
-      }, milliseconds);
-    });
+
+  // ----------------- Test helper functions
+  async function testTxResponse(tx, responseCode) {
+    const transaction = await tx.wait();
+    const log = transaction.logs.find(
+      (e) => e.fragment.name === Events.ScheduleCall,
+    );
+    expect(log.args[0]).to.equal(responseCode);
+    if (responseCode === 22) {
+      if (MOCK_ENABLED) {
+        expect(log.args[1]).to.equal(mockedResponseAddress);
+      } else {
+        expect(log.args[1].length).to.equal(42);
+      }
+    } else {
+      expect(log.args[1]).to.equal(ethers.ZeroAddress);
+    }
+    expect(transaction.status).to.equal(1);
   }
 
+  // ----------------- Tests
   before(async () => {
     // provider configs override
     ethers.provider.estimateGas = async () => 1_200_000;
@@ -58,141 +73,93 @@ describe("HIP-1215 System Contract testing", () => {
     hip1215 = await HIP1215Factory.deploy(impl1215.target);
     await hip1215.waitForDeployment();
     console.log("Done hip1215:", hip1215.target);
-    ethers.provider.estimateGas = async () => 100_000;
+    ethers.provider.estimateGas = async () => 2_000_000;
   });
 
   describe("scheduleCall", () => {
     describe("positive cases", async () => {
       before(async () => {
-        return setSuccessResponse();
+        return mockSetSuccessResponse();
       });
 
       it("should schedule a call", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed with eoa address for to", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
           signers[0].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed with address(this) for to", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
           await hip1215.getAddress(),
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed with amount sent to contract", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           ONE_HBAR,
           callData,
           { value: ONE_HBAR },
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed? with empty calldata", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           "0x",
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed schedule but fail execution with invalid calldata", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           "0xabc123",
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should change the state after schedule executed", async () => {
         expect(await hip1215.getValue()).to.equal(0);
         const tx = await hip1215.scheduleCallWithFullParam(
           await hip1215.getAddress(),
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           "0x3fb5c1cb0000000000000000000000000000000000000000000000000000000000000063",
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
+        // TODO add execution check logic
         expect(await hip1215.getValue()).to.equal(0n);
         await new Promise((resolve) => setTimeout(resolve, 100));
         // needs CN for this expectation
@@ -202,105 +169,70 @@ describe("HIP-1215 System Contract testing", () => {
 
     describe("negative cases", () => {
       it("should fail with zero address for to", async () => {
-        await setFailResponse(15);
+        await mockSetFailResponse(15);
         const tx = await hip1215.scheduleCallWithFullParam(
           ethers.ZeroAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(15n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 15n);
       });
 
       it("should fail with gasLimit 0", async () => {
-        await setFailResponse(30);
+        await mockSetFailResponse(30);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           0,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(30n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 30n);
       });
 
       it("should fail with gasLimit 1000", async () => {
-        await setFailResponse(30);
+        await mockSetFailResponse(30);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(30n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 30n);
       });
 
       it("should fail with gasLimit uint.maxvalue", async () => {
-        await setFailResponse(366);
+        await mockSetFailResponse(366);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           ethers.MaxUint256,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(366n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 366n);
       });
 
       it("should fail with amount more than contract balance", async () => {
-        await setFailResponse(10);
+        await mockSetFailResponse(10);
         const balance = await signers[0].provider.getBalance(
           await hip1215.getAddress(),
         );
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           balance + ONE_HBAR,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(10n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 10n);
       });
 
       it("should fail with 0 expiry", async () => {
-        await setFailResponse(370);
+        await mockSetFailResponse(370);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
           0,
@@ -308,18 +240,11 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(370n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 370n);
       });
 
       it("should fail with expiry at current time", async () => {
-        await setFailResponse(370);
+        await mockSetFailResponse(370);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
           new Date().getUTCMilliseconds(),
@@ -327,18 +252,11 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(370n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 370n);
       });
 
       it("should fail with expiry at max expiry + 1", async () => {
-        await setFailResponse(370);
+        await mockSetFailResponse(370);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
           new Date().getUTCMilliseconds() + MAX_EXPIRY + 1,
@@ -346,14 +264,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(370n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        // With mocked setup we can only verify that the txn was success/revert
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 370n);
       });
     });
   });
@@ -361,116 +272,80 @@ describe("HIP-1215 System Contract testing", () => {
   describe("scheduleCallWithPayer()", () => {
     describe("positive cases", () => {
       before(async () => {
-        return setSuccessResponse();
+        return mockSetSuccessResponse();
       });
 
       it("should schedule a call with payer", async () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed with eoa address for to", async () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           signers[0].address,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed with address(this) for to", async () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           await hip1215.getAddress(),
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed with amount sent to contract", async () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           ONE_HBAR,
           callData,
           { value: ONE_HBAR },
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed? with empty calldata", async () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           "0x",
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed schedule but fail execution with invalid calldata", async () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           "0xabc123",
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should change the state after schedule executed", async () => {
@@ -478,143 +353,102 @@ describe("HIP-1215 System Contract testing", () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           await hip1215.getAddress(),
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           "0x3fb5c1cb0000000000000000000000000000000000000000000000000000000000000063",
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
+        // TODO add execution check logic
         expect(await hip1215.getValue()).to.equal(0n);
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // await new Promise((resolve) => setTimeout(resolve, 100));
       });
     });
 
     describe("negative cases", () => {
       it("should fail with zero address for to", async () => {
-        await setFailResponse(15);
+        await mockSetFailResponse(15);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           ethers.ZeroAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(15n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 15n);
       });
 
       it("should fail with zero address for sender", async () => {
-        await setFailResponse(15);
+        await mockSetFailResponse(15);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           ethers.ZeroAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(15n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 15n);
       });
 
       it("should fail with gasLimit 0", async () => {
-        await setFailResponse(30);
+        await mockSetFailResponse(30);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           0,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(30n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 30n);
       });
 
       it("should fail with gasLimit 1000", async () => {
-        await setFailResponse(30);
+        await mockSetFailResponse(30);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(30n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 30n);
       });
 
       it("should fail with gasLimit uint.maxvalue", async () => {
-        await setFailResponse(366);
+        await mockSetFailResponse(366);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           ethers.MaxUint256,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(366n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 366n);
       });
 
       it("should fail with amount more than contract balance", async () => {
-        await setFailResponse(10);
+        await mockSetFailResponse(10);
         const balance = await signers[0].provider.getBalance(
           await hip1215.getAddress(),
         );
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           balance + ONE_HBAR,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(10n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 10n);
       });
 
       it("should fail with 0 expiry", async () => {
-        await setFailResponse(370);
+        await mockSetFailResponse(370);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
@@ -623,17 +457,11 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(370n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 370n);
       });
 
       it("should fail with expiry at current time", async () => {
-        await setFailResponse(370);
+        await mockSetFailResponse(370);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
@@ -642,17 +470,11 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(370n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 370n);
       });
 
       it("should fail with expiry at max expiry + 1", async () => {
-        await setFailResponse(370);
+        await mockSetFailResponse(370);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
@@ -661,51 +483,33 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(370n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 370n);
       });
 
       it("should fail with sender as zero address", async () => {
-        await setFailResponse(15);
+        await mockSetFailResponse(15);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           ethers.ZeroAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(15n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 15n);
       });
 
       it("should fail with sender as contract", async () => {
-        await setFailResponse(15);
+        await mockSetFailResponse(15);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           await hip1215.getAddress(),
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(15n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 15n);
       });
     });
   });
@@ -713,116 +517,80 @@ describe("HIP-1215 System Contract testing", () => {
   describe("executeCallOnSenderSignature()", () => {
     describe("positive cases", () => {
       before(async () => {
-        return setSuccessResponse();
+        return mockSetSuccessResponse();
       });
 
       it("should schedule a call with sender signature", async () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed with eoa address for to", async () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           signers[0].address,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed with address(this) for to", async () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           await hip1215.getAddress(),
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed with amount sent to contract", async () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           ONE_HBAR,
           callData,
           { value: ONE_HBAR },
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed? with empty calldata", async () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           "0x",
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should succeed schedule but fail execution with invalid calldata", async () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           "0xabc123",
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
       });
 
       it("should change the state after schedule executed", async () => {
@@ -830,143 +598,102 @@ describe("HIP-1215 System Contract testing", () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           await hip1215.getAddress(),
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           "0x3fb5c1cb0000000000000000000000000000000000000000000000000000000000000063",
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(22n);
-        expect(log.args[1]).to.equal(mockedResponseAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 22n);
+        // TODO add execution check logic
         expect(await hip1215.getValue()).to.equal(0n);
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // await new Promise((resolve) => setTimeout(resolve, 100));
       });
     });
 
     describe("negative cases", () => {
       it("should fail with zero address for to", async () => {
-        await setFailResponse(15);
+        await mockSetFailResponse(15);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           ethers.ZeroAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(15n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 15n);
       });
 
       it("should fail with zero address for sender", async () => {
-        await setFailResponse(15);
+        await mockSetFailResponse(15);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           ethers.ZeroAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(15n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 15n);
       });
 
       it("should fail with gasLimit 0", async () => {
-        await setFailResponse(30);
+        await mockSetFailResponse(30);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           0,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(30n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 30n);
       });
 
       it("should fail with gasLimit 1000", async () => {
-        await setFailResponse(30);
+        await mockSetFailResponse(30);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(30n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 15n);
       });
 
       it("should fail with gasLimit uint.maxvalue", async () => {
-        await setFailResponse(366);
+        await mockSetFailResponse(366);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           ethers.MaxUint256,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(366n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 366n);
       });
 
       it("should fail with amount more than contract balance", async () => {
-        await setFailResponse(10);
+        await mockSetFailResponse(10);
         const balance = await signers[0].provider.getBalance(
           await hip1215.getAddress(),
         );
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           balance + ONE_HBAR,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(10n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 10n);
       });
 
       it("should fail with 0 expiry", async () => {
-        await setFailResponse(370);
+        await mockSetFailResponse(370);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
@@ -975,17 +702,11 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(370n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 370n);
       });
 
       it("should fail with expiry at current time", async () => {
-        await setFailResponse(370);
+        await mockSetFailResponse(370);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
@@ -994,17 +715,11 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(370n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 370n);
       });
 
       it("should fail with expiry at max expiry + 1", async () => {
-        await setFailResponse(370);
+        await mockSetFailResponse(370);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
@@ -1013,68 +728,50 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(370n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 370n);
       });
 
       it("should fail with sender as zero address", async () => {
-        await setFailResponse(15);
+        await mockSetFailResponse(15);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           ethers.ZeroAddress,
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(15n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 15n);
       });
 
       it("should fail with sender as contract", async () => {
-        await setFailResponse(15);
+        await mockSetFailResponse(15);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           await hip1215.getAddress(),
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           callData,
         );
-        const transaction = await tx.wait();
-        const log = transaction.logs.find(
-          (e) => e.fragment.name === Events.ScheduleCall,
-        );
-        expect(log.args[0]).to.equal(15n);
-        expect(log.args[1]).to.equal(ethers.ZeroAddress);
-        expect(transaction.status).to.equal(1);
+        testTxResponse(tx, 15n);
       });
     });
   });
 
   describe("deleteSchedule()", () => {
-    // add when we have state to check
+    // TODO add when we have state to check
   });
 
   describe("hasScheduleCapacity()", () => {
     describe("positive cases", () => {
       before(async () => {
-        return setSuccessResponse();
+        return mockSetSuccessResponse();
       });
 
       it("should have enough capacity", async () => {
         const tx = await hip1215.hasScheduleCapacity(
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
         );
         expect(tx).to.be.true;
@@ -1082,7 +779,7 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("Should return true for valid expiry and max gas limit - 1", async () => {
         const tx = await hip1215.hasScheduleCapacity(
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_15M.gasLimit - 1,
         );
         expect(tx).to.be.true;
@@ -1091,10 +788,10 @@ describe("HIP-1215 System Contract testing", () => {
 
     describe("negative cases", () => {
       before(async () => {
-        return setFailResponse(1)
+        return mockSetFailResponse(1)
           // somehow Mock state change not always appears just after this call returns on local node.
           // so we are adding 1s wait as a temp fix for this
-          .then(() => MOCK_ENABLED ? wait(1000) : Promise.resolve("resolved") );
+          .then(() => MOCK_ENABLED ? asyncUtils.wait(1000) : Promise.resolve("resolved") );
       });
 
       it("should return false for expiry in the past", async () => {
@@ -1106,13 +803,13 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("Should return false for valid expiry and 0 gas limit", async () => {
-        const tx = await hip1215.hasScheduleCapacity(tenSecondsFromNow, 0);
+        const tx = await hip1215.hasScheduleCapacity(dayFromNowSeconds, 0);
         expect(tx).to.be.false;
       });
 
       it("Should return false for valid expiry and max gas limit", async () => {
         const tx = await hip1215.hasScheduleCapacity(
-          tenSecondsFromNow,
+          dayFromNowSeconds,
           GAS_LIMIT_15M.gasLimit,
         );
         expect(tx).to.be.false;
