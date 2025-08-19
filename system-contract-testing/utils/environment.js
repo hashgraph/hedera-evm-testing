@@ -1,52 +1,42 @@
 // SPDX-License-Identifier: Apache-2.0
 
-require('dotenv').config();
-const { ethers } = require('ethers');
+require("dotenv").config();
 
-/**  @type string */
-const OPERATOR_ID_A = process.env.OPERATOR_ID_A
-  ? process.env.OPERATOR_ID_A
-  : '0.0.0';
-
-/**  @type string */
-const OPERATOR_KEY_A = process.env.OPERATOR_KEY_A
-  ? process.env.OPERATOR_KEY_A
-  : ethers.ZeroHash;
-
-const PRIVATE_KEYS = process.env.PRIVATE_KEYS
-  ? process.env.PRIVATE_KEYS.split(',').map((key) => key.trim())
+const TESTNET_PRIVATE_KEYS = process.env.TESTNET_PRIVATE_KEYS
+  ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
   : [];
+const MOCK_ENABLED = process.env.MOCK_ENABLED ? process.env.MOCK_ENABLED : true;
 
 const NETWORKS = {
   local: {
-    name: 'local',
-    url: 'http://localhost:7546',
+    name: "local",
+    url: "http://localhost:7546",
     chainId: 298,
-    networkNodeUrl: '127.0.0.1:50211',
-    nodeId: '3',
-    mirrorNode: 'http://127.0.0.1:8081',
+    networkNodeUrl: "127.0.0.1:50211",
+    nodeId: "3",
+    mirrorNode: "http://127.0.0.1:8081",
     gas: 10_000_000,
     timeout: 60_000,
   },
   testnet: {
-    name: 'testnet',
-    url: 'https://testnet.hashio.io/api',
+    name: "testnet",
+    url: "https://testnet.hashio.io/api",
     chainId: 296,
-    networkNodeUrl: '0.testnet.hedera.com:50211', // https://docs.hedera.com/hedera/networks/testnet/testnet-nodes
-    nodeId: '3',
-    mirrorNode: 'testnet.mirrornode.hedera.com:443', // https://docs.hedera.com/hedera/core-concepts/mirror-nodes/hedera-mirror-node#testnet
+    networkNodeUrl: "0.testnet.hedera.com:50211", // https://docs.hedera.com/hedera/networks/testnet/testnet-nodes
+    nodeId: "3",
+    mirrorNode: "testnet.mirrornode.hedera.com:443", // https://docs.hedera.com/hedera/core-concepts/mirror-nodes/hedera-mirror-node#testnet
   },
   previewnet: {
-    name: 'previewnet',
-    url: 'https://previewnet.hashio.io/api',
+    name: "previewnet",
+    url: "https://previewnet.hashio.io/api",
     chainId: 297,
-    networkNodeUrl: '0.previewnet.hedera.com:50211', // https://docs.hedera.com/hedera/networks/testnet/testnet-nodes#preview-testnet-nodes
-    nodeId: '3',
-    mirrorNode: 'previewnet.mirrornode.hedera.com:443', // https://docs.hedera.com/hedera/core-concepts/mirror-nodes/hedera-mirror-node#previewnet
+    networkNodeUrl: "0.previewnet.hedera.com:50211", // https://docs.hedera.com/hedera/networks/testnet/testnet-nodes#preview-testnet-nodes
+    nodeId: "3",
+    mirrorNode: "previewnet.mirrornode.hedera.com:443", // https://docs.hedera.com/hedera/core-concepts/mirror-nodes/hedera-mirror-node#previewnet
   },
   besu: {
-    name: 'besu_local',
-    url: 'http://127.0.0.1:8540',
+    name: "besu_local",
+    url: "http://127.0.0.1:8540",
     chainId: 1337,
     allowUnlimitedContractSize: true,
     blockGasLimit: 0x1fffffffffffff,
@@ -56,8 +46,7 @@ const NETWORKS = {
 };
 
 module.exports = {
-  OPERATOR_ID_A,
-  OPERATOR_KEY_A,
-  PRIVATE_KEYS,
   NETWORKS,
+  TESTNET_PRIVATE_KEYS,
+  MOCK_ENABLED,
 };

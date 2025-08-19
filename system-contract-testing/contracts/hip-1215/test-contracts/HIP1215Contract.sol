@@ -141,7 +141,7 @@ contract HIP1215Contract {
         return (responseCode, scheduleAddress);
     }
 
-    function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) view external returns (bool hasCapacity) {
+    function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) external returns (bool hasCapacity) {
         hasCapacity = scheduleService.hasScheduleCapacity(expirySecond, gasLimit);
         return hasCapacity;
     }
