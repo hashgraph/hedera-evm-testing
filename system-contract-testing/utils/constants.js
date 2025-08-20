@@ -43,6 +43,7 @@ const Events = {
   CryptoAllowance: "CryptoAllowance",
   IsAssociated: "IsAssociated",
   ScheduleCall: "ScheduleCall",
+  HasScheduleCapacity: "HasScheduleCapacity",
 };
 
 const Path = {};

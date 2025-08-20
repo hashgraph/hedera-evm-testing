@@ -12,6 +12,7 @@ contract HIP1215Contract {
 
     event ResponseCode(int64 responseCode);
     event ScheduleCall(int64 responseCode, address scheduleAddress);
+    event HasScheduleCapacity(bool hasCapacity);
 
     address internal constant HSS = address(0x16b);
     uint256 internal constant SCHEDULE_GAS_LIMIT = 2_000_000;
@@ -141,8 +142,9 @@ contract HIP1215Contract {
         return (responseCode, scheduleAddress);
     }
 
-    function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) view external returns (bool hasCapacity) {
+    function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) external returns (bool hasCapacity) {
         hasCapacity = scheduleService.hasScheduleCapacity(expirySecond, gasLimit);
+        emit HasScheduleCapacity(hasCapacity);
         return hasCapacity;
     }
 

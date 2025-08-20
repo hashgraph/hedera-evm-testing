@@ -1,5 +1,3 @@
-const asyncUtils = require('../../utils/async.js');
-
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
@@ -39,9 +37,9 @@ describe("HIP-1215 System Contract testing", () => {
   }
 
   // ----------------- Test helper functions
-  async function testTxResponse(tx, responseCode) {
-    const transaction = await tx.wait();
-    const log = transaction.logs.find(
+  async function testScheduleCallEvent(tx, responseCode) {
+    const rc = await tx.wait();
+    const log = rc.logs.find(
       (e) => e.fragment.name === Events.ScheduleCall,
     );
     expect(log.args[0]).to.equal(responseCode);
@@ -54,8 +52,18 @@ describe("HIP-1215 System Contract testing", () => {
     } else {
       expect(log.args[1]).to.equal(ethers.ZeroAddress);
     }
-    expect(transaction.status).to.equal(1);
+    expect(rc.status).to.equal(1);
   }
+
+  async function testHasScheduleCapacityEvent(tx, hasCapacity) {
+    const rc = await tx.wait();
+    const log = rc.logs.find(
+        (e) => e.fragment.name === Events.HasScheduleCapacity,
+    );
+    expect(log.args[0]).to.equal(hasCapacity);
+    expect(rc.status).to.equal(1);
+  }
+
 
   // ----------------- Tests
   before(async () => {
@@ -90,7 +98,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with eoa address for to", async () => {
@@ -101,7 +109,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with address(this) for to", async () => {
@@ -112,7 +120,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with amount sent to contract", async () => {
@@ -124,7 +132,7 @@ describe("HIP-1215 System Contract testing", () => {
           callData,
           { value: ONE_HBAR },
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed? with empty calldata", async () => {
@@ -135,7 +143,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           "0x",
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed schedule but fail execution with invalid calldata", async () => {
@@ -146,7 +154,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           "0xabc123",
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should change the state after schedule executed", async () => {
@@ -158,7 +166,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           "0x3fb5c1cb0000000000000000000000000000000000000000000000000000000000000063",
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
         // TODO add execution check logic
         expect(await hip1215.getValue()).to.equal(0n);
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -177,7 +185,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 15n);
+        testScheduleCallEvent(tx, 15n);
       });
 
       it("should fail with gasLimit 0", async () => {
@@ -189,7 +197,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 30n);
+        testScheduleCallEvent(tx, 30n);
       });
 
       it("should fail with gasLimit 1000", async () => {
@@ -201,7 +209,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 30n);
+        testScheduleCallEvent(tx, 30n);
       });
 
       it("should fail with gasLimit uint.maxvalue", async () => {
@@ -213,7 +221,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 366n);
+        testScheduleCallEvent(tx, 366n);
       });
 
       it("should fail with amount more than contract balance", async () => {
@@ -228,7 +236,7 @@ describe("HIP-1215 System Contract testing", () => {
           balance + ONE_HBAR,
           callData,
         );
-        testTxResponse(tx, 10n);
+        testScheduleCallEvent(tx, 10n);
       });
 
       it("should fail with 0 expiry", async () => {
@@ -240,7 +248,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 370n);
+        testScheduleCallEvent(tx, 370n);
       });
 
       it("should fail with expiry at current time", async () => {
@@ -252,7 +260,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 370n);
+        testScheduleCallEvent(tx, 370n);
       });
 
       it("should fail with expiry at max expiry + 1", async () => {
@@ -264,7 +272,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 370n);
+        testScheduleCallEvent(tx, 370n);
       });
     });
   });
@@ -284,7 +292,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with eoa address for to", async () => {
@@ -296,7 +304,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with address(this) for to", async () => {
@@ -308,7 +316,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with amount sent to contract", async () => {
@@ -321,7 +329,7 @@ describe("HIP-1215 System Contract testing", () => {
           callData,
           { value: ONE_HBAR },
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed? with empty calldata", async () => {
@@ -333,7 +341,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           "0x",
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed schedule but fail execution with invalid calldata", async () => {
@@ -345,7 +353,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           "0xabc123",
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should change the state after schedule executed", async () => {
@@ -358,7 +366,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           "0x3fb5c1cb0000000000000000000000000000000000000000000000000000000000000063",
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
         // TODO add execution check logic
         expect(await hip1215.getValue()).to.equal(0n);
         // await new Promise((resolve) => setTimeout(resolve, 100));
@@ -376,7 +384,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 15n);
+        testScheduleCallEvent(tx, 15n);
       });
 
       it("should fail with zero address for sender", async () => {
@@ -389,7 +397,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 15n);
+        testScheduleCallEvent(tx, 15n);
       });
 
       it("should fail with gasLimit 0", async () => {
@@ -402,7 +410,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 30n);
+        testScheduleCallEvent(tx, 30n);
       });
 
       it("should fail with gasLimit 1000", async () => {
@@ -415,7 +423,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 30n);
+        testScheduleCallEvent(tx, 30n);
       });
 
       it("should fail with gasLimit uint.maxvalue", async () => {
@@ -428,7 +436,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 366n);
+        testScheduleCallEvent(tx, 366n);
       });
 
       it("should fail with amount more than contract balance", async () => {
@@ -444,7 +452,7 @@ describe("HIP-1215 System Contract testing", () => {
           balance + ONE_HBAR,
           callData,
         );
-        testTxResponse(tx, 10n);
+        testScheduleCallEvent(tx, 10n);
       });
 
       it("should fail with 0 expiry", async () => {
@@ -457,7 +465,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 370n);
+        testScheduleCallEvent(tx, 370n);
       });
 
       it("should fail with expiry at current time", async () => {
@@ -470,7 +478,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 370n);
+        testScheduleCallEvent(tx, 370n);
       });
 
       it("should fail with expiry at max expiry + 1", async () => {
@@ -483,7 +491,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 370n);
+        testScheduleCallEvent(tx, 370n);
       });
 
       it("should fail with sender as zero address", async () => {
@@ -496,7 +504,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 15n);
+        testScheduleCallEvent(tx, 15n);
       });
 
       it("should fail with sender as contract", async () => {
@@ -509,7 +517,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 15n);
+        testScheduleCallEvent(tx, 15n);
       });
     });
   });
@@ -529,7 +537,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with eoa address for to", async () => {
@@ -541,7 +549,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with address(this) for to", async () => {
@@ -553,7 +561,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with amount sent to contract", async () => {
@@ -566,7 +574,7 @@ describe("HIP-1215 System Contract testing", () => {
           callData,
           { value: ONE_HBAR },
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed? with empty calldata", async () => {
@@ -578,7 +586,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           "0x",
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed schedule but fail execution with invalid calldata", async () => {
@@ -590,7 +598,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           "0xabc123",
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
       });
 
       it("should change the state after schedule executed", async () => {
@@ -603,7 +611,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           "0x3fb5c1cb0000000000000000000000000000000000000000000000000000000000000063",
         );
-        testTxResponse(tx, 22n);
+        testScheduleCallEvent(tx, 22n);
         // TODO add execution check logic
         expect(await hip1215.getValue()).to.equal(0n);
         // await new Promise((resolve) => setTimeout(resolve, 100));
@@ -621,7 +629,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 15n);
+        testScheduleCallEvent(tx, 15n);
       });
 
       it("should fail with zero address for sender", async () => {
@@ -634,7 +642,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 15n);
+        testScheduleCallEvent(tx, 15n);
       });
 
       it("should fail with gasLimit 0", async () => {
@@ -647,7 +655,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 30n);
+        testScheduleCallEvent(tx, 30n);
       });
 
       it("should fail with gasLimit 1000", async () => {
@@ -660,7 +668,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 15n);
+        testScheduleCallEvent(tx, 15n);
       });
 
       it("should fail with gasLimit uint.maxvalue", async () => {
@@ -673,7 +681,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 366n);
+        testScheduleCallEvent(tx, 366n);
       });
 
       it("should fail with amount more than contract balance", async () => {
@@ -689,7 +697,7 @@ describe("HIP-1215 System Contract testing", () => {
           balance + ONE_HBAR,
           callData,
         );
-        testTxResponse(tx, 10n);
+        testScheduleCallEvent(tx, 10n);
       });
 
       it("should fail with 0 expiry", async () => {
@@ -702,7 +710,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 370n);
+        testScheduleCallEvent(tx, 370n);
       });
 
       it("should fail with expiry at current time", async () => {
@@ -715,7 +723,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 370n);
+        testScheduleCallEvent(tx, 370n);
       });
 
       it("should fail with expiry at max expiry + 1", async () => {
@@ -728,7 +736,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 370n);
+        testScheduleCallEvent(tx, 370n);
       });
 
       it("should fail with sender as zero address", async () => {
@@ -741,7 +749,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 15n);
+        testScheduleCallEvent(tx, 15n);
       });
 
       it("should fail with sender as contract", async () => {
@@ -754,7 +762,7 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           callData,
         );
-        testTxResponse(tx, 15n);
+        testScheduleCallEvent(tx, 15n);
       });
     });
   });
@@ -763,6 +771,7 @@ describe("HIP-1215 System Contract testing", () => {
     // TODO add when we have state to check
   });
 
+  // TODO add hasScheduleCapacity test from a 'view' function
   describe("hasScheduleCapacity()", () => {
     describe("positive cases", () => {
       before(async () => {
@@ -774,46 +783,47 @@ describe("HIP-1215 System Contract testing", () => {
           dayFromNowSeconds,
           GAS_LIMIT_1_000_000.gasLimit,
         );
-        expect(tx).to.be.true;
+        testHasScheduleCapacityEvent(tx, true);
       });
 
-      it("Should return true for valid expiry and max gas limit - 1", async () => {
+      it("should return true for valid expiry and max gas limit - 1", async () => {
         const tx = await hip1215.hasScheduleCapacity(
           dayFromNowSeconds,
           GAS_LIMIT_15M.gasLimit - 1,
         );
-        expect(tx).to.be.true;
+        testHasScheduleCapacityEvent(tx, true);
       });
     });
 
-    describe("negative cases", () => {
-      before(async () => {
-        return mockSetFailResponse(1)
-          // somehow Mock state change not always appears just after this call returns on local node.
-          // so we are adding 1s wait as a temp fix for this
-          .then(() => MOCK_ENABLED ? asyncUtils.wait(1000) : Promise.resolve("resolved") );
-      });
-
-      it("should return false for expiry in the past", async () => {
-        const tx = await hip1215.hasScheduleCapacity(
-          1716666666,
-          GAS_LIMIT_1_000_000.gasLimit,
-        );
-        expect(tx).to.be.false;
-      });
-
-      it("Should return false for valid expiry and 0 gas limit", async () => {
-        const tx = await hip1215.hasScheduleCapacity(dayFromNowSeconds, 0);
-        expect(tx).to.be.false;
-      });
-
-      it("Should return false for valid expiry and max gas limit", async () => {
-        const tx = await hip1215.hasScheduleCapacity(
-          dayFromNowSeconds,
-          GAS_LIMIT_15M.gasLimit,
-        );
-        expect(tx).to.be.false;
-      });
-    });
+    // TODO implement when hasScheduleCapacity will be implemented with https://github.com/hiero-ledger/hiero-consensus-node/issues/20662
+    // describe("negative cases", () => {
+    //   before(async () => {
+    //     return mockSetFailResponse(1)
+    //       // somehow Mock state change not always appears just after this call returns on local node.
+    //       // so we are adding 1s wait as a temp fix for this
+    //       .then(() => MOCK_ENABLED ? asyncUtils.wait(1000) : Promise.resolve("resolved") );
+    //   });
+    //
+    //   it("should return false for expiry in the past", async () => {
+    //     const tx = await hip1215.hasScheduleCapacity(
+    //       1716666666,
+    //       GAS_LIMIT_1_000_000.gasLimit,
+    //     );
+    //     expect(tx).to.be.false;
+    //   });
+    //
+    //   it("Should return false for valid expiry and 0 gas limit", async () => {
+    //     const tx = await hip1215.hasScheduleCapacity(dayFromNowSeconds, 0);
+    //     expect(tx).to.be.false;
+    //   });
+    //
+    //   it("Should return false for valid expiry and max gas limit", async () => {
+    //     const tx = await hip1215.hasScheduleCapacity(
+    //       dayFromNowSeconds,
+    //       GAS_LIMIT_15M.gasLimit,
+    //     );
+    //     expect(tx).to.be.false;
+    //   });
+    // });
   });
 });
