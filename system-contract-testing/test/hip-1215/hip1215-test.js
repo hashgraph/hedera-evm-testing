@@ -15,7 +15,7 @@ describe("HIP-1215 System Contract testing", () => {
   let hip1215, impl1215, signers;
   const htsAddress = "0x0000000000000000000000000000000000000167";
   const mockedResponseAddress = "0x000000000000000000000000000000000000007B";
-  const dayFromNowSeconds = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
+  const dayFromNowSeconds = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
   const callData = "0x5b8f8584"; // token freeze signature
 
   // ----------------- Mock update functions
@@ -39,9 +39,7 @@ describe("HIP-1215 System Contract testing", () => {
   // ----------------- Test helper functions
   async function testScheduleCallEvent(tx, responseCode) {
     const rc = await tx.wait();
-    const log = rc.logs.find(
-      (e) => e.fragment.name === Events.ScheduleCall,
-    );
+    const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
     expect(log.args[0]).to.equal(responseCode);
     if (responseCode === 22) {
       if (MOCK_ENABLED) {
@@ -58,12 +56,11 @@ describe("HIP-1215 System Contract testing", () => {
   async function testHasScheduleCapacityEvent(tx, hasCapacity) {
     const rc = await tx.wait();
     const log = rc.logs.find(
-        (e) => e.fragment.name === Events.HasScheduleCapacity,
+      (e) => e.fragment.name === Events.HasScheduleCapacity,
     );
     expect(log.args[0]).to.equal(hasCapacity);
     expect(rc.status).to.equal(1);
   }
-
 
   // ----------------- Tests
   before(async () => {
