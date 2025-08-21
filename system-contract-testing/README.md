@@ -38,6 +38,22 @@ solo quick-start single deploy --cluster-ref="kind-${SOLO_CLUSTER_NAME}" --clust
 - Explorer port forward enabled on `http://localhost:8080`
 - JSON RPC Relay forward enabled on `localhost:7546`
 
+### Logs
+If you need to stream the logs directly from the pods you can use the following:
+#### Consensus Node Logs
+```
+kubectl exec -it -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-[a-f0-9]+")) | .metadata.name') -c root-container svc/network-node1 -- tail -f /opt/hgcapp/services-hedera/HapiApp2.0/output/hgcaa.log /opt/hgcapp/services-hedera/HapiApp2.0/output/swirlds.log
+```
+
+#### Relay Logs
+```
+kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-[a-f0-9]+")) | .metadata.name') --all-containers svc/relay-node1
+```
+
+#### Relay WS Logs
+```
+kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-[a-f0-9]+")) | .metadata.name') --all-containers svc/relay-node1-ws
+```
 ### Destroy
 `./test.sh solo stop`
 
