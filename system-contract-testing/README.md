@@ -42,20 +42,34 @@ solo quick-start single deploy --cluster-ref="kind-${SOLO_CLUSTER_NAME}" --clust
 If you need to stream the logs directly from the pods you can use the following:
 #### Consensus Node Logs
 ```
-kubectl exec -it -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-[a-f0-9]+")) | .metadata.name') -c root-container svc/network-node1 -- tail -f /opt/hgcapp/services-hedera/HapiApp2.0/output/hgcaa.log /opt/hgcapp/services-hedera/HapiApp2.0/output/swirlds.log
+kubectl exec -it -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') -c root-container svc/network-node1 -- tail -f /opt/hgcapp/services-hedera/HapiApp2.0/output/hgcaa.log /opt/hgcapp/services-hedera/HapiApp2.0/output/swirlds.log
 ```
 
 #### Relay Logs
 ```
-kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-[a-f0-9]+")) | .metadata.name') --all-containers svc/relay-node1
+kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/relay-node1
 ```
 
 #### Relay WS Logs
 ```
-kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-[a-f0-9]+")) | .metadata.name') --all-containers svc/relay-node1-ws
+kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/relay-node1-ws
 ```
 ### Destroy
 `./test.sh solo stop`
 
 ### Force Destroy
 `./test.sh solo destroy`
+
+## Run EVM execution spec tests
+
+### Requirements
+
+### Run testnet
+```
+uv run execute remote --fork=Shanghai --rpc-endpoint=https://testnet.hashio.io/api --rpc-seed-key={your_key} --rpc-chain-id 296 ./tests/shanghai/eip3855_push0/test_push0.py::test_push0_contracts --sender-funding-txs-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 10000000000000000000
+```
+
+### Run local solo net
+```
+uv run execute remote --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip3855_push0/test_push0.py::test_push0_contracts --sender-funding-txs-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000
+```

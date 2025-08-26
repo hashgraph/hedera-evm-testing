@@ -19,6 +19,7 @@ export TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1=3030020100300706052b8104000a04220420
 export TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2=3030020100300706052b8104000a04220420748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04
 # alias 84b4d82e6ed64102d0faa6c29bf4e9f541db442f
 export TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3=3030020100300706052b8104000a042204203bcb2fbd18610f44eda2bfd58df63d053e2a6b165617a2ef5e5cca079e0c588a
+export TEST_ACCOUNT_HBAR_AMOUNT=10000
 
 ######################### functions #########################
 
@@ -73,13 +74,12 @@ solo_start() {
   # ----------------------------------------------------------------------------
   solo mirror-node deploy --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --enable-ingress --dev
   solo relay deploy --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
-#  solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+  solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # add test accounts to the network
-  #  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --generate-ecdsa-key --hbar-amount 1000 --private-key --set-alias
-  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount 1000 --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
-  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount 1000 --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
-  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount 1000 --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
+  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
+  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
+  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
 }
 
 solo_stop() {
