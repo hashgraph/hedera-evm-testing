@@ -64,6 +64,8 @@ kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata
 
 ### Requirements
 
+- pull repo / install `uv`. See: https://github.com/ethereum/execution-spec-tests?tab=readme-ov-file#installation
+
 ### Run testnet
 ```
 uv run execute remote -v --fork=Shanghai --rpc-endpoint=https://testnet.hashio.io/api --rpc-seed-key={your_key} --rpc-chain-id 296 ./tests/shanghai/eip3855_push0/test_push0.py::test_push0_contracts --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000

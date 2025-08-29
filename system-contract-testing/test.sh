@@ -2,6 +2,10 @@
 # exit when any command fails
 set -e
 
+# This script is used to easy start/stop local Hedera Network (with solo).
+# It also deploy some pre-requirements for hardhat test like:
+#   - create accounts with preconfigured keys and initial balance
+
 WORK_DIR="$(pwd)"
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
 APP_PROPERTIES_PATH="local/application.properties"
@@ -100,9 +104,9 @@ solo_status() {
 }
 
 solo_destroy() {
-  kubectl delete namespace "${SOLO_NAMESPACE}"
-  kubectl delete namespace "${SOLO_CLUSTER_SETUP_NAMESPACE}"
-  kind delete cluster -n "${SOLO_CLUSTER_NAME}"
+  kubectl delete namespace "${SOLO_NAMESPACE}" || true
+  kubectl delete namespace "${SOLO_CLUSTER_SETUP_NAMESPACE}" || true
+  kind delete cluster -n "${SOLO_CLUSTER_NAME}" || true
   rm -rf ~/.solo
 }
 
