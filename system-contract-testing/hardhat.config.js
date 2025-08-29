@@ -5,12 +5,7 @@ require("@openzeppelin/hardhat-upgrades");
 require("@nomicfoundation/hardhat-chai-matchers");
 require("solidity-coverage");
 
-const {
-  OPERATOR_ID_A,
-  OPERATOR_KEY_A,
-  NETWORKS,
-  PRIVATE_KEYS,
-} = require("./utils/environment");
+const { NETWORKS, TESTNET_PRIVATE_KEYS } = require("./utils/environment");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -63,7 +58,7 @@ module.exports = {
       url: NETWORKS.testnet.url,
       chainId: NETWORKS.testnet.chainId,
       // add your HEX Encoded Private Key
-      accounts: PRIVATE_KEYS,
+      accounts: TESTNET_PRIVATE_KEYS,
     },
   },
 };
