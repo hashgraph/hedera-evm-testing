@@ -8,8 +8,8 @@ const {
   MAX_EXPIRY,
   Events,
 } = require("../../utils/constants");
+const { Async } = require("../../utils/async");
 const { mockSetSuccessResponse, mockSetFailResponse } = require("./mock/utils");
-
 const { MOCK_ENABLED } = require("../../utils/environment");
 
 describe("HIP-1215 System Contract testing", () => {
@@ -902,6 +902,7 @@ describe("HIP-1215 System Contract testing", () => {
         await testDeleteScheduleEvent(deleteTx, 22n);
       });
 
+      // TODO failed with INVALID_SIGNATURE
       it("should delete schedule through proxy", async () => {
         // create schedule
         const createTx = await hip1215.scheduleCallWithFullParam(
@@ -920,6 +921,7 @@ describe("HIP-1215 System Contract testing", () => {
         await testDeleteScheduleEvent(deleteTx, 22n);
       });
     });
+
     describe("negative cases", () => {
 
       it("should fail with random address for to", async () => {
@@ -928,18 +930,22 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with expired address for to", async () => {
+        // create schedule
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          Math.floor(Date.now() / 1000) + 2, // just enought to execute transaction
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           AbiCoder.encode(
             ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall"],
+            [addTestFunctionSignature, "deleteSchedule fail expired"],
           ),
         );
-        await testScheduleCallEvent(tx, 22n);
-        // TODO await mockSetFailResponse(impl1215, 30);
+        const scheduleAddress = await testScheduleCallEvent(tx, 22n);
+        await Async.wait(2000);
+        // delete schedule
+        const deleteTx = await hip1215.deleteSchedule(scheduleAddress);
+        await testDeleteScheduleEvent(deleteTx, 201n);
       });
     });
   });
@@ -976,7 +982,7 @@ describe("HIP-1215 System Contract testing", () => {
             // so we are adding 1s wait as a temp fix for this
             .then(() =>
               MOCK_ENABLED
-                ? asyncUtils.wait(1000)
+                ? Async.wait(1000)
                 : Promise.resolve("resolved"),
             )
         );
