@@ -42,7 +42,7 @@ describe("HIP-1215 System Contract testing", () => {
     return address;
   }
 
-  async function testDeleteScheduleEvent(tx, responseCode) {
+  async function testResponseCodeEvent(tx, responseCode) {
     const rc = await tx.wait();
     const log = rc.logs.find((e) => e.fragment.name === Events.ResponseCode);
     expect(log.args[0]).to.equal(responseCode);
@@ -59,7 +59,7 @@ describe("HIP-1215 System Contract testing", () => {
   }
 
   function getExpirySecond() {
-    return Math.floor(Date.now() / 1000) + 3;
+    return Math.floor(Date.now() / 1000) + 20; //TODO decrease shift
   }
 
   // ----------------- Tests
@@ -85,7 +85,7 @@ describe("HIP-1215 System Contract testing", () => {
   after(async () => {
     for (const check of testsCheck) {
       console.log("Wait for '%s' at %s second", check.id, check.expirySecond);
-      await Async.waitFor(check.expirySecond * 1000 + 5000, 1000);
+      await Async.waitFor(check.expirySecond * 1000 + 1000, 1000);
       expect(await hip1215.getTests()).to.contain(check.id);
     }
   });
@@ -165,19 +165,24 @@ describe("HIP-1215 System Contract testing", () => {
         await testScheduleCallEvent(tx, 22n);
       });
 
+      // TODO check schedule result
       it("should change the state after schedule executed", async () => {
         const testId = "scheduleCall state";
         expect(await hip1215.getTests()).to.not.contain(testId);
+        // create schedule
         const expirySecond = getExpirySecond();
-        const tx = await hip1215.scheduleCallWithFullParam(
+        const scheduleTx = await hip1215.scheduleCallWithDelegateCall(
           await hip1215.getAddress(),
           expirySecond,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           abi.encodeFunctionData("addTest", [testId]),
         );
-        await testScheduleCallEvent(tx, 22n);
+        const scheduleId = await testScheduleCallEvent(scheduleTx, 22n);
         expect(await hip1215.getTests()).to.not.contain(testId);
+        // sign schedule
+        const signTx = await hip1215.signSchedule(scheduleId);
+        await testResponseCodeEvent(signTx, 22n);
         // execution check in 'after'
         testsCheck.push({ id: testId, expirySecond: expirySecond });
       });
@@ -223,11 +228,12 @@ describe("HIP-1215 System Contract testing", () => {
       // TODO check balance fail
       it("should fail with amount more than contract balance", async () => {
         await mockSetFailResponse(impl1215, 10);
+        const address = await hip1215.getAddress();
         const balance = await signers[0].provider.getBalance(
           await hip1215.getAddress(),
         );
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
+          signers[1].address,
           getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           balance + ONE_HBAR,
@@ -744,7 +750,7 @@ describe("HIP-1215 System Contract testing", () => {
         const scheduleAddress = await testScheduleCallEvent(createTx, 22n);
         // delete schedule
         const deleteTx = await hip1215.deleteSchedule(scheduleAddress);
-        await testDeleteScheduleEvent(deleteTx, 22n);
+        await testResponseCodeEvent(deleteTx, 22n);
       });
 
       it("should delete schedule through proxy", async () => {
@@ -759,14 +765,14 @@ describe("HIP-1215 System Contract testing", () => {
         const scheduleAddress = await testScheduleCallEvent(createTx, 22n);
         // delete schedule
         const deleteTx = await hip1215.deleteScheduleProxy(scheduleAddress);
-        await testDeleteScheduleEvent(deleteTx, 22n);
+        await testResponseCodeEvent(deleteTx, 22n);
       });
     });
 
     describe("negative cases", () => {
       it("should fail with random address for to", async () => {
         const tx = await hip1215.deleteSchedule(randomAddress);
-        await testDeleteScheduleEvent(tx, 21n);
+        await testResponseCodeEvent(tx, 21n);
       });
 
       it("should fail with expired address for to", async () => {
@@ -782,7 +788,7 @@ describe("HIP-1215 System Contract testing", () => {
         await Async.wait(2000);
         // delete schedule
         const deleteTx = await hip1215.deleteSchedule(scheduleAddress);
-        await testDeleteScheduleEvent(deleteTx, 201n);
+        await testResponseCodeEvent(deleteTx, 201n);
       });
     });
   });
