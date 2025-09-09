@@ -8,7 +8,7 @@ contract HIP1215Contract {
 
     IHederaScheduleService_HIP1215 public scheduleService;
 
-     receive() external payable {}
+    receive() external payable {}
 
     event ResponseCode(int64 responseCode);
     event ScheduleCall(int64 responseCode, address scheduleAddress);
@@ -51,6 +51,14 @@ contract HIP1215Contract {
         responseCode = scheduleService.deleteSchedule(scheduleAddress);
         emit ResponseCode(responseCode);
         return responseCode;
+    }
+
+    function scheduleCallWithDelegateCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
+    external payable returns (int64 responseCode, address scheduleAddress) {
+        (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCall.selector, to, expirySecond, gasLimit, value, callData));
+        (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
+        emit ScheduleCall(responseCode, scheduleAddress);
+        return (responseCode, scheduleAddress);
     }
 
     function deleteScheduleProxy(address scheduleAddress) external returns (int64 responseCode) {
