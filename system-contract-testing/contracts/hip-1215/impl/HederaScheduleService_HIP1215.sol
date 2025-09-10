@@ -8,6 +8,8 @@ contract HederaScheduleService_HIP1215 is IHederaScheduleService_HIP1215 {
 
     address internal constant HSS = address(0x16b);
 
+    receive() external payable {}
+
     /// Allows for the creation of a schedule transaction to schedule any contract call for a given smart contract
     /// address, expiration time, the gas limit for the future call, the value to send with that call
     /// and the call data to use.

@@ -23,23 +23,26 @@ contract HIP1215Contract {
         scheduleService = _scheduleServiceAddress;
     }
 
-    function scheduleCallWithFullParam(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
+    function scheduleCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
     external payable returns (int64 responseCode, address scheduleAddress) {
-        (responseCode, scheduleAddress) = scheduleService.scheduleCall(to, expirySecond, gasLimit, value, callData);
+        (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCall.selector, to, expirySecond, gasLimit, value, callData));
+        (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
         emit ScheduleCall(responseCode, scheduleAddress);
         return (responseCode, scheduleAddress);
     }
 
-    function scheduleCallWithPayerWithFullParam(address to, address sender, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
+    function scheduleCallWithPayer(address to, address sender, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
     external payable returns (int64 responseCode, address scheduleAddress) {
-        (responseCode, scheduleAddress) = scheduleService.scheduleCallWithSender(to, sender, expirySecond, gasLimit, value, callData);
+        (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCallWithSender.selector, to, sender, expirySecond, gasLimit, value, callData));
+        (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
         emit ScheduleCall(responseCode, scheduleAddress);
         return (responseCode, scheduleAddress);
     }
 
-    function executeCallOnSenderSignatureWithFullParam(address to, address sender, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
+    function executeCallOnSenderSignature(address to, address sender, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
     external payable returns (int64 responseCode, address scheduleAddress) {
-        (responseCode, scheduleAddress) = scheduleService.executeCallOnSenderSignature(to, sender, expirySecond, gasLimit, value, callData);
+        (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.executeCallOnSenderSignature.selector, to, sender, expirySecond, gasLimit, value, callData));
+        (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
         emit ScheduleCall(responseCode, scheduleAddress);
         return (responseCode, scheduleAddress);
     }
@@ -54,15 +57,6 @@ contract HIP1215Contract {
         responseCode = scheduleService.deleteSchedule(scheduleAddress);
         emit ResponseCode(responseCode);
         return responseCode;
-    }
-
-    // used to create schedule for 'deleteScheduleProxy'
-    function scheduleCallWithDelegateCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
-    external payable returns (int64 responseCode, address scheduleAddress) {
-        (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCall.selector, to, expirySecond, gasLimit, value, callData));
-        (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
-        emit ScheduleCall(responseCode, scheduleAddress);
-        return (responseCode, scheduleAddress);
     }
 
     function deleteScheduleProxy(address scheduleAddress) external returns (int64 responseCode) {
