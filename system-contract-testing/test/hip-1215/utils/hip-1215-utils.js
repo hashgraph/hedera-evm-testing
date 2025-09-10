@@ -1,3 +1,7 @@
+const HashgraphProto = require("@hashgraph/proto");
+const { PrivateKey, AccountId } = require("@hashgraph/sdk");
+const Utils = require("../../../utils/utils");
+
 function convertScheduleIdToUint8Array(scheduleId) {
   const [shard, realm, num] = scheduleId.split(".");
 
@@ -13,6 +17,23 @@ function convertScheduleIdToUint8Array(scheduleId) {
   return new Uint8Array(buffer);
 }
 
+async function getSignatureMap(accountIndex, scheduleAddress) {
+  const privateKey = PrivateKey.fromStringECDSA(
+    Utils.getHardhatSignerPrivateKeyByIndex(accountIndex),
+  );
+  const scheduleIdAsBytes = convertScheduleIdToUint8Array(
+    AccountId.fromEvmAddress(0, 0, scheduleAddress).toString(),
+  );
+  return HashgraphProto.proto.SignatureMap.encode({
+    sigPair: [
+      {
+        pubKeyPrefix: privateKey.publicKey.toBytesRaw(),
+        ECDSASecp256k1: privateKey.sign(scheduleIdAsBytes),
+      },
+    ],
+  }).finish();
+}
+
 module.exports = {
-  convertScheduleIdToUint8Array,
+  getSignatureMap
 };

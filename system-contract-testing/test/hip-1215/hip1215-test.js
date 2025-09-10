@@ -1,7 +1,5 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const HashgraphProto = require("@hashgraph/proto");
-const { AccountId, PrivateKey } = require("@hashgraph/sdk");
 const {
   ONE_HBAR,
   GAS_LIMIT_1_000_000,
@@ -10,11 +8,10 @@ const {
   MAX_EXPIRY,
   Events,
 } = require("../../utils/constants");
-const { Utils } = require("../../utils/utils");
-const { Async } = require("../../utils/async");
+const Async = require("../../utils/async");
 const { mockSetSuccessResponse, mockSetFailResponse } = require("./mock/utils");
 const { MOCK_ENABLED } = require("../../utils/environment");
-const { convertScheduleIdToUint8Array } = require("./utils/hip-1215-utils");
+const { getSignatureMap } = require("./utils/hip-1215-utils");
 
 describe("HIP-1215 System Contract testing", () => {
   let hip1215, impl1215, signers;
@@ -190,10 +187,10 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           abi.encodeFunctionData("addTest", [testId]),
         );
-        const scheduleId = await testScheduleCallEvent(scheduleTx, 22n);
+        const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
         expect(await hip1215.getTests()).to.not.contain(testId);
         // sign schedule
-        const signTx = await hip1215.authorizeSchedule(scheduleId);
+        const signTx = await hip1215.authorizeSchedule(scheduleAddress);
         await testResponseCodeEvent(signTx, 22n);
         // execution check in 'after'
         testsCheck.push({ id: testId, expirySecond: expirySecond });
@@ -383,6 +380,7 @@ describe("HIP-1215 System Contract testing", () => {
       it("should change the state after schedule executed", async () => {
         const testId = "scheduleCallWithSender state";
         expect(await hip1215.getTests()).to.not.contain(testId);
+        // create schedule
         const expirySecond = getExpirySecond();
         const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
@@ -392,25 +390,11 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           abi.encodeFunctionData("addTest", [testId]),
         );
-        const scheduleId = await testScheduleCallEvent(tx, 22n);
+        const scheduleAddress = await testScheduleCallEvent(tx, 22n);
         expect(await hip1215.getTests()).to.not.contain(testId);
         // sign schedule
-        const privateKey = PrivateKey.fromStringECDSA(
-          Utils.getHardhatSignerPrivateKeyByIndex(1),
-        );
-        const scheduleIdAsBytes = convertScheduleIdToUint8Array(
-          AccountId.fromEvmAddress(0, 0, scheduleId).toString(),
-        );
-        const sigMapProtoEncoded =
-          await HashgraphProto.proto.SignatureMap.encode({
-            sigPair: [
-              {
-                pubKeyPrefix: privateKey.publicKey.toBytesRaw(),
-                ECDSASecp256k1: privateKey.sign(scheduleIdAsBytes),
-              },
-            ],
-          }).finish();
-        const signTx = await hip1215.signSchedule(scheduleId, sigMapProtoEncoded);
+        const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
+        const signTx = await hip1215.signSchedule(scheduleAddress, sigMapProtoEncoded);
         await testResponseCodeEvent(signTx, 22n);
         // execution check in 'after'
         testsCheck.push({ id: testId, expirySecond: expirySecond });
@@ -647,6 +631,7 @@ describe("HIP-1215 System Contract testing", () => {
       it("should change the state after schedule executed", async () => {
         const testId = "executeCallOnSenderSignature state";
         expect(await hip1215.getTests()).to.not.contain(testId);
+        // create schedule
         const expirySecond = getExpirySecond();
         const tx = await hip1215.executeCallOnSenderSignature(
           await hip1215.getAddress(),
@@ -656,13 +641,15 @@ describe("HIP-1215 System Contract testing", () => {
           0,
           abi.encodeFunctionData("addTest", [testId]),
         );
-        const scheduleId = await testScheduleCallEvent(tx, 22n);
+        const scheduleAddress = await testScheduleCallEvent(tx, 22n);
         expect(await hip1215.getTests()).to.not.contain(testId);
-        // sign schedule //TODO signers[1].address should sign
-        const signTx = await hip1215.authorizeSchedule(scheduleId);
+        // sign schedule
+        const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
+        const signTx = await hip1215.signSchedule(scheduleAddress, sigMapProtoEncoded);
         await testResponseCodeEvent(signTx, 22n);
-        // execution check in 'after'
-        testsCheck.push({ id: testId, expirySecond: expirySecond });
+        // execution check just after signing
+        await Async.wait(1000);
+        expect(await hip1215.getTests()).to.contain(testId);
       });
     });
 
