@@ -54,7 +54,9 @@ contract HIP1215Contract {
     }
 
     function deleteSchedule(address scheduleAddress) external returns (int64 responseCode) {
-        responseCode = scheduleService.deleteSchedule(scheduleAddress);
+        (bool success, bytes memory result) = address(scheduleService).delegatecall(
+            abi.encodeWithSelector(IHederaScheduleService_HIP1215.deleteSchedule.selector, scheduleAddress));
+        responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
         emit ResponseCode(responseCode);
         return responseCode;
     }
