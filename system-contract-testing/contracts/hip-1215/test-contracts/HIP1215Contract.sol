@@ -65,9 +65,17 @@ contract HIP1215Contract {
         return responseCode;
     }
 
-    function authorizeSchedule(address scheduleAddress) external returns (int64 responseCode) {
+    function authorizeSchedule(address schedule) external returns (int64 responseCode) {
         (bool success, bytes memory result) = HSS.call(
-            abi.encodeWithSelector(IHederaScheduleService_HIP755.authorizeSchedule.selector, scheduleAddress));
+            abi.encodeWithSelector(IHederaScheduleService_HIP755.authorizeSchedule.selector, schedule));
+        responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
+        emit ResponseCode(responseCode);
+        return responseCode;
+    }
+
+    function signSchedule(address schedule, bytes memory signatureMap) external returns (int64 responseCode) {
+        (bool success, bytes memory result) = HSS.call(
+            abi.encodeWithSelector(IHederaScheduleService_HIP755.signSchedule.selector, schedule, signatureMap));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
         emit ResponseCode(responseCode);
         return responseCode;
