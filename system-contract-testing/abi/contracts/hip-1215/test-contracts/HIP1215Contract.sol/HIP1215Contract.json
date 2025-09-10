@@ -76,6 +76,25 @@
         "type": "address"
       }
     ],
+    "name": "authorizeSchedule",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "scheduleAddress",
+        "type": "address"
+      }
+    ],
     "name": "deleteSchedule",
     "outputs": [
       {
@@ -269,7 +288,7 @@
         "type": "bytes"
       }
     ],
-    "name": "scheduleCallWithPayer",
+    "name": "scheduleCallWithSender",
     "outputs": [
       {
         "internalType": "int64",
@@ -296,25 +315,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "scheduleAddress",
-        "type": "address"
-      }
-    ],
-    "name": "signSchedule",
-    "outputs": [
-      {
-        "internalType": "int64",
-        "name": "responseCode",
-        "type": "int64"
-      }
-    ],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
