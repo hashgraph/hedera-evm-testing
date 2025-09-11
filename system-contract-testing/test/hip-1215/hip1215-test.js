@@ -233,23 +233,6 @@ describe("HIP-1215 System Contract testing", () => {
         await testScheduleCallEvent(tx, 370n);
       });
 
-      // TODO check balance fail
-      it("should fail with amount more than contract balance", async () => {
-        await mockSetFailResponse(impl1215, 10);
-        const address = await hip1215.getAddress();
-        const balance = await signers[0].provider.getBalance(
-          await hip1215.getAddress(),
-        );
-        const tx = await hip1215.scheduleCall(
-          signers[1].address,
-          getExpirySecond(),
-          GAS_LIMIT_1_000_000.gasLimit,
-          balance + ONE_HBAR,
-          abi.encodeFunctionData("addTest", ["scheduleCall fail amount"]),
-        );
-        await testScheduleCallEvent(tx, 10n);
-      });
-
       it("should fail with 0 expiry", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.scheduleCall(
@@ -442,25 +425,6 @@ describe("HIP-1215 System Contract testing", () => {
         await testScheduleCallEvent(tx, 370n);
       });
 
-      // TODO check balance fail
-      it("should fail with amount more than contract balance", async () => {
-        await mockSetFailResponse(impl1215, 10);
-        const balance = await signers[0].provider.getBalance(
-          await hip1215.getAddress(),
-        );
-        const tx = await hip1215.scheduleCallWithSender(
-          await hip1215.getAddress(),
-          signers[1].address,
-          getExpirySecond(),
-          GAS_LIMIT_1_000_000.gasLimit,
-          balance + ONE_HBAR,
-          abi.encodeFunctionData("addTest", [
-            "scheduleCallWithSender fail amount",
-          ]),
-        );
-        await testScheduleCallEvent(tx, 10n);
-      });
-
       it("should fail with 0 expiry", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.scheduleCallWithSender(
@@ -520,20 +484,6 @@ describe("HIP-1215 System Contract testing", () => {
         );
         await testScheduleCallEvent(tx, 21n);
       });
-
-      // TODO why contract cant be a sender?
-      // it("should fail with sender as contract", async () => {
-      //   await mockSetFailResponse(impl1215, 210);
-      //   const tx = await hip1215.scheduleCallWithSender(
-      //     htsAddress,
-      //     await hip1215.getAddress(),
-      //     getExpirySecond(),
-      //     GAS_LIMIT_1_000_000.gasLimit,
-      //     0,
-      //     abi.encodeFunctionData("addTest", ["scheduleCallWithSender fail sender zero contract"]),
-      //   );
-      //   await testScheduleCallEvent(tx, 210n);
-      // });
     });
   });
 
@@ -694,25 +644,6 @@ describe("HIP-1215 System Contract testing", () => {
         await testScheduleCallEvent(tx, 370n);
       });
 
-      // TODO check balance fail
-      it("should fail with amount more than contract balance", async () => {
-        await mockSetFailResponse(impl1215, 10);
-        const balance = await signers[0].provider.getBalance(
-          await hip1215.getAddress(),
-        );
-        const tx = await hip1215.executeCallOnSenderSignature(
-          await hip1215.getAddress(),
-          signers[1].address,
-          getExpirySecond(),
-          GAS_LIMIT_1_000_000.gasLimit,
-          balance + ONE_HBAR,
-          abi.encodeFunctionData("addTest", [
-            "executeCallOnSenderSignature fail amount",
-          ]),
-        );
-        await testScheduleCallEvent(tx, 10n);
-      });
-
       it("should fail with 0 expiry", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.executeCallOnSenderSignature(
@@ -772,20 +703,6 @@ describe("HIP-1215 System Contract testing", () => {
         );
         await testScheduleCallEvent(tx, 21n);
       });
-
-      // TODO why contract cant be a sender?
-      // it("should fail with sender as contract", async () => {
-      //   await mockSetFailResponse(impl1215, 15);
-      //   const tx = await hip1215.executeCallOnSenderSignature(
-      //     htsAddress,
-      //     await hip1215.getAddress(),
-      //     getExpirySecond(),
-      //     GAS_LIMIT_1_000_000.gasLimit,
-      //     0,
-      //     abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature fail sender contract"]),
-      //   );
-      //   await testScheduleCallEvent(tx, 15n);
-      // });
     });
   });
 
