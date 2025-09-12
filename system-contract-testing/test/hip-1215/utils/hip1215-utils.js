@@ -7,6 +7,12 @@ const { Events } = require("../../../utils/constants");
 const { MOCK_ENABLED } = require("../../../utils/environment");
 
 const mockedResponseAddress = "0x000000000000000000000000000000000000007B";
+const abiStr = ["function addTest(string memory _value)"];
+const abi = new ethers.Interface(abiStr);
+
+function callData(value) {
+  return abi.encodeFunctionData("addTest", [value])
+}
 
 function convertScheduleIdToUint8Array(scheduleId) {
   const [shard, realm, num] = scheduleId.split(".");
@@ -79,6 +85,7 @@ async function testHasScheduleCapacityEvent(tx, hasCapacity) {
 }
 
 module.exports = {
+  callData,
   getSignatureMap,
   getExpirySecond,
   testScheduleCallEvent,
