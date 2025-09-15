@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
+  HTS_ADDRESS,
   GAS_LIMIT_1_000_000,
   GAS_LIMIT_1_000,
   MAX_EXPIRY,
@@ -67,6 +68,18 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
     it("should succeed with address(this) for to", async () => {
       const tx = await hip1215.scheduleCallWithSender(
         await hip1215.getAddress(),
+        signers[1].address,
+        getExpirySecond(),
+        GAS_LIMIT_1_000_000.gasLimit,
+        0,
+        callData("scheduleCallWithSender address(this)"),
+      );
+      await testScheduleCallEvent(tx, 22n);
+    });
+
+    it("should succeed with system contract for to", async () => {
+      const tx = await hip1215.scheduleCallWithSender(
+        HTS_ADDRESS,
         signers[1].address,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
@@ -173,6 +186,20 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
   });
 
   describe("negative cases", () => {
+
+    it("should fail with sender as zero address", async () => {
+      await mockSetFailResponse(impl1215, 21);
+      const tx = await hip1215.scheduleCallWithSender(
+        await hip1215.getAddress(),
+        ethers.ZeroAddress,
+        getExpirySecond(),
+        GAS_LIMIT_1_000_000.gasLimit,
+        0,
+        callData("scheduleCallWithSender fail sender zero address"),
+      );
+      await testScheduleCallEvent(tx, 21n);
+    });
+
     it("should fail with gasLimit 0", async () => {
       await mockSetFailResponse(impl1215, 30);
       const tx = await hip1215.scheduleCallWithSender(
@@ -249,19 +276,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
         callData("scheduleCallWithSender fail expiry + 1"),
       );
       await testScheduleCallEvent(tx, 307n);
-    });
-
-    it("should fail with sender as zero address", async () => {
-      await mockSetFailResponse(impl1215, 21);
-      const tx = await hip1215.scheduleCallWithSender(
-        await hip1215.getAddress(),
-        ethers.ZeroAddress,
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
-        0,
-        callData("scheduleCallWithSender fail sender zero address"),
-      );
-      await testScheduleCallEvent(tx, 21n);
     });
   });
 });

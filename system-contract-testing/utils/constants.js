@@ -52,6 +52,7 @@ const Contract = {
   HIP1215Contract: "HIP1215Contract",
 };
 
+const HTS_ADDRESS = "0x0000000000000000000000000000000000000167"
 const CALL_EXCEPTION = "CALL_EXCEPTION";
 const CONTRACT_REVERT_EXECUTED_CODE = 3;
 const GAS_LIMIT_1_000 = { gasLimit: 1_000 };
@@ -81,6 +82,7 @@ module.exports = {
   Events,
   Path,
   Contract,
+  HTS_ADDRESS,
   CALL_EXCEPTION,
   CONTRACT_REVERT_EXECUTED_CODE,
   GAS_LIMIT_1_000,
@@ -105,6 +107,5 @@ module.exports = {
   GWEI,
   HTS_SYSTEM_CONTRACT_ID,
   HAS_SYSTEM_CONTRACT_ID,
-  ONE_HBAR,
   MAX_EXPIRY,
 };
