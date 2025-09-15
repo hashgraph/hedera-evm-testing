@@ -2,20 +2,17 @@ const { ethers } = require("hardhat");
 const { ONE_HBAR } = require("../../utils/constants");
 const Async = require("../../utils/async");
 const { expect } = require("chai");
+const { contractDeployAndFund } = require("../../utils/contract");
 
 let hip1215, impl1215, signers;
 
 async function beforeTests() {
   if (hip1215 == null && impl1215 == null && signers == null) {
     // provider configs override
-    ethers.provider.estimateGas = async () => 1_200_000;
+    ethers.provider.estimateGas = async () => 2_000_000;
     signers = await ethers.getSigners();
     // deploy impl contract
-    const HIP1215ImplFactory = await ethers.getContractFactory(
-      "HederaScheduleService_HIP1215",
-    );
-    impl1215 = await HIP1215ImplFactory.deploy();
-    await impl1215.waitForDeployment();
+    impl1215 = await contractDeployAndFund("HederaScheduleService_HIP1215", 0, 0);
     // deploy test contract
     const HIP1215Factory = await ethers.getContractFactory("HIP1215Contract");
     console.log("Deploy hip1215 with impl:", impl1215.target);
@@ -27,7 +24,6 @@ async function beforeTests() {
       value: ONE_HBAR * 10n,
     });
     console.log("Done hip1215:", hip1215.target);
-    ethers.provider.estimateGas = async () => 2_000_000;
   }
   return [hip1215, impl1215, signers];
 }

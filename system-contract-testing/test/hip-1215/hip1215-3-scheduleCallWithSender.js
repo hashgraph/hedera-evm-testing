@@ -15,6 +15,7 @@ const {
   getSignatureMap,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
+const { contractDeployAndFund } = require("../../utils/contract");
 
 describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
   let hip1215, impl1215, signers;
@@ -175,6 +176,29 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
         address: address,
         balance: balance * 10_000_000_000n, // converting TINYBAR -> WAIBAR
       });
+    });
+
+    it("should succeed with contract as a sender", async () => {
+      const testId = "scheduleCallWithSender sender contract";
+      expect(await hip1215.getTests()).to.not.contain(testId);
+      // create sender contract
+      const senderContract = await contractDeployAndFund("HIP1215SenderContract", 0, 10);
+      // create schedule
+      const expirySecond = getExpirySecond();
+      const scheduleTx = await hip1215.scheduleCallWithSender(
+        await hip1215.getAddress(),
+        await senderContract.getAddress(),
+        expirySecond,
+        GAS_LIMIT_1_000_000.gasLimit,
+        0,
+        callData(testId),
+      );
+      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+      // sign schedule
+      const signTx = await senderContract.authorizeSchedule(scheduleAddress);
+      await testResponseCodeEvent(signTx, 22n);
+      // execution check in 'after'
+      scheduleCheck.push({ id: testId, expirySecond: expirySecond });
     });
   });
 
