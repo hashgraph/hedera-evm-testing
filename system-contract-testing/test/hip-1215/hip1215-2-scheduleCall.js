@@ -8,10 +8,6 @@ const {
 } = require("../../utils/constants");
 const { randomAddress } = require("../../utils/address");
 const {
-  mockSetSuccessResponse,
-  mockSetFailResponse,
-} = require("./utils/hip1215-mock");
-const {
   callData,
   getExpirySecond,
   testScheduleCallEvent,
@@ -36,9 +32,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
   });
 
   describe("positive cases", async () => {
-    before(async () => {
-      return await mockSetSuccessResponse(impl1215);
-    });
 
     it("should schedule a call", async () => {
       const tx = await hip1215.scheduleCall(
@@ -178,7 +171,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
   describe("negative cases", () => {
     it("should fail with gasLimit 0", async () => {
-      await mockSetFailResponse(impl1215, 30);
       const tx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         getExpirySecond(),
@@ -190,7 +182,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with gasLimit 1000", async () => {
-      await mockSetFailResponse(impl1215, 30);
       const tx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         getExpirySecond(),
@@ -202,7 +193,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with gasLimit uint.maxvalue", async () => {
-      await mockSetFailResponse(impl1215, 370);
       const tx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         getExpirySecond(),
@@ -214,7 +204,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with 0 expiry", async () => {
-      await mockSetFailResponse(impl1215, 307);
       const tx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         0,
@@ -226,7 +215,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with expiry at current time", async () => {
-      await mockSetFailResponse(impl1215, 307);
       const tx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         new Date().getUTCSeconds(),
@@ -238,7 +226,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with expiry at max expiry + 1", async () => {
-      await mockSetFailResponse(impl1215, 307);
       const tx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         new Date().getUTCSeconds() + MAX_EXPIRY + 1,

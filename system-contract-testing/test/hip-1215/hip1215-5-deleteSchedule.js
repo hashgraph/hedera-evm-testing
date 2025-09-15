@@ -1,6 +1,5 @@
 const { GAS_LIMIT_1_000_000 } = require("../../utils/constants");
 const { randomAddress } = require("../../utils/address");
-const { mockSetSuccessResponse } = require("./utils/hip1215-mock");
 const {
   callData,
   testScheduleCallEvent,
@@ -23,9 +22,6 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
   });
 
   describe("positive cases", () => {
-    before(async () => {
-      return mockSetSuccessResponse(impl1215);
-    });
 
     it("should delete schedule", async () => {
       // create schedule

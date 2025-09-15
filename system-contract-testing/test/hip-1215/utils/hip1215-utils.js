@@ -4,9 +4,7 @@ const HashgraphProto = require("@hashgraph/proto");
 const { PrivateKey, AccountId } = require("@hashgraph/sdk");
 const Utils = require("../../../utils/utils");
 const { Events } = require("../../../utils/constants");
-const { MOCK_ENABLED } = require("../../../utils/environment");
 
-const mockedResponseAddress = "0x000000000000000000000000000000000000007B";
 const abiStr = ["function addTest(string memory _value)"];
 const abi = new ethers.Interface(abiStr);
 
@@ -56,11 +54,7 @@ async function testScheduleCallEvent(tx, responseCode) {
   expect(log.args[0]).to.equal(responseCode);
   const address = log.args[1];
   if (responseCode === 22n) {
-    if (MOCK_ENABLED) {
-      expect(address).to.equal(mockedResponseAddress);
-    } else {
       expect(address.length).to.equal(42);
-    }
   } else {
     expect(address).to.equal(ethers.ZeroAddress);
   }

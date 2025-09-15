@@ -8,10 +8,6 @@ const {
 } = require("../../utils/constants");
 const { randomAddress } = require("../../utils/address");
 const {
-  mockSetSuccessResponse,
-  mockSetFailResponse,
-} = require("./utils/hip1215-mock");
-const {
   callData,
   getExpirySecond,
   testScheduleCallEvent,
@@ -37,9 +33,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
   });
 
   describe("positive cases", () => {
-    before(async () => {
-      return mockSetSuccessResponse(impl1215);
-    });
 
     it("should schedule a call with payer", async () => {
       const tx = await hip1215.scheduleCallWithSender(
@@ -188,7 +181,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
   describe("negative cases", () => {
 
     it("should fail with sender as zero address", async () => {
-      await mockSetFailResponse(impl1215, 21);
       const tx = await hip1215.scheduleCallWithSender(
         await hip1215.getAddress(),
         ethers.ZeroAddress,
@@ -201,7 +193,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
     });
 
     it("should fail with gasLimit 0", async () => {
-      await mockSetFailResponse(impl1215, 30);
       const tx = await hip1215.scheduleCallWithSender(
         await hip1215.getAddress(),
         signers[1].address,
@@ -214,7 +205,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
     });
 
     it("should fail with gasLimit 1000", async () => {
-      await mockSetFailResponse(impl1215, 30);
       const tx = await hip1215.scheduleCallWithSender(
         await hip1215.getAddress(),
         signers[1].address,
@@ -227,7 +217,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
     });
 
     it("should fail with gasLimit uint.maxvalue", async () => {
-      await mockSetFailResponse(impl1215, 370);
       const tx = await hip1215.scheduleCallWithSender(
         await hip1215.getAddress(),
         signers[1].address,
@@ -240,7 +229,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
     });
 
     it("should fail with 0 expiry", async () => {
-      await mockSetFailResponse(impl1215, 307);
       const tx = await hip1215.scheduleCallWithSender(
         await hip1215.getAddress(),
         signers[1].address,
@@ -253,7 +241,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
     });
 
     it("should fail with expiry at current time", async () => {
-      await mockSetFailResponse(impl1215, 307);
       const tx = await hip1215.scheduleCallWithSender(
         await hip1215.getAddress(),
         signers[1].address,
@@ -266,7 +253,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
     });
 
     it("should fail with expiry at max expiry + 1", async () => {
-      await mockSetFailResponse(impl1215, 307);
       const tx = await hip1215.scheduleCallWithSender(
         await hip1215.getAddress(),
         signers[1].address,

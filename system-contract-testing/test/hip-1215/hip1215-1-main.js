@@ -1,7 +1,5 @@
 const { ethers } = require("hardhat");
 const { ONE_HBAR } = require("../../utils/constants");
-// TODO remove mock because it is broken?
-const { MOCK_ENABLED } = require("../../utils/environment");
 const Async = require("../../utils/async");
 const { expect } = require("chai");
 
@@ -14,7 +12,7 @@ async function beforeTests() {
     signers = await ethers.getSigners();
     // deploy impl contract
     const HIP1215ImplFactory = await ethers.getContractFactory(
-      MOCK_ENABLED ? "HIP1215MockContract" : "HederaScheduleService_HIP1215",
+      "HederaScheduleService_HIP1215",
     );
     impl1215 = await HIP1215ImplFactory.deploy();
     await impl1215.waitForDeployment();
@@ -35,27 +33,25 @@ async function beforeTests() {
 }
 
 async function afterTests(scheduleCheck = [], balanceCheck = []) {
-  if (!MOCK_ENABLED) {
-    for (const check of scheduleCheck) {
-      console.log(
-        "Wait for schedule '%s' at %s second",
-        check.id,
-        check.expirySecond,
-      );
-      await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
-      expect(await hip1215.getTests()).to.contain(check.id);
-    }
-    for (const check of balanceCheck) {
-      console.log(
-        "Wait for balance '%s' at %s second",
-        check.id,
-        check.expirySecond,
-      );
-      await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
-      expect(await signers[0].provider.getBalance(check.address)).to.equal(
-        check.balance,
-      );
-    }
+  for (const check of scheduleCheck) {
+    console.log(
+      "Wait for schedule '%s' at %s second",
+      check.id,
+      check.expirySecond,
+    );
+    await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
+    expect(await hip1215.getTests()).to.contain(check.id);
+  }
+  for (const check of balanceCheck) {
+    console.log(
+      "Wait for balance '%s' at %s second",
+      check.id,
+      check.expirySecond,
+    );
+    await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
+    expect(await signers[0].provider.getBalance(check.address)).to.equal(
+      check.balance,
+    );
   }
 }
 
