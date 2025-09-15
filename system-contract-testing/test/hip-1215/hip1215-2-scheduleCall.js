@@ -62,6 +62,10 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       await testScheduleCallEvent(tx, 22n);
     });
 
+    // TODO add test: zero address call with deploy contract code
+    //  1. to - zero address, callData - correct, success contract deploy
+    //  2. to - zero address, callData - wrong, failed contract deploy
+
     it("should succeed with address(this) for to", async () => {
       const tx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
@@ -72,6 +76,8 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
       await testScheduleCallEvent(tx, 22n);
     });
+
+    //TODO add test: check that system contract schedule is executed successfully
 
     it("should succeed with system contract for to", async () => {
       const tx = await hip1215.scheduleCall(
@@ -165,6 +171,9 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         balance: balance * 10_000_000_000n, // converting TINYBAR -> WAIBAR
       });
     });
+
+    // TODO add test: recursive scheduling test
+
   });
 
   describe("negative cases", () => {
@@ -239,5 +248,8 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
       await testScheduleCallEvent(tx, 307n);
     });
+
+    // TODO add test: schedule create should succeed, execution should fail with amount more than contract balance
+
   });
 });
