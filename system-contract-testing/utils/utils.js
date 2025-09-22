@@ -546,11 +546,18 @@ class Utils {
     operatorKey =
       operatorKey || hre.config.networks[network].sdkClient.operatorKey;
 
-    const client = Client.forNetwork(hederaNetwork)
-      .setMirrorNetwork(mirrorNode)
-      .setOperator(operatorId, operatorKey);
+    const requestTimeout =
+      hre.config.networks[network].sdkClient.requestTimeout || 30000;
 
-    return client;
+    return Client.forNetwork(hederaNetwork)
+      // .setMirrorNetwork(mirrorNode)
+      .setOperator(operatorId, operatorKey)
+      .setRequestTimeout(requestTimeout)
+      // TODO remove?
+      // next are not working for local node. Use when it will be fixed
+      // See https://github.com/hiero-ledger/hiero-sdk-js/blob/050aac31cd8e639c1fd6a5bc8e241a63f265ee28/src/Executable.js#L558
+      .setMaxAttempts(0)
+      .setMaxNodeAttempts(0);
   }
 
   static async getAccountId(evmAddress, client) {

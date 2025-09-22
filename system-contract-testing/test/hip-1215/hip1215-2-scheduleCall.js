@@ -16,23 +16,23 @@ const {
 const { beforeTests, afterTests } = require("./hip1215-1-main");
 
 describe("HIP-1215 System Contract testing. scheduleCall()", () => {
-  let hip1215, impl1215, signers;
+  let hip1215, impl1215, signers, sdkClient;
   let gasIncrement = 0;
   const scheduleCheck = [];
   const balanceCheck = [];
+  const scheduleTxCheck = [];
 
   // ----------------- Tests
   before(async () => {
-    [hip1215, impl1215, signers] = await beforeTests();
+    [hip1215, impl1215, signers, sdkClient] = await beforeTests();
   });
 
   // schedules result check ofter tests passes to save the time
   after(async () => {
-    await afterTests(scheduleCheck, balanceCheck);
+    await afterTests(scheduleCheck, balanceCheck, scheduleTxCheck);
   });
 
   describe("positive cases", async () => {
-
     it("should schedule a call", async () => {
       const tx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
@@ -118,6 +118,32 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       await testScheduleCallEvent(tx, 22n);
     });
 
+    it("should succeed schedule but fail execution with invalid contract deploy", async () => {
+      const testId = "scheduleCall fail contract deploy";
+      // create schedule
+      const expirySecond = getExpirySecond();
+      const scheduleTx = await hip1215.scheduleCall(
+        ethers.ZeroAddress,
+        expirySecond + 20,
+        // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
+        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
+        0,
+        "0xabc123",
+      );
+      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+      // sign schedule
+      const signTx = await hip1215.authorizeSchedule(scheduleAddress);
+      await testResponseCodeEvent(signTx, 22n);
+      // execution check in 'after'
+      scheduleTxCheck.push({
+        id: testId,
+        expirySecond: expirySecond,
+        scheduleTx: scheduleTx.hash,
+        scheduleAddress: scheduleAddress,
+        expectedStatus: 310, // INVALID_ETHEREUM_TRANSACTION
+      });
+    });
+
     it("should change the state after schedule executed", async () => {
       const testId = "scheduleCall state";
       expect(await hip1215.getTests()).to.not.contain(testId);
@@ -166,7 +192,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     // TODO add test: recursive scheduling test
-
   });
 
   describe("negative cases", () => {
@@ -237,6 +262,5 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     // TODO add test: schedule create should succeed, execution should fail with amount more than contract balance
-
   });
 });
