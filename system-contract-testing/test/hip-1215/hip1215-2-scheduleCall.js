@@ -16,7 +16,7 @@ const {
 const { beforeTests, afterTests } = require("./hip1215-1-main");
 
 describe("HIP-1215 System Contract testing. scheduleCall()", () => {
-  let hip1215, impl1215, signers, sdkClient;
+  let hip1215, impl1215, signers;
   let gasIncrement = 0;
   const scheduleCheck = [];
   const balanceCheck = [];
@@ -24,7 +24,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
   // ----------------- Tests
   before(async () => {
-    [hip1215, impl1215, signers, sdkClient] = await beforeTests();
+    [hip1215, impl1215, signers] = await beforeTests();
   });
 
   // schedules result check ofter tests passes to save the time
@@ -54,10 +54,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
       await testScheduleCallEvent(tx, 22n);
     });
-
-    // TODO add test: zero address call with deploy contract code
-    //  1. to - zero address, callData - correct, success contract deploy
-    //  2. to - zero address, callData - wrong, failed contract deploy
 
     it("should succeed with address(this) for to", async () => {
       const tx = await hip1215.scheduleCall(
@@ -140,7 +136,35 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         expirySecond: expirySecond,
         scheduleTx: scheduleTx.hash,
         scheduleAddress: scheduleAddress,
-        expectedStatus: 310, // INVALID_ETHEREUM_TRANSACTION
+        expectedStatus: "INVALID_ETHEREUM_TRANSACTION",
+      });
+    });
+
+    //TODO finish
+    it("should succeed schedule and execution with contract deploy", async () => {
+      const testId = "scheduleCall contract deploy";
+      // create schedule
+      const expirySecond = getExpirySecond();
+      const deployContract = await ethers.getContractFactory("HIP1215DeployContract");
+      const scheduleTx = await hip1215.scheduleCall(
+        ethers.ZeroAddress,
+        expirySecond + 20,
+        // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
+        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
+        0,
+        deployContract.bytecode,
+      );
+      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+      // sign schedule
+      const signTx = await hip1215.authorizeSchedule(scheduleAddress);
+      await testResponseCodeEvent(signTx, 22n);
+      // execution check in 'after'
+      scheduleTxCheck.push({
+        id: testId,
+        expirySecond: expirySecond,
+        scheduleTx: scheduleTx.hash,
+        scheduleAddress: scheduleAddress,
+        expectedStatus: "INVALID_ETHEREUM_TRANSACTION",
       });
     });
 

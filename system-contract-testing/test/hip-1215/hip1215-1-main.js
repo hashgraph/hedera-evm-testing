@@ -1,12 +1,16 @@
 const { ethers } = require("hardhat");
 const { ONE_HBAR } = require("../../utils/constants");
 const Async = require("../../utils/async");
-const Utils = require("../../utils/utils");
 const { expect } = require("chai");
 const { contractDeployAndFund } = require("../../utils/contract");
-const { getScheduledTxStatus } = require("./utils/hip1215-utils");
+const Utils = require("../../utils/utils");
+const {
+  createMirrorNodeClient,
+  getScheduledTxStatus,
+} = require("./utils/hip1215-utils");
 
-let hip1215, impl1215, signers, sdkClient;
+const WAIT_STEP = 2000;
+let hip1215, impl1215, signers, sdkClient, mnClient;
 
 async function beforeTests() {
   if (hip1215 == null && impl1215 == null && signers == null) {
@@ -32,7 +36,8 @@ async function beforeTests() {
     console.log("Done hip1215:", hip1215.target);
   }
   sdkClient = await Utils.createSDKClient();
-  return [hip1215, impl1215, signers, sdkClient];
+  mnClient = createMirrorNodeClient();
+  return [hip1215, impl1215, signers, mnClient];
 }
 
 async function afterTests(
@@ -46,7 +51,7 @@ async function afterTests(
       check.id,
       check.expirySecond,
     );
-    await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
+    await Async.waitFor(check.expirySecond * 1000 + WAIT_STEP, WAIT_STEP);
     expect(await hip1215.getTests()).to.contain(check.id);
   }
   for (const check of balanceCheck) {
@@ -55,7 +60,7 @@ async function afterTests(
       check.id,
       check.expirySecond,
     );
-    await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
+    await Async.waitFor(check.expirySecond * 1000 + WAIT_STEP, WAIT_STEP);
     expect(await signers[0].provider.getBalance(check.address)).to.equal(
       check.balance,
     );
@@ -68,9 +73,9 @@ async function afterTests(
       check.scheduleAddress,
       check.expirySecond,
     );
-    await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
+    await Async.waitFor(check.expirySecond * 1000 + WAIT_STEP, WAIT_STEP);
     const scheduledTxStatus = await getScheduledTxStatus(
-      sdkClient,
+      mnClient,
       check.scheduleAddress,
     );
     expect(scheduledTxStatus).to.equal(check.expectedStatus);
