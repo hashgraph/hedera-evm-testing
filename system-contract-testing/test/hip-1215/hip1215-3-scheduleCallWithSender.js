@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
-  HTS_ADDRESS,
+  HSS_ADDRESS,
   GAS_LIMIT_1_000_000,
   GAS_LIMIT_1_000,
   MAX_EXPIRY,
@@ -9,6 +9,7 @@ const {
 const { randomAddress } = require("../../utils/address");
 const {
   callData,
+  hasScheduleCapacityCallData,
   getExpirySecond,
   testScheduleCallEvent,
   testResponseCodeEvent,
@@ -22,6 +23,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
   let gasIncrement = 0;
   const scheduleCheck = [];
   const balanceCheck = [];
+  const scheduleTxCheck = [];
 
   // ----------------- Tests
   before(async () => {
@@ -30,7 +32,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
 
   // schedules result check ofter tests passes to save the time
   after(async () => {
-    await afterTests(scheduleCheck, balanceCheck);
+    await afterTests(scheduleCheck, balanceCheck, scheduleTxCheck);
   });
 
   describe("positive cases", () => {
@@ -71,15 +73,31 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
     });
 
     it("should succeed with system contract for to", async () => {
-      const tx = await hip1215.scheduleCallWithSender(
-        HTS_ADDRESS,
+      const expirySecond = getExpirySecond();
+      const scheduleTx = await hip1215.scheduleCallWithSender(
+        HSS_ADDRESS,
         signers[1].address,
-        getExpirySecond(),
+        expirySecond,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("scheduleCallWithSender address(this)"),
+        hasScheduleCapacityCallData(expirySecond + 10, GAS_LIMIT_1_000_000.gasLimit),
       );
-      await testScheduleCallEvent(tx, 22n);
+      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+      // sign schedule
+      const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
+      const signTx = await hip1215.signSchedule(
+        scheduleAddress,
+        sigMapProtoEncoded,
+      );
+      await testResponseCodeEvent(signTx, 22n);
+      // execution check in 'after'
+      scheduleTxCheck.push({
+        id: "scheduleCallWithSender system contract",
+        expirySecond: expirySecond,
+        scheduleTx: scheduleTx.hash,
+        scheduleAddress: scheduleAddress,
+        expectedStatus: "SUCCESS",
+      });
     });
 
     it("should succeed with amount sent to contract", async () => {

@@ -83,6 +83,10 @@ contract HIP1215Contract {
         return responseCode;
     }
 
+    function payableCall(string memory _value) external payable {
+        tests.push(_value);
+    }
+
     // functions used as scheduled calls
     function addTest(string memory _value) external {
         tests.push(_value);
@@ -90,5 +94,20 @@ contract HIP1215Contract {
 
     function getTests() view external returns (string[] memory) {
         return tests;
+    }
+
+    // TODO test
+    address internal constant HAS = address(0x16a);
+
+    function hbarAllowance(address owner, address spender) external view returns (int32 responseCode, int256 amount) {
+        (bool success, bytes memory result) = HAS.staticcall(abi.encodeWithSignature("hbarAllowance(address,address)", owner, spender));
+        (responseCode, amount) = success ? abi.decode(result, (int32, int256)) : (HederaResponseCodes.UNKNOWN, (int256)(0));
+        return (responseCode, amount);
+    }
+
+    function hbarApprove(address owner, address spender, int256 amount) external returns (int32 responseCode) {
+        (bool success, bytes memory result) = HAS.call(abi.encodeWithSignature("hbarApprove(address,address,int256)", owner, spender, amount));
+        responseCode = success ? abi.decode(result, (int32)) : HederaResponseCodes.UNKNOWN;
+        return responseCode;
     }
 }

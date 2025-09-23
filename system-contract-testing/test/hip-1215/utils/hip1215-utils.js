@@ -1,27 +1,34 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const HashgraphProto = require("@hashgraph/proto");
-const {
-  PrivateKey,
-  AccountId,
-  ScheduleId,
-} = require("@hashgraph/sdk");
+const { PrivateKey, AccountId, ScheduleId } = require("@hashgraph/sdk");
 const Utils = require("../../../utils/utils");
-const { Events } = require("../../../utils/constants");
+const { Events, GAS_LIMIT_1_000_000 } = require("../../../utils/constants");
 const { Logger, HederaMirrorNode } = require("@hashgraphonline/standards-sdk");
 const hre = require("hardhat");
 const Async = require("../../../utils/async");
 
-const abiStr = ["function addTest(string memory _value)"];
-const abi = new ethers.Interface(abiStr);
+const addTestAbiStr = ["function addTest(string memory _value)"];
+const addTestAbi = new ethers.Interface(addTestAbiStr);
+const hasScheduleCapacityAbiStr = [
+  "function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit)",
+];
+const hasScheduleCapacityAbi = new ethers.Interface(hasScheduleCapacityAbiStr);
 
 // Schedule params functions --------------------------------------------------
 function getExpirySecond(shift = 10) {
   return Math.floor(Date.now() / 1000) + shift;
 }
 
-function callData(value) {
-  return abi.encodeFunctionData("addTest", [value]);
+function addTestCallData(value) {
+  return addTestAbi.encodeFunctionData("addTest", [value]);
+}
+
+function hasScheduleCapacityCallData(expirySecond, gasLimit) {
+  return hasScheduleCapacityAbi.encodeFunctionData("hasScheduleCapacity", [
+    expirySecond,
+    gasLimit,
+  ]);
 }
 // ---------------------------------------------------------------------------
 
@@ -148,7 +155,8 @@ async function getScheduledTxStatus(
 // ---------------------------------------------------------------------------
 
 module.exports = {
-  callData,
+  addTestCallData,
+  hasScheduleCapacityCallData,
   getSignatureMap,
   getExpirySecond,
   testScheduleCallEvent,

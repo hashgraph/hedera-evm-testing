@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
-  HTS_ADDRESS,
+  HSS_ADDRESS,
   GAS_LIMIT_1_000_000,
   GAS_LIMIT_1_000,
   MAX_EXPIRY,
@@ -9,6 +9,7 @@ const {
 const { randomAddress } = require("../../utils/address");
 const {
   callData,
+  hasScheduleCapacityCallData,
   getExpirySecond,
   testScheduleCallEvent,
   testResponseCodeEvent,
@@ -72,15 +73,16 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
     });
 
     it("should succeed with system contract for to", async () => {
-      const tx = await hip1215.executeCallOnSenderSignature(
-        HTS_ADDRESS,
+      const expirySecond = getExpirySecond();
+      const scheduleTx =  await hip1215.executeCallOnSenderSignature(
+        HSS_ADDRESS,
         signers[1].address,
-        getExpirySecond(),
+        expirySecond,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("executeCallOnSenderSignature address(this)"),
+        hasScheduleCapacityCallData(expirySecond + 10, GAS_LIMIT_1_000_000.gasLimit),
       );
-      await testScheduleCallEvent(tx, 22n);
+      await testScheduleCallEvent(scheduleTx, 22n);
     });
 
     it("should succeed with amount sent to contract", async () => {

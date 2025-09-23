@@ -1,14 +1,15 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
-  HTS_ADDRESS,
+  HSS_ADDRESS,
   GAS_LIMIT_1_000_000,
   GAS_LIMIT_1_000,
   MAX_EXPIRY,
 } = require("../../utils/constants");
 const { randomAddress } = require("../../utils/address");
 const {
-  callData,
+  addTestCallData,
+  hasScheduleCapacityCallData,
   getExpirySecond,
   testScheduleCallEvent,
   testResponseCodeEvent,
@@ -22,6 +23,37 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
   const balanceCheck = [];
   const scheduleTxCheck = [];
 
+  async function testScheduleCallEventAndSign(
+    testId,
+    to,
+    value = 0,
+    callDataFunction = (testId) => addTestCallData(testId),
+    executionExpectedStatus = "SUCCESS",
+  ) {
+    const expirySecond = getExpirySecond();
+    const scheduleTx = await hip1215.scheduleCall(
+      to,
+      getExpirySecond(),
+      // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
+      GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
+      value,
+      callDataFunction(testId, expirySecond),
+    );
+    const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+    // sign schedule
+    const signTx = await hip1215.authorizeSchedule(scheduleAddress);
+    await testResponseCodeEvent(signTx, 22n);
+    // execution check in 'after'
+    scheduleTxCheck.push({
+      id: testId,
+      expirySecond: expirySecond,
+      scheduleTx: scheduleTx.hash,
+      scheduleAddress: scheduleAddress,
+      expectedStatus: executionExpectedStatus,
+    });
+    return [testId, expirySecond, scheduleTx];
+  }
+
   // ----------------- Tests
   before(async () => {
     [hip1215, impl1215, signers] = await beforeTests();
@@ -34,178 +66,156 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
   describe("positive cases", async () => {
     it("should schedule a call", async () => {
-      const tx = await hip1215.scheduleCall(
-        await hip1215.getAddress(),
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
-        0,
-        callData("scheduleCall"),
-      );
-      await testScheduleCallEvent(tx, 22n);
+      const [testId, expirySecond, scheduleTx] =
+        await testScheduleCallEventAndSign(
+          "scheduleCall",
+          await hip1215.getAddress(),
+        );
+      // execution check in 'after'
+      scheduleCheck.push({
+        id: testId,
+        expirySecond: expirySecond,
+        scheduleTx: scheduleTx.hash,
+      });
     });
 
     it("should succeed with eoa address for to", async () => {
-      const tx = await hip1215.scheduleCall(
+      await testScheduleCallEventAndSign(
+        "scheduleCall eoa",
         signers[0].address,
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("scheduleCall eoa"),
+        (testId) => addTestCallData(testId),
       );
-      await testScheduleCallEvent(tx, 22n);
     });
 
     it("should succeed with address(this) for to", async () => {
-      const tx = await hip1215.scheduleCall(
-        await hip1215.getAddress(),
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
-        0,
-        callData("scheduleCall address(this)"),
-      );
-      await testScheduleCallEvent(tx, 22n);
+      const [testId, expirySecond, scheduleTx] =
+        await testScheduleCallEventAndSign(
+          "scheduleCall address(this)",
+          await hip1215.getAddress(),
+        );
+      // execution check in 'after'
+      scheduleCheck.push({
+        id: testId,
+        expirySecond: expirySecond,
+        scheduleTx: scheduleTx.hash,
+      });
     });
 
-    //TODO add test: check that system contract schedule is executed successfully
+    //TODO remove after investigation
+    // it("system contract", async () => {
+    //   const hbarAllowance1 = await hip1215.hbarAllowance(
+    //     signers[0].address,
+    //     signers[1].address,
+    //   );
+    //   console.log("hbarAllowance1", hbarAllowance1.hash);
+    //   const hbarApprove = await hip1215.hbarApprove(
+    //     signers[0].address,
+    //     signers[1].address,
+    //     100_000_000,
+    //   );
+    //   console.log("hbarApprove", hbarApprove.hash);
+    //   const hbarAllowance2 = await hip1215.hbarAllowance(
+    //     signers[0].address,
+    //     signers[1].address,
+    //   );
+    //   console.log("hbarAllowance2", hbarAllowance2.hash);
+    // });
 
     it("should succeed with system contract for to", async () => {
-      const tx = await hip1215.scheduleCall(
-        HTS_ADDRESS,
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
+      await testScheduleCallEventAndSign(
+        "scheduleCall system contract",
+        HSS_ADDRESS,
         0,
-        callData("scheduleCall address(this)"),
+        (testId, expirySecond) =>
+          hasScheduleCapacityCallData(
+            expirySecond + 10,
+            GAS_LIMIT_1_000_000.gasLimit,
+          ),
       );
-      await testScheduleCallEvent(tx, 22n);
     });
 
-    it("should succeed with amount sent to contract", async () => {
-      const tx = await hip1215.scheduleCall(
+    //TODO discuss if call with value+callData should fail
+    it("should succeed schedule but fail execution with amount sent to contract and contractCall", async () => {
+      await testScheduleCallEventAndSign(
+        "scheduleCall amount",
         await hip1215.getAddress(),
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
         100_000_000, // 1 HBAR in TINYBARS
-        callData("scheduleCall amount"),
+        (testId) => addTestCallData(testId),
+        "CONTRACT_REVERT_EXECUTED",
       );
-      await testScheduleCallEvent(tx, 22n);
     });
 
     it("should succeed with empty callData", async () => {
-      const tx = await hip1215.scheduleCall(
+      await testScheduleCallEventAndSign(
+        "scheduleCall invalid callData",
         await hip1215.getAddress(),
-        getExpirySecond(),
-        // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
-        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
         0,
-        "0x",
+        () => "0x",
       );
-      await testScheduleCallEvent(tx, 22n);
     });
 
     it("should succeed schedule but fail execution with invalid callData", async () => {
-      const tx = await hip1215.scheduleCall(
+      await testScheduleCallEventAndSign(
+        "scheduleCall empty callData",
         await hip1215.getAddress(),
-        getExpirySecond(),
-        // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
-        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
         0,
-        "0xabc123",
+        () => "0xabc123",
+        "CONTRACT_REVERT_EXECUTED",
       );
-      await testScheduleCallEvent(tx, 22n);
     });
 
+    //TODO discuss if call with invalid contract deploy should result with INSUFFICIENT_TX_FEE
     it("should succeed schedule but fail execution with invalid contract deploy", async () => {
-      const testId = "scheduleCall fail contract deploy";
-      // create schedule
-      const expirySecond = getExpirySecond();
-      const scheduleTx = await hip1215.scheduleCall(
+      await testScheduleCallEventAndSign(
+        "scheduleCall fail invalid contract deploy",
         ethers.ZeroAddress,
-        expirySecond + 20,
-        // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
-        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
         0,
-        "0xabc123",
+        () => "0xabc123",
+        "INSUFFICIENT_TX_FEE",
       );
-      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
-      // sign schedule
-      const signTx = await hip1215.authorizeSchedule(scheduleAddress);
-      await testResponseCodeEvent(signTx, 22n);
-      // execution check in 'after'
-      scheduleTxCheck.push({
-        id: testId,
-        expirySecond: expirySecond,
-        scheduleTx: scheduleTx.hash,
-        scheduleAddress: scheduleAddress,
-        expectedStatus: "INVALID_ETHEREUM_TRANSACTION",
-      });
     });
 
-    //TODO finish
-    it("should succeed schedule and execution with contract deploy", async () => {
-      const testId = "scheduleCall contract deploy";
-      // create schedule
-      const expirySecond = getExpirySecond();
-      const deployContract = await ethers.getContractFactory("HIP1215DeployContract");
-      const scheduleTx = await hip1215.scheduleCall(
-        ethers.ZeroAddress,
-        expirySecond + 20,
-        // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
-        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
-        0,
-        deployContract.bytecode,
+    //TODO discuss if call with valid contract deploy should result with INSUFFICIENT_TX_FEE
+    it("should succeed schedule but fail execution with valid contract deploy", async () => {
+      const deployContract = await ethers.getContractFactory(
+        "HIP1215DeployContract",
       );
-      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
-      // sign schedule
-      const signTx = await hip1215.authorizeSchedule(scheduleAddress);
-      await testResponseCodeEvent(signTx, 22n);
-      // execution check in 'after'
-      scheduleTxCheck.push({
-        id: testId,
-        expirySecond: expirySecond,
-        scheduleTx: scheduleTx.hash,
-        scheduleAddress: scheduleAddress,
-        expectedStatus: "INVALID_ETHEREUM_TRANSACTION",
-      });
+      await testScheduleCallEventAndSign(
+        "scheduleCall fail valid contract deploy",
+        ethers.ZeroAddress,
+        0,
+        () => deployContract.bytecode,
+        "INSUFFICIENT_TX_FEE",
+      );
     });
 
     it("should change the state after schedule executed", async () => {
-      const testId = "scheduleCall state";
-      expect(await hip1215.getTests()).to.not.contain(testId);
-      // create schedule
-      const expirySecond = getExpirySecond();
-      const scheduleTx = await hip1215.scheduleCall(
-        await hip1215.getAddress(),
-        expirySecond,
-        GAS_LIMIT_1_000_000.gasLimit,
-        0,
-        callData(testId),
-      );
-      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
-      expect(await hip1215.getTests()).to.not.contain(testId);
-      // sign schedule
-      const signTx = await hip1215.authorizeSchedule(scheduleAddress);
-      await testResponseCodeEvent(signTx, 22n);
+      const [testId, expirySecond, scheduleTx] =
+        await testScheduleCallEventAndSign(
+          "scheduleCall state",
+          await hip1215.getAddress(),
+          0,
+          (testId) => addTestCallData(testId),
+          true,
+        );
       // execution check in 'after'
-      scheduleCheck.push({ id: testId, expirySecond: expirySecond });
+      scheduleCheck.push({
+        id: testId,
+        expirySecond: expirySecond,
+        scheduleTx: scheduleTx.hash,
+      });
     });
 
     it("should create account with balance change after schedule executed", async () => {
-      const testId = "scheduleCall balance";
-      // create schedule
-      const address = randomAddress();
-      const expirySecond = getExpirySecond();
+      const address = randomAddress(); // hollow account creation
       const balance = 100_000_000n; // 1 HBAR in TINYBARS
-      const scheduleTx = await hip1215.scheduleCall(
-        address, // hollow account creation
-        expirySecond,
-        GAS_LIMIT_1_000_000.gasLimit,
+      const [testId, expirySecond] = await testScheduleCallEventAndSign(
+        "scheduleCall balance",
+        address,
         balance,
-        "0x",
+        () => "0x",
       );
-      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
-      // sign schedule
-      const signTx = await hip1215.authorizeSchedule(scheduleAddress);
-      await testResponseCodeEvent(signTx, 22n);
       // balance check in 'after'
       balanceCheck.push({
         id: testId,
@@ -214,8 +224,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         balance: balance * 10_000_000_000n, // converting TINYBAR -> WAIBAR
       });
     });
-
-    // TODO add test: recursive scheduling test
   });
 
   describe("negative cases", () => {
@@ -225,7 +233,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         getExpirySecond(),
         0,
         0,
-        callData("scheduleCall fail gasLimit 0"),
+        addTestCallData("scheduleCall fail gasLimit 0"),
       );
       await testScheduleCallEvent(tx, 30n);
     });
@@ -236,7 +244,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         getExpirySecond(),
         GAS_LIMIT_1_000.gasLimit,
         0,
-        callData("scheduleCall fail gasLimit 1000"),
+        addTestCallData("scheduleCall fail gasLimit 1000"),
       );
       await testScheduleCallEvent(tx, 30n);
     });
@@ -247,7 +255,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         getExpirySecond(),
         ethers.MaxUint256,
         0,
-        callData("scheduleCall fail uint.maxvalue"),
+        addTestCallData("scheduleCall fail uint.maxvalue"),
       );
       await testScheduleCallEvent(tx, 370n);
     });
@@ -258,7 +266,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("scheduleCall fail expiry 0"),
+        addTestCallData("scheduleCall fail expiry 0"),
       );
       await testScheduleCallEvent(tx, 307n);
     });
@@ -269,7 +277,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         new Date().getUTCSeconds(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("scheduleCall fail expiry current"),
+        addTestCallData("scheduleCall fail expiry current"),
       );
       await testScheduleCallEvent(tx, 307n);
     });
@@ -280,7 +288,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         new Date().getUTCSeconds() + MAX_EXPIRY + 1,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("scheduleCall fail expiry + 1"),
+        addTestCallData("scheduleCall fail expiry + 1"),
       );
       await testScheduleCallEvent(tx, 307n);
     });

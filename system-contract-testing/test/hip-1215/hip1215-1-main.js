@@ -47,8 +47,9 @@ async function afterTests(
 ) {
   for (const check of scheduleCheck) {
     console.log(
-      "'%s': Wait for schedule at %s second",
+      "'%s': Wait for 'addTests' schedule tx:%s at %s second",
       check.id,
+      check.scheduleTx,
       check.expirySecond,
     );
     await Async.waitFor(check.expirySecond * 1000 + WAIT_STEP, WAIT_STEP);
@@ -56,8 +57,9 @@ async function afterTests(
   }
   for (const check of balanceCheck) {
     console.log(
-      "'%s': Wait for balance at %s second",
+      "'%s': Wait for balance tx:%s at %s second",
       check.id,
+      check.scheduleTx,
       check.expirySecond,
     );
     await Async.waitFor(check.expirySecond * 1000 + WAIT_STEP, WAIT_STEP);
@@ -67,10 +69,9 @@ async function afterTests(
   }
   for (const check of scheduleTxCheck) {
     console.log(
-      "'%s': Wait for tx:%s scheduleAddress:%s at %s second",
+      "'%s': Wait for schedule status tx:%s at %s second",
       check.id,
       check.scheduleTx,
-      check.scheduleAddress,
       check.expirySecond,
     );
     await Async.waitFor(check.expirySecond * 1000 + WAIT_STEP, WAIT_STEP);
