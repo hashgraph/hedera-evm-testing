@@ -127,7 +127,7 @@ async function getSignatureMap(accountIndex, scheduleAddress) {
 
 // Mirror node client functions --------------------------------------------------
 function createMirrorNodeClient() {
-  const logger = new Logger({ module: "test/hip-1215", level: "info" });
+  const logger = new Logger({ module: "test/hip-1215", level: "warn" });
   const { mirrorNode } =
     hre.config.networks[Utils.getCurrentNetwork()].sdkClient;
   return new HederaMirrorNode("local", logger, {

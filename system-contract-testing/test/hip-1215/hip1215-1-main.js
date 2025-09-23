@@ -3,17 +3,16 @@ const { ONE_HBAR } = require("../../utils/constants");
 const Async = require("../../utils/async");
 const { expect } = require("chai");
 const { contractDeployAndFund } = require("../../utils/contract");
-const Utils = require("../../utils/utils");
 const {
   createMirrorNodeClient,
   getScheduledTxStatus,
 } = require("./utils/hip1215-utils");
 
 const WAIT_STEP = 2000;
-let hip1215, impl1215, signers, sdkClient, mnClient;
+let hip1215, impl1215, signers, mnClient;
 
 async function beforeTests() {
-  if (hip1215 == null && impl1215 == null && signers == null) {
+  if (hip1215 == null && impl1215 == null && signers == null && mnClient == null) {
     // provider configs override
     ethers.provider.estimateGas = async () => 2_000_000;
     signers = await ethers.getSigners();
@@ -33,10 +32,10 @@ async function beforeTests() {
       to: hip1215.target,
       value: ONE_HBAR * 10n,
     });
+    // sdkClient = await Utils.createSDKClient();
+    mnClient = createMirrorNodeClient();
     console.log("Done hip1215:", hip1215.target);
   }
-  sdkClient = await Utils.createSDKClient();
-  mnClient = createMirrorNodeClient();
   return [hip1215, impl1215, signers, mnClient];
 }
 
