@@ -1,7 +1,7 @@
 const { GAS_LIMIT_1_000_000 } = require("../../utils/constants");
 const { randomAddress } = require("../../utils/address");
 const {
-  callData,
+  addTestCallData,
   testScheduleCallEvent,
   testResponseCodeEvent,
 } = require("./utils/hip1215-utils");
@@ -30,7 +30,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         Math.floor(Date.now() / 1000) + 60,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("deleteSchedule"),
+        addTestCallData("deleteSchedule"),
       );
       const scheduleAddress = await testScheduleCallEvent(createTx, 22n);
       // delete schedule
@@ -45,7 +45,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         Math.floor(Date.now() / 1000) + 60,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("deleteSchedule proxy"),
+        addTestCallData("deleteSchedule proxy"),
       );
       const scheduleAddress = await testScheduleCallEvent(createTx, 22n);
       // delete schedule
@@ -67,7 +67,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         Math.floor(Date.now() / 1000) + 2, // just enough to execute transaction
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("deleteSchedule fail expired"),
+        addTestCallData("deleteSchedule fail expired"),
       );
       const scheduleAddress = await testScheduleCallEvent(tx, 22n);
       await Async.wait(2000);

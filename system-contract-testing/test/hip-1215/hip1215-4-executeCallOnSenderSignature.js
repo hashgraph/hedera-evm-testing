@@ -61,7 +61,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
       scheduleAddress: scheduleAddress,
       expectedStatus: executionExpectedStatus,
     });
-    return [testId, expirySecond, scheduleTx];
+    return [testId, scheduleTx];
   }
 
   // ----------------- Tests
@@ -76,144 +76,135 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
 
   describe("positive cases", () => {
     it("should schedule a call with sender signature", async () => {
-      const [testId, expirySecond, scheduleTx] =
-        await testScheduleCallEventAndSign(
-          "executeCallOnSenderSignature",
-          await hip1215.getAddress(),
-          signers[1].address,
-        );
+      const [testId, scheduleTx] = await testScheduleCallEventAndSign(
+        "executeCallOnSenderSignature",
+        await hip1215.getAddress(),
+        signers[1].address,
+      );
       // execution check just after signing
       await Async.wait(1000);
-      expect(await hip1215.getTests()).to.contain(testId, "Schedule tx:" + scheduleTx.hash);
+      expect(await hip1215.getTests()).to.contain(
+        testId,
+        "Schedule tx:" + scheduleTx.hash,
+      );
     });
 
     it("should succeed with eoa address for to", async () => {
-      const tx = await hip1215.executeCallOnSenderSignature(
+      await testScheduleCallEventAndSign(
+        "executeCallOnSenderSignature eoa",
         signers[0].address,
         signers[1].address,
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
-        0,
-        addTestCallData("executeCallOnSenderSignature eoa"),
       );
-      await testScheduleCallEvent(tx, 22n);
     });
 
     it("should succeed with address(this) for to", async () => {
-      const tx = await hip1215.executeCallOnSenderSignature(
+      const [testId, scheduleTx] = await testScheduleCallEventAndSign(
+        "executeCallOnSenderSignature address(this)",
         await hip1215.getAddress(),
         signers[1].address,
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
-        0,
-        addTestCallData("executeCallOnSenderSignature address(this)"),
       );
-      await testScheduleCallEvent(tx, 22n);
+      // execution check just after signing
+      await Async.wait(1000);
+      expect(await hip1215.getTests()).to.contain(
+        testId,
+        "Schedule tx:" + scheduleTx.hash,
+      );
     });
 
     it("should succeed with system contract for to", async () => {
-      const expirySecond = getExpirySecond();
-      const scheduleTx =  await hip1215.executeCallOnSenderSignature(
+      await testScheduleCallEventAndSign(
+        "executeCallOnSenderSignature system contract",
         HSS_ADDRESS,
         signers[1].address,
-        expirySecond,
-        GAS_LIMIT_1_000_000.gasLimit,
         0,
-        hasScheduleCapacityCallData(expirySecond + 10, GAS_LIMIT_1_000_000.gasLimit),
+        (testId, expirySecond) =>
+          hasScheduleCapacityCallData(
+            expirySecond + 10,
+            GAS_LIMIT_1_000_000.gasLimit,
+          ),
       );
-      await testScheduleCallEvent(scheduleTx, 22n);
     });
 
     it("should succeed with amount sent to contract", async () => {
-      const tx = await hip1215.executeCallOnSenderSignature(
+      await testScheduleCallEventAndSign(
+        "executeCallOnSenderSignature amount",
         await hip1215.getAddress(),
         signers[1].address,
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
         100_000_000, // 1 HBAR in TINYBARS
-        addTestCallData("executeCallOnSenderSignature amount"),
+        () => payableCallCallData(),
+        "SUCCESS",
       );
-      await testScheduleCallEvent(tx, 22n);
     });
 
     it("should succeed with empty callData", async () => {
-      const tx = await hip1215.executeCallOnSenderSignature(
+      await testScheduleCallEventAndSign(
+        "executeCallOnSenderSignature empty callData",
         await hip1215.getAddress(),
         signers[1].address,
-        getExpirySecond(),
-        // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
-        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
         0,
-        "0x",
+        () => "0x",
       );
-      await testScheduleCallEvent(tx, 22n);
     });
 
     it("should succeed schedule but fail execution with invalid callData", async () => {
-      const tx = await hip1215.executeCallOnSenderSignature(
+      await testScheduleCallEventAndSign(
+        "executeCallOnSenderSignature invalid callData",
         await hip1215.getAddress(),
         signers[1].address,
-        getExpirySecond(),
-        // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
-        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
         0,
-        "0xabc123",
+        () => "0xabc123",
+        "CONTRACT_REVERT_EXECUTED",
       );
-      await testScheduleCallEvent(tx, 22n);
     });
 
+    //TODO add contract deploy tests after discussion
+
     it("should change the state after schedule executed", async () => {
-      const testId = "executeCallOnSenderSignature state";
-      expect(await hip1215.getTests()).to.not.contain(testId);
-      // create schedule
-      const expirySecond = getExpirySecond();
-      const tx = await hip1215.executeCallOnSenderSignature(
-        await hip1215.getAddress(),
-        signers[1].address,
-        expirySecond,
-        GAS_LIMIT_1_000_000.gasLimit,
-        0,
-        addTestCallData(testId),
-      );
-      const scheduleAddress = await testScheduleCallEvent(tx, 22n);
-      expect(await hip1215.getTests()).to.not.contain(testId);
-      // sign schedule
-      const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
-      const signTx = await hip1215.signSchedule(
-        scheduleAddress,
-        sigMapProtoEncoded,
-      );
-      await testResponseCodeEvent(signTx, 22n);
+      const [testId, scheduleTx] =
+        await testScheduleCallEventAndSign(
+          "executeCallOnSenderSignature state",
+          await hip1215.getAddress(),
+          signers[1].address,
+          0,
+          (testId) => addTestCallData(testId),
+        );
       // execution check just after signing
       await Async.wait(1000);
-      expect(await hip1215.getTests()).to.contain(testId);
+      expect(await hip1215.getTests()).to.contain(
+        testId,
+        "Schedule tx:" + scheduleTx.hash,
+      );
     });
 
     it("should create account with balance change after schedule executed", async () => {
-      // create schedule
-      const address = randomAddress();
-      const expirySecond = getExpirySecond();
+      const address = randomAddress(); // hollow account creation
       const balance = 100_000_000n; // 1 HBAR in TINYBARS
-      const scheduleTx = await hip1215.executeCallOnSenderSignature(
-        address, // hollow account creation
-        signers[1].address,
-        expirySecond,
-        GAS_LIMIT_1_000_000.gasLimit,
-        balance,
-        "0x",
-      );
-      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
-      // sign schedule
-      const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
-      const signTx = await hip1215.signSchedule(
-        scheduleAddress,
-        sigMapProtoEncoded,
-      );
-      await testResponseCodeEvent(signTx, 22n);
+      const [, scheduleTx] =
+        await testScheduleCallEventAndSign(
+          "executeCallOnSenderSignature balance",
+          address,
+          signers[1].address,
+          balance,
+          () => "0x",
+        );
       // execution check just after signing
       await Async.wait(1000);
       expect(await signers[0].provider.getBalance(address)).to.equal(
         balance * 10_000_000_000n, // converting TINYBAR -> WAIBAR
+        "Schedule tx:" + scheduleTx.hash,
+      );
+    });
+
+    it("should succeed schedule but fail execution for value more than balance", async () => {
+      const address = randomAddress(); // hollow account creation
+      const balance = 100_000_000_000_000n; // 1_000_000 HBAR in TINYBARS, more than contact balance
+      await testScheduleCallEventAndSign(
+        "executeCallOnSenderSignature balance",
+        address,
+        signers[1].address,
+        balance,
+        () => "0x",
+        "INSUFFICIENT_PAYER_BALANCE",
       );
     });
 
@@ -254,7 +245,9 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("executeCallOnSenderSignature fail sender zero address"),
+        addTestCallData(
+          "executeCallOnSenderSignature fail sender zero address",
+        ),
       );
       await testScheduleCallEvent(tx, 21n);
     });
