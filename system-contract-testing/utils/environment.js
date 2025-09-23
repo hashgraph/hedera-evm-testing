@@ -5,7 +5,6 @@ require("dotenv").config();
 const TESTNET_PRIVATE_KEYS = process.env.TESTNET_PRIVATE_KEYS
   ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
   : [];
-const MOCK_ENABLED = process.env.MOCK_ENABLED ? process.env.MOCK_ENABLED === 'true' : true;
 
 const NETWORKS = {
   local: {
@@ -48,5 +47,4 @@ const NETWORKS = {
 module.exports = {
   NETWORKS,
   TESTNET_PRIVATE_KEYS,
-  MOCK_ENABLED,
 };

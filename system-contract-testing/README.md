@@ -72,6 +72,7 @@ uv run execute remote -v --fork=Shanghai --rpc-endpoint=https://testnet.hashio.i
 ```
 
 ### Run local solo net
+Shanghai: (with https://github.com/gkozyryatskyy/execution-spec-tests/tree/quest-fight-against-nexus-king-salhadaar)
 ```
 # test_push0.py::test_push0_contracts
 uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip3855_push0/test_push0.py::test_push0_contracts --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000
@@ -85,9 +86,6 @@ uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ -
 uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip3860_initcode/test_initcode.py::TestCreateInitcode --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000 --eoa-fund-amount-default=8000000000000000000
 # test_with_eof.py::test_legacy_create_edge_code_size
 uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip3860_initcode/test_with_eof.py::test_legacy_create_edge_code_size --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000 --eoa-fund-amount-default=8000000000000000000
-```
-In progress:
-```
-# test_withdrawals.py::test_use_value_in_contract
-uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip4895_withdrawals/test_withdrawals.py::test_use_value_in_contract --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000 --eoa-fund-amount-default=8000000000000000000
+# ./tests/shanghai/
+uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/ --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 200000000000000000000 --eoa-fund-amount-default=8000000000000000000
 ```

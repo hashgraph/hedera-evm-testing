@@ -58,12 +58,25 @@
   {
     "inputs": [
       {
+        "internalType": "string",
+        "name": "_value",
+        "type": "string"
+      }
+    ],
+    "name": "addTest",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
-        "name": "scheduleAddress",
+        "name": "schedule",
         "type": "address"
       }
     ],
-    "name": "deleteScheduleExample",
+    "name": "authorizeSchedule",
     "outputs": [
       {
         "internalType": "int64",
@@ -82,7 +95,7 @@
         "type": "address"
       }
     ],
-    "name": "deleteScheduleProxyExample",
+    "name": "deleteSchedule",
     "outputs": [
       {
         "internalType": "int64",
@@ -97,26 +110,16 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "sender",
+        "name": "scheduleAddress",
         "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "expiryShift",
-        "type": "uint256"
       }
     ],
-    "name": "executeCallOnSenderSignatureExample",
+    "name": "deleteScheduleProxy",
     "outputs": [
       {
         "internalType": "int64",
         "name": "responseCode",
         "type": "int64"
-      },
-      {
-        "internalType": "address",
-        "name": "scheduleAddress",
-        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -155,7 +158,7 @@
         "type": "bytes"
       }
     ],
-    "name": "executeCallOnSenderSignatureWithFullParam",
+    "name": "executeCallOnSenderSignature",
     "outputs": [
       {
         "internalType": "int64",
@@ -173,12 +176,12 @@
   },
   {
     "inputs": [],
-    "name": "getValue",
+    "name": "getTests",
     "outputs": [
       {
-        "internalType": "int256",
+        "internalType": "string[]",
         "name": "",
-        "type": "int256"
+        "type": "string[]"
       }
     ],
     "stateMutability": "view",
@@ -211,102 +214,6 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "expiryShift",
-        "type": "uint256"
-      }
-    ],
-    "name": "hasScheduleCapacityExample",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "hasCapacity",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "expirySecond",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "expiryShift",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "executionIndex",
-        "type": "uint256"
-      }
-    ],
-    "name": "scheduleCallCycleExample",
-    "outputs": [
-      {
-        "internalType": "int64",
-        "name": "responseCode",
-        "type": "int64"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "expiryShift",
-        "type": "uint256"
-      }
-    ],
-    "name": "scheduleCallExample",
-    "outputs": [
-      {
-        "internalType": "int64",
-        "name": "responseCode",
-        "type": "int64"
-      },
-      {
-        "internalType": "address",
-        "name": "scheduleAddress",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "expiryShift",
-        "type": "uint256"
-      }
-    ],
-    "name": "scheduleCallWithCapacityCheckAndDeleteExample",
-    "outputs": [
-      {
-        "internalType": "int64",
-        "name": "responseCode",
-        "type": "int64"
-      },
-      {
-        "internalType": "address",
-        "name": "scheduleAddress",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "to",
         "type": "address"
@@ -332,7 +239,7 @@
         "type": "bytes"
       }
     ],
-    "name": "scheduleCallWithFullParam",
+    "name": "scheduleCall",
     "outputs": [
       {
         "internalType": "int64",
@@ -381,7 +288,7 @@
         "type": "bytes"
       }
     ],
-    "name": "scheduleCallWithPayerWithFullParam",
+    "name": "scheduleCallWithSender",
     "outputs": [
       {
         "internalType": "int64",
@@ -395,35 +302,6 @@
       }
     ],
     "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "sender",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "expiryShift",
-        "type": "uint256"
-      }
-    ],
-    "name": "scheduleCallWithSenderExample",
-    "outputs": [
-      {
-        "internalType": "int64",
-        "name": "responseCode",
-        "type": "int64"
-      },
-      {
-        "internalType": "address",
-        "name": "scheduleAddress",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -442,14 +320,44 @@
   {
     "inputs": [
       {
-        "internalType": "int256",
-        "name": "_value",
-        "type": "int256"
+        "internalType": "address",
+        "name": "schedule",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signatureMap",
+        "type": "bytes"
       }
     ],
-    "name": "setValue",
-    "outputs": [],
+    "name": "signSchedule",
+    "outputs": [
+      {
+        "internalType": "int64",
+        "name": "responseCode",
+        "type": "int64"
+      }
+    ],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "tests",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
