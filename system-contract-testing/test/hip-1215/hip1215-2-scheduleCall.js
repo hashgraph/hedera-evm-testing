@@ -151,7 +151,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         ethers.ZeroAddress,
         0,
         () => "0xabc123",
-        "INSUFFICIENT_TX_FEE",
+        "INVALID_ETHEREUM_TRANSACTION",
       );
     });
 
@@ -165,7 +165,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         ethers.ZeroAddress,
         0,
         () => deployContract.bytecode,
-        "INSUFFICIENT_TX_FEE",
+        "INVALID_ETHEREUM_TRANSACTION",
       );
     });
 
