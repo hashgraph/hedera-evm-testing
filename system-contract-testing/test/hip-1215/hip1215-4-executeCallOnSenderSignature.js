@@ -8,7 +8,8 @@ const {
 } = require("../../utils/constants");
 const { randomAddress } = require("../../utils/address");
 const {
-  callData,
+  addTestCallData,
+  payableCallCallData,
   hasScheduleCapacityCallData,
   getExpirySecond,
   testScheduleCallEvent,
@@ -24,6 +25,44 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
   let gasIncrement = 0;
   const scheduleCheck = [];
   const balanceCheck = [];
+  const scheduleTxCheck = [];
+
+  async function testScheduleCallEventAndSign(
+    testId,
+    to,
+    sender,
+    value = 0,
+    callDataFunction = (testId) => addTestCallData(testId),
+    executionExpectedStatus = "SUCCESS",
+  ) {
+    const expirySecond = getExpirySecond();
+    const scheduleTx = await hip1215.executeCallOnSenderSignature(
+      to,
+      sender,
+      getExpirySecond(),
+      // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
+      GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
+      value,
+      callDataFunction(testId, expirySecond),
+    );
+    const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+    // sign schedule
+    const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
+    const signTx = await hip1215.signSchedule(
+      scheduleAddress,
+      sigMapProtoEncoded,
+    );
+    await testResponseCodeEvent(signTx, 22n);
+    // execution check in 'after'
+    scheduleTxCheck.push({
+      id: testId,
+      expirySecond: expirySecond,
+      scheduleTx: scheduleTx.hash,
+      scheduleAddress: scheduleAddress,
+      expectedStatus: executionExpectedStatus,
+    });
+    return [testId, expirySecond, scheduleTx];
+  }
 
   // ----------------- Tests
   before(async () => {
@@ -32,20 +71,20 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
 
   // schedules result check ofter tests passes to save the time
   after(async () => {
-    await afterTests(scheduleCheck, balanceCheck);
+    await afterTests(scheduleCheck, balanceCheck, scheduleTxCheck);
   });
 
   describe("positive cases", () => {
     it("should schedule a call with sender signature", async () => {
-      const tx = await hip1215.executeCallOnSenderSignature(
-        await hip1215.getAddress(),
-        signers[1].address,
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
-        0,
-        callData("executeCallOnSenderSignature"),
-      );
-      await testScheduleCallEvent(tx, 22n);
+      const [testId, expirySecond, scheduleTx] =
+        await testScheduleCallEventAndSign(
+          "executeCallOnSenderSignature",
+          await hip1215.getAddress(),
+          signers[1].address,
+        );
+      // execution check just after signing
+      await Async.wait(1000);
+      expect(await hip1215.getTests()).to.contain(testId, "Schedule tx:" + scheduleTx.hash);
     });
 
     it("should succeed with eoa address for to", async () => {
@@ -55,7 +94,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("executeCallOnSenderSignature eoa"),
+        addTestCallData("executeCallOnSenderSignature eoa"),
       );
       await testScheduleCallEvent(tx, 22n);
     });
@@ -67,7 +106,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("executeCallOnSenderSignature address(this)"),
+        addTestCallData("executeCallOnSenderSignature address(this)"),
       );
       await testScheduleCallEvent(tx, 22n);
     });
@@ -92,7 +131,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         100_000_000, // 1 HBAR in TINYBARS
-        callData("executeCallOnSenderSignature amount"),
+        addTestCallData("executeCallOnSenderSignature amount"),
       );
       await testScheduleCallEvent(tx, 22n);
     });
@@ -134,7 +173,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         expirySecond,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData(testId),
+        addTestCallData(testId),
       );
       const scheduleAddress = await testScheduleCallEvent(tx, 22n);
       expect(await hip1215.getTests()).to.not.contain(testId);
@@ -195,7 +234,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         expirySecond,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData(testId),
+        addTestCallData(testId),
       );
       const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
       // sign schedule
@@ -215,7 +254,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("executeCallOnSenderSignature fail sender zero address"),
+        addTestCallData("executeCallOnSenderSignature fail sender zero address"),
       );
       await testScheduleCallEvent(tx, 21n);
     });
@@ -227,7 +266,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         getExpirySecond(),
         0,
         0,
-        callData("executeCallOnSenderSignature fail gasLimit 0"),
+        addTestCallData("executeCallOnSenderSignature fail gasLimit 0"),
       );
       await testScheduleCallEvent(tx, 30n);
     });
@@ -239,7 +278,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         getExpirySecond(),
         GAS_LIMIT_1_000.gasLimit,
         0,
-        callData("executeCallOnSenderSignature fail gasLimit 1000"),
+        addTestCallData("executeCallOnSenderSignature fail gasLimit 1000"),
       );
       await testScheduleCallEvent(tx, 30n);
     });
@@ -251,7 +290,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         getExpirySecond(),
         ethers.MaxUint256,
         0,
-        callData("executeCallOnSenderSignature fail uint.maxvalue"),
+        addTestCallData("executeCallOnSenderSignature fail uint.maxvalue"),
       );
       await testScheduleCallEvent(tx, 370n);
     });
@@ -263,7 +302,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         0,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("executeCallOnSenderSignature fail expiry 0"),
+        addTestCallData("executeCallOnSenderSignature fail expiry 0"),
       );
       await testScheduleCallEvent(tx, 307n);
     });
@@ -275,7 +314,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         new Date().getUTCSeconds(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("executeCallOnSenderSignature fail expiry current"),
+        addTestCallData("executeCallOnSenderSignature fail expiry current"),
       );
       await testScheduleCallEvent(tx, 307n);
     });
@@ -287,7 +326,7 @@ describe("HIP-1215 System Contract testing. executeCallOnSenderSignature()", () 
         new Date().getUTCSeconds() + MAX_EXPIRY + 1,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("executeCallOnSenderSignature fail expiry + 1"),
+        addTestCallData("executeCallOnSenderSignature fail expiry + 1"),
       );
       await testScheduleCallEvent(tx, 307n);
     });

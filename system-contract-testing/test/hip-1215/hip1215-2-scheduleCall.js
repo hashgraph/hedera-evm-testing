@@ -102,26 +102,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       });
     });
 
-    //TODO remove after investigation
-    // it("system contract", async () => {
-    //   const hbarAllowance1 = await hip1215.hbarAllowance(
-    //     signers[0].address,
-    //     signers[1].address,
-    //   );
-    //   console.log("hbarAllowance1", hbarAllowance1.hash);
-    //   const hbarApprove = await hip1215.hbarApprove(
-    //     signers[0].address,
-    //     signers[1].address,
-    //     100_000_000,
-    //   );
-    //   console.log("hbarApprove", hbarApprove.hash);
-    //   const hbarAllowance2 = await hip1215.hbarAllowance(
-    //     signers[0].address,
-    //     signers[1].address,
-    //   );
-    //   console.log("hbarAllowance2", hbarAllowance2.hash);
-    // });
-
     it("should succeed with system contract for to", async () => {
       await testScheduleCallEventAndSign(
         "scheduleCall system contract",
@@ -135,7 +115,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
     });
 
-    it("should succeed schedule but fail execution with amount sent to contract and contractCall", async () => {
+    it("should succeed with amount sent to contract", async () => {
       await testScheduleCallEventAndSign(
         "scheduleCall amount",
         await hip1215.getAddress(),
@@ -147,7 +127,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
     it("should succeed with empty callData", async () => {
       await testScheduleCallEventAndSign(
-        "scheduleCall invalid callData",
+        "scheduleCall empty callData",
         await hip1215.getAddress(),
         0,
         () => "0x",
@@ -156,7 +136,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
     it("should succeed schedule but fail execution with invalid callData", async () => {
       await testScheduleCallEventAndSign(
-        "scheduleCall empty callData",
+        "scheduleCall invalid callData",
         await hip1215.getAddress(),
         0,
         () => "0xabc123",
@@ -208,16 +188,18 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     it("should create account with balance change after schedule executed", async () => {
       const address = randomAddress(); // hollow account creation
       const balance = 100_000_000n; // 1 HBAR in TINYBARS
-      const [testId, expirySecond] = await testScheduleCallEventAndSign(
-        "scheduleCall balance",
-        address,
-        balance,
-        () => "0x",
-      );
+      const [testId, expirySecond, scheduleTx] =
+        await testScheduleCallEventAndSign(
+          "scheduleCall balance",
+          address,
+          balance,
+          () => "0x",
+        );
       // balance check in 'after'
       balanceCheck.push({
         id: testId,
         expirySecond: expirySecond,
+        scheduleTx: scheduleTx.hash,
         address: address,
         balance: balance * 10_000_000_000n, // converting TINYBAR -> WAIBAR
       });
@@ -225,7 +207,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
     it("should succeed schedule but fail execution for value more than balance", async () => {
       const address = randomAddress(); // hollow account creation
-      const balance = 100_000_000_000n; // 1000 HBAR in TINYBARS, more than contact balance
+      const balance = 100_000_000_000_000n; // 1_000_000 HBAR in TINYBARS, more than contact balance
       await testScheduleCallEventAndSign(
         "scheduleCall balance",
         address,
