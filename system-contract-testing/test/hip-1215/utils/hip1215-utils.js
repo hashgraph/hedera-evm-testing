@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 const HashgraphProto = require("@hashgraph/proto");
 const { PrivateKey, AccountId, ScheduleId } = require("@hashgraph/sdk");
 const Utils = require("../../../utils/utils");
-const { Events, GAS_LIMIT_1_000_000 } = require("../../../utils/constants");
+const { Events } = require("../../../utils/constants");
 const { Logger, HederaMirrorNode } = require("@hashgraphonline/standards-sdk");
 const hre = require("hardhat");
 const Async = require("../../../utils/async");
@@ -14,6 +14,8 @@ const hasScheduleCapacityAbiStr = [
   "function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit)",
 ];
 const hasScheduleCapacityAbi = new ethers.Interface(hasScheduleCapacityAbiStr);
+const payableCallAbiStr = ["function payableCall()"];
+const payableCallAbi = new ethers.Interface(payableCallAbiStr);
 
 // Schedule params functions --------------------------------------------------
 function getExpirySecond(shift = 10) {
@@ -29,6 +31,10 @@ function hasScheduleCapacityCallData(expirySecond, gasLimit) {
     expirySecond,
     gasLimit,
   ]);
+}
+
+function payableCallCallData() {
+  return payableCallAbi.encodeFunctionData("payableCall");
 }
 // ---------------------------------------------------------------------------
 
@@ -157,6 +163,7 @@ async function getScheduledTxStatus(
 module.exports = {
   addTestCallData,
   hasScheduleCapacityCallData,
+  payableCallCallData,
   getSignatureMap,
   getExpirySecond,
   testScheduleCallEvent,

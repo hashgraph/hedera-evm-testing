@@ -83,10 +83,6 @@ contract HIP1215Contract {
         return responseCode;
     }
 
-    function payableCall(string memory _value) external payable {
-        tests.push(_value);
-    }
-
     // functions used as scheduled calls
     function addTest(string memory _value) external {
         tests.push(_value);
@@ -94,6 +90,10 @@ contract HIP1215Contract {
 
     function getTests() view external returns (string[] memory) {
         return tests;
+    }
+
+    function payableCall() external payable returns (bool) {
+        return true;
     }
 
     // TODO test

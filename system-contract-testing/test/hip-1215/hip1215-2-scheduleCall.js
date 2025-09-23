@@ -1,4 +1,3 @@
-const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
   HSS_ADDRESS,
@@ -10,6 +9,7 @@ const { randomAddress } = require("../../utils/address");
 const {
   addTestCallData,
   hasScheduleCapacityCallData,
+  payableCallCallData,
   getExpirySecond,
   testScheduleCallEvent,
   testResponseCodeEvent,
@@ -135,14 +135,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
     });
 
-    //TODO discuss if call with value+callData should fail
     it("should succeed schedule but fail execution with amount sent to contract and contractCall", async () => {
       await testScheduleCallEventAndSign(
         "scheduleCall amount",
         await hip1215.getAddress(),
         100_000_000, // 1 HBAR in TINYBARS
-        (testId) => addTestCallData(testId),
-        "CONTRACT_REVERT_EXECUTED",
+        () => payableCallCallData(),
+        "SUCCESS",
       );
     });
 
@@ -197,7 +196,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
           await hip1215.getAddress(),
           0,
           (testId) => addTestCallData(testId),
-          true,
         );
       // execution check in 'after'
       scheduleCheck.push({
@@ -223,6 +221,18 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         address: address,
         balance: balance * 10_000_000_000n, // converting TINYBAR -> WAIBAR
       });
+    });
+
+    it("should succeed schedule but fail execution for value more than balance", async () => {
+      const address = randomAddress(); // hollow account creation
+      const balance = 100_000_000_000n; // 1000 HBAR in TINYBARS, more than contact balance
+      await testScheduleCallEventAndSign(
+        "scheduleCall balance",
+        address,
+        balance,
+        () => "0x",
+        "INSUFFICIENT_PAYER_BALANCE",
+      );
     });
   });
 
@@ -292,7 +302,5 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
       await testScheduleCallEvent(tx, 307n);
     });
-
-    // TODO add test: schedule create should succeed, execution should fail with amount more than contract balance
   });
 });

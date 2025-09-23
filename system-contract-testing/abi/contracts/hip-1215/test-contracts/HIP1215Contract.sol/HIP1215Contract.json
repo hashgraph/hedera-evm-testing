@@ -270,6 +270,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "payableCall",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
