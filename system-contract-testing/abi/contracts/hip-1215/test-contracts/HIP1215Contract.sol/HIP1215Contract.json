@@ -134,7 +134,7 @@
       },
       {
         "internalType": "address",
-        "name": "sender",
+        "name": "payer",
         "type": "address"
       },
       {
@@ -158,7 +158,7 @@
         "type": "bytes"
       }
     ],
-    "name": "executeCallOnSenderSignature",
+    "name": "executeCallOnPayerSignature",
     "outputs": [
       {
         "internalType": "int64",
@@ -277,7 +277,7 @@
       },
       {
         "internalType": "address",
-        "name": "sender",
+        "name": "payer",
         "type": "address"
       },
       {
@@ -301,7 +301,7 @@
         "type": "bytes"
       }
     ],
-    "name": "scheduleCallWithSender",
+    "name": "scheduleCallWithPayer",
     "outputs": [
       {
         "internalType": "int64",

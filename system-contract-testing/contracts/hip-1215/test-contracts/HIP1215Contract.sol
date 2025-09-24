@@ -31,17 +31,17 @@ contract HIP1215Contract {
         return (responseCode, scheduleAddress);
     }
 
-    function scheduleCallWithSender(address to, address sender, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
+    function scheduleCallWithPayer(address to, address payer, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
     external payable returns (int64 responseCode, address scheduleAddress) {
-        (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCallWithSender.selector, to, sender, expirySecond, gasLimit, value, callData));
+        (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCallWithPayer.selector, to, payer, expirySecond, gasLimit, value, callData));
         (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
         emit ScheduleCall(responseCode, scheduleAddress);
         return (responseCode, scheduleAddress);
     }
 
-    function executeCallOnSenderSignature(address to, address sender, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
+    function executeCallOnPayerSignature(address to, address payer, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
     external payable returns (int64 responseCode, address scheduleAddress) {
-        (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.executeCallOnSenderSignature.selector, to, sender, expirySecond, gasLimit, value, callData));
+        (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.executeCallOnPayerSignature.selector, to, payer, expirySecond, gasLimit, value, callData));
         (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
         emit ScheduleCall(responseCode, scheduleAddress);
         return (responseCode, scheduleAddress);
