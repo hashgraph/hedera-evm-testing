@@ -9,4 +9,6 @@ class Async {
   }
 }
 
-module.exports = Async;
+module.exports = {
+  Async
+};
