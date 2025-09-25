@@ -5,6 +5,7 @@ name: System contracts testing
   push:
     paths:
       - system-contract-testing/**
+      - .github/workflows/system-contracts-testing.yaml
   pull_request:
     paths:
       - system-contract-testing/**
