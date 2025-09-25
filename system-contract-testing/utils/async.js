@@ -9,9 +9,11 @@ class Async {
   }
 
   static async waitFor(milliseconds, step) {
-    while (Date.now() < milliseconds) {
-      console.debug("Waiting %s", milliseconds);
+    let now = Date.now();
+    while (now < milliseconds) {
+      console.debug("Waiting: %s now: %s", milliseconds, now);
       await this.wait(step);
+      now = Date.now();
     }
   }
 }
