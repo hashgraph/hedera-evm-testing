@@ -8,33 +8,17 @@ const {
   MAX_EXPIRY,
   Events,
 } = require("../../utils/constants");
+const { mockSetSuccessResponse, mockSetFailResponse } = require("./mock/utils");
 
 const { MOCK_ENABLED } = require("../../utils/environment");
 
 describe("HIP-1215 System Contract testing", () => {
+
   let hip1215, impl1215, signers;
   const htsAddress = "0x0000000000000000000000000000000000000167";
   const mockedResponseAddress = "0x000000000000000000000000000000000000007B";
   const dayFromNowSeconds = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
   const callData = "0x5b8f8584"; // token freeze signature
-
-  // ----------------- Mock update functions
-  function mockSetSuccessResponse() {
-    if (MOCK_ENABLED) {
-      console.log("Mock: set status success:", 22);
-      return impl1215.setResponse(true, 22);
-    } else {
-      return Promise.resolve("resolved");
-    }
-  }
-  function mockSetFailResponse(_responseCode) {
-    if (MOCK_ENABLED) {
-      console.log("Mock: set status fail:", _responseCode);
-      return impl1215.setResponse(false, _responseCode);
-    } else {
-      return Promise.resolve("resolved");
-    }
-  }
 
   // ----------------- Test helper functions
   async function testScheduleCallEvent(tx, responseCode) {
@@ -84,7 +68,7 @@ describe("HIP-1215 System Contract testing", () => {
   describe("scheduleCall", () => {
     describe("positive cases", async () => {
       before(async () => {
-        return mockSetSuccessResponse();
+        return mockSetSuccessResponse(impl1215);
       });
 
       it("should schedule a call", async () => {
@@ -174,7 +158,7 @@ describe("HIP-1215 System Contract testing", () => {
 
     describe("negative cases", () => {
       it("should fail with zero address for to", async () => {
-        await mockSetFailResponse(15);
+        await mockSetFailResponse(impl1215, 15);
         const tx = await hip1215.scheduleCallWithFullParam(
           ethers.ZeroAddress,
           dayFromNowSeconds,
@@ -186,7 +170,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with gasLimit 0", async () => {
-        await mockSetFailResponse(30);
+        await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
           dayFromNowSeconds,
@@ -198,7 +182,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with gasLimit 1000", async () => {
-        await mockSetFailResponse(30);
+        await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
           dayFromNowSeconds,
@@ -210,7 +194,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with gasLimit uint.maxvalue", async () => {
-        await mockSetFailResponse(366);
+        await mockSetFailResponse(impl1215, 366);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
           dayFromNowSeconds,
@@ -222,7 +206,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with amount more than contract balance", async () => {
-        await mockSetFailResponse(10);
+        await mockSetFailResponse(impl1215, 10);
         const balance = await signers[0].provider.getBalance(
           await hip1215.getAddress(),
         );
@@ -237,7 +221,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with 0 expiry", async () => {
-        await mockSetFailResponse(370);
+        await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
           0,
@@ -249,7 +233,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with expiry at current time", async () => {
-        await mockSetFailResponse(370);
+        await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
           new Date().getUTCMilliseconds(),
@@ -261,7 +245,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with expiry at max expiry + 1", async () => {
-        await mockSetFailResponse(370);
+        await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
           new Date().getUTCMilliseconds() + MAX_EXPIRY + 1,
@@ -277,7 +261,7 @@ describe("HIP-1215 System Contract testing", () => {
   describe("scheduleCallWithPayer()", () => {
     describe("positive cases", () => {
       before(async () => {
-        return mockSetSuccessResponse();
+        return mockSetSuccessResponse(impl1215);
       });
 
       it("should schedule a call with payer", async () => {
@@ -372,7 +356,7 @@ describe("HIP-1215 System Contract testing", () => {
 
     describe("negative cases", () => {
       it("should fail with zero address for to", async () => {
-        await mockSetFailResponse(15);
+        await mockSetFailResponse(impl1215, 15);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           ethers.ZeroAddress,
           signers[1].address,
@@ -385,7 +369,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with zero address for sender", async () => {
-        await mockSetFailResponse(15);
+        await mockSetFailResponse(impl1215, 15);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           ethers.ZeroAddress,
@@ -398,7 +382,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with gasLimit 0", async () => {
-        await mockSetFailResponse(30);
+        await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
@@ -411,7 +395,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with gasLimit 1000", async () => {
-        await mockSetFailResponse(30);
+        await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
@@ -424,7 +408,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with gasLimit uint.maxvalue", async () => {
-        await mockSetFailResponse(366);
+        await mockSetFailResponse(impl1215, 366);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
@@ -437,7 +421,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with amount more than contract balance", async () => {
-        await mockSetFailResponse(10);
+        await mockSetFailResponse(impl1215, 10);
         const balance = await signers[0].provider.getBalance(
           await hip1215.getAddress(),
         );
@@ -453,7 +437,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with 0 expiry", async () => {
-        await mockSetFailResponse(370);
+        await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
@@ -466,7 +450,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with expiry at current time", async () => {
-        await mockSetFailResponse(370);
+        await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
@@ -479,7 +463,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with expiry at max expiry + 1", async () => {
-        await mockSetFailResponse(370);
+        await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           signers[1].address,
@@ -492,7 +476,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with sender as zero address", async () => {
-        await mockSetFailResponse(15);
+        await mockSetFailResponse(impl1215, 15);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           ethers.ZeroAddress,
@@ -505,7 +489,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with sender as contract", async () => {
-        await mockSetFailResponse(15);
+        await mockSetFailResponse(impl1215, 15);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           htsAddress,
           await hip1215.getAddress(),
@@ -522,7 +506,7 @@ describe("HIP-1215 System Contract testing", () => {
   describe("executeCallOnSenderSignature()", () => {
     describe("positive cases", () => {
       before(async () => {
-        return mockSetSuccessResponse();
+        return mockSetSuccessResponse(impl1215);
       });
 
       it("should schedule a call with sender signature", async () => {
@@ -617,7 +601,7 @@ describe("HIP-1215 System Contract testing", () => {
 
     describe("negative cases", () => {
       it("should fail with zero address for to", async () => {
-        await mockSetFailResponse(15);
+        await mockSetFailResponse(impl1215, 15);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           ethers.ZeroAddress,
           signers[1].address,
@@ -630,7 +614,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with zero address for sender", async () => {
-        await mockSetFailResponse(15);
+        await mockSetFailResponse(impl1215, 15);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           ethers.ZeroAddress,
@@ -643,7 +627,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with gasLimit 0", async () => {
-        await mockSetFailResponse(30);
+        await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
@@ -656,7 +640,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with gasLimit 1000", async () => {
-        await mockSetFailResponse(30);
+        await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
@@ -669,7 +653,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with gasLimit uint.maxvalue", async () => {
-        await mockSetFailResponse(366);
+        await mockSetFailResponse(impl1215, 366);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
@@ -682,7 +666,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with amount more than contract balance", async () => {
-        await mockSetFailResponse(10);
+        await mockSetFailResponse(impl1215, 10);
         const balance = await signers[0].provider.getBalance(
           await hip1215.getAddress(),
         );
@@ -698,7 +682,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with 0 expiry", async () => {
-        await mockSetFailResponse(370);
+        await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
@@ -711,7 +695,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with expiry at current time", async () => {
-        await mockSetFailResponse(370);
+        await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
@@ -724,7 +708,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with expiry at max expiry + 1", async () => {
-        await mockSetFailResponse(370);
+        await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           signers[1].address,
@@ -737,7 +721,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with sender as zero address", async () => {
-        await mockSetFailResponse(15);
+        await mockSetFailResponse(impl1215, 15);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           ethers.ZeroAddress,
@@ -750,7 +734,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should fail with sender as contract", async () => {
-        await mockSetFailResponse(15);
+        await mockSetFailResponse(impl1215, 15);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           htsAddress,
           await hip1215.getAddress(),
@@ -768,11 +752,11 @@ describe("HIP-1215 System Contract testing", () => {
     // TODO add when we have state to check
   });
 
-  // TODO add hasScheduleCapacity test from a 'view' function
+  // TODO add hasScheduleCapacity test from a 'view' function when 'hasScheduleCapacity' will be available on MN
   describe("hasScheduleCapacity()", () => {
     describe("positive cases", () => {
       before(async () => {
-        return mockSetSuccessResponse();
+        return mockSetSuccessResponse(impl1215);
       });
 
       it("should have enough capacity", async () => {
@@ -792,35 +776,42 @@ describe("HIP-1215 System Contract testing", () => {
       });
     });
 
-    // TODO implement when hasScheduleCapacity will be implemented with https://github.com/hiero-ledger/hiero-consensus-node/issues/20662
-    // describe("negative cases", () => {
-    //   before(async () => {
-    //     return mockSetFailResponse(1)
-    //       // somehow Mock state change not always appears just after this call returns on local node.
-    //       // so we are adding 1s wait as a temp fix for this
-    //       .then(() => MOCK_ENABLED ? asyncUtils.wait(1000) : Promise.resolve("resolved") );
-    //   });
-    //
-    //   it("should return false for expiry in the past", async () => {
-    //     const tx = await hip1215.hasScheduleCapacity(
-    //       1716666666,
-    //       GAS_LIMIT_1_000_000.gasLimit,
-    //     );
-    //     expect(tx).to.be.false;
-    //   });
-    //
-    //   it("Should return false for valid expiry and 0 gas limit", async () => {
-    //     const tx = await hip1215.hasScheduleCapacity(dayFromNowSeconds, 0);
-    //     expect(tx).to.be.false;
-    //   });
-    //
-    //   it("Should return false for valid expiry and max gas limit", async () => {
-    //     const tx = await hip1215.hasScheduleCapacity(
-    //       dayFromNowSeconds,
-    //       GAS_LIMIT_15M.gasLimit,
-    //     );
-    //     expect(tx).to.be.false;
-    //   });
-    // });
+    describe("negative cases", () => {
+      before(async () => {
+        return mockSetFailResponse(impl1215, 1)
+          // somehow Mock state change not always appears just after this call returns on local node.
+          // so we are adding 1s wait as a temp fix for this
+          .then(() => MOCK_ENABLED ? asyncUtils.wait(1000) : Promise.resolve("resolved") );
+      });
+
+      it("should return false for expiry in the past", async () => {
+        const tx = await hip1215.hasScheduleCapacity(
+          1716666666,
+          GAS_LIMIT_1_000_000.gasLimit,
+        );
+        testHasScheduleCapacityEvent(tx, false);
+      });
+
+      it("should return false for 0 expiry", async () => {
+        const tx = await hip1215.hasScheduleCapacity(
+          0,
+          GAS_LIMIT_1_000_000.gasLimit,
+        );
+        testHasScheduleCapacityEvent(tx, false);
+      });
+
+      it("Should return false for valid expiry and 0 gas limit", async () => {
+        const tx = await hip1215.hasScheduleCapacity(dayFromNowSeconds, 0);
+        testHasScheduleCapacityEvent(tx, false);
+      });
+
+      it("Should return false for valid expiry and max gas limit", async () => {
+        const tx = await hip1215.hasScheduleCapacity(
+          dayFromNowSeconds,
+          GAS_LIMIT_15M.gasLimit,
+        );
+        testHasScheduleCapacityEvent(tx, false);
+      });
+    });
   });
 });
