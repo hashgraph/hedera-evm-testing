@@ -7,7 +7,6 @@ set -e
 #   - create accounts with preconfigured keys and initial balance
 
 WORK_DIR="$(pwd)"
-CONSENSUS_NODE_DIR="../../hiero-consensus-node"
 APP_PROPERTIES_PATH="local/application.properties"
 LATEST_CONSENSUS_COMMIT=""
 
