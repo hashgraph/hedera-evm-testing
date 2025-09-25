@@ -19,6 +19,7 @@ permissions:
   statuses: write
   id-token: write
 env:
+  SOLO_VERSION: 0.43.0
   SOLO_CLUSTER_NAME: solo-system-contracts-e2e
   SOLO_NAMESPACE: solo-system-contracts-e2e
   SOLO_DEPLOYMENT: solo-system-contracts-deployment
@@ -65,7 +66,7 @@ jobs:
         run: npm ci
         working-directory:  evm-testing/system-contract-testing
       - name: Install Solo
-        run: npm install -g @hashgraph/solo@latest
+        run: npm install -g @hashgraph/solo@${SOLO_VERSION}
       - name: Setup Kind
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3
         with:
