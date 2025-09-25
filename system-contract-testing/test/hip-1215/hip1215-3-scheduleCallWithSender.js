@@ -34,7 +34,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
   });
 
   describe("positive cases", () => {
-
     it("should schedule a call with payer", async () => {
       const tx = await hip1215.scheduleCallWithSender(
         await hip1215.getAddress(),
@@ -182,7 +181,11 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
       const testId = "scheduleCallWithSender sender contract";
       expect(await hip1215.getTests()).to.not.contain(testId);
       // create sender contract
-      const senderContract = await contractDeployAndFund("HIP1215SenderContract", 0, 10);
+      const senderContract = await contractDeployAndFund(
+        "HIP1215SenderContract",
+        0,
+        1,
+      );
       // create schedule
       const expirySecond = getExpirySecond();
       const scheduleTx = await hip1215.scheduleCallWithSender(
@@ -203,7 +206,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithSender()", () => {
   });
 
   describe("negative cases", () => {
-
     it("should fail with sender as zero address", async () => {
       const tx = await hip1215.scheduleCallWithSender(
         await hip1215.getAddress(),
