@@ -93,7 +93,7 @@ jobs:
       - name: Run the tests
         run: |
           npx hardhat test --network local
-        working-directory:  /evm-testing/system-contract-testing
+        working-directory:  evm-testing/system-contract-testing
       - name: Stop solo
         if: '${{ always() }}'
         run: |
