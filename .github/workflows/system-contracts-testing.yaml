@@ -20,7 +20,7 @@ permissions:
   id-token: write
 env:
   SOLO_CLUSTER_NAME: solo-system-contracts-e2e
-  SOLO_NAMESPACE: ssolo-system-contracts-e2e
+  SOLO_NAMESPACE: solo-system-contracts-e2e
   SOLO_DEPLOYMENT: solo-system-contracts-deployment
   SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup
   GRADLE_EXEC: ionice -c 2 -n 2 nice -n 19 ./gradlew
