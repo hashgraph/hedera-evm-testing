@@ -39,11 +39,6 @@ jobs:
           repository: hiero-ledger/hiero-consensus-node
           ref: 20599-HIP-1215-Finish-Java-integration-with-services
           fetch-depth: 0
-      - name: Checkout Code
-        id: checkout-code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ''
       - name: Setup Java
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
         with:
@@ -60,9 +55,15 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
+      - name: Checkout Code
+        id: checkout-code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: evm-testing
+          ref: ''
       - name: Install npm testing dependencies
         run: npm ci
-        working-directory: system-contract-testing/
+        working-directory:  /evm-testing/system-contract-testing
       - name: Install Solo
         run: npm install -g @hashgraph/solo@latest
       - name: Setup Kind
@@ -107,7 +108,7 @@ jobs:
       - name: Run the tests
         run: |
           npx hardhat test --network local
-        working-directory: ./system-contract-testing
+        working-directory:  /evm-testing/system-contract-testing
       - name: Stop solo
         if: '${{ always() }}'
         run: |
