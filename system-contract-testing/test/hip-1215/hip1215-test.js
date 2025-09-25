@@ -19,7 +19,9 @@ describe("HIP-1215 System Contract testing", () => {
   const mockedResponseAddress = "0x000000000000000000000000000000000000007B";
   const randomAddress = "0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97";
   const addTestFunctionSignature = "0xa432d339";
-  const AbiCoder = new ethers.AbiCoder();
+  const abiStr = ["function addTest(string memory _value)"];
+  const abi = new ethers.Interface(abiStr);
+  const testsCheck = [];
 
   // ----------------- Test helper functions
   async function testScheduleCallEvent(tx, responseCode) {
@@ -56,6 +58,10 @@ describe("HIP-1215 System Contract testing", () => {
     expect(rc.status).to.equal(1);
   }
 
+  function getExpirySecond() {
+    return Math.floor(Date.now() / 1000) + 3;
+  }
+
   // ----------------- Tests
   before(async () => {
     // provider configs override
@@ -75,8 +81,13 @@ describe("HIP-1215 System Contract testing", () => {
     ethers.provider.estimateGas = async () => 2_000_000;
   });
 
+  // TODO schedule not working
   after(async () => {
-    // TODO check schedules are executed
+    for (const check of testsCheck) {
+      console.log("Wait for '%s' at %s second", check.id, check.expirySecond);
+      await Async.waitFor(check.expirySecond * 1000 + 5000, 1000);
+      expect(await hip1215.getTests()).to.contain(check.id);
+    }
   });
 
   describe("scheduleCall", () => {
@@ -87,14 +98,11 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should schedule a call", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          await hip1215.getAddress(),
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
@@ -102,13 +110,10 @@ describe("HIP-1215 System Contract testing", () => {
       it("should succeed with eoa address for to", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
           signers[0].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall eoa"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall eoa"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
@@ -116,27 +121,21 @@ describe("HIP-1215 System Contract testing", () => {
       it("should succeed with address(this) for to", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
           await hip1215.getAddress(),
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall address(this)"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall address(this)"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with amount sent to contract", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          await hip1215.getAddress(),
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           ONE_HBAR,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall amount"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall amount"]),
           { value: ONE_HBAR },
         );
         await testScheduleCallEvent(tx, 22n);
@@ -144,8 +143,8 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should succeed with empty calldata", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          await hip1215.getAddress(),
+          getExpirySecond(),
           // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
           GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
           0,
@@ -154,11 +153,10 @@ describe("HIP-1215 System Contract testing", () => {
         await testScheduleCallEvent(tx, 22n);
       });
 
-      // TODO how to check failed execution?
       it("should succeed schedule but fail execution with invalid calldata", async () => {
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          await hip1215.getAddress(),
+          getExpirySecond(),
           // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
           GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
           0,
@@ -170,22 +168,18 @@ describe("HIP-1215 System Contract testing", () => {
       it("should change the state after schedule executed", async () => {
         const testId = "scheduleCall state";
         expect(await hip1215.getTests()).to.not.contain(testId);
+        const expirySecond = getExpirySecond();
         const tx = await hip1215.scheduleCallWithFullParam(
           await hip1215.getAddress(),
-          Math.floor(Date.now() / 1000) + 5,
+          expirySecond,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, testId],
-          ),
+          abi.encodeFunctionData("addTest", [testId]),
         );
         await testScheduleCallEvent(tx, 22n);
         expect(await hip1215.getTests()).to.not.contain(testId);
-        // TODO add execution check logic
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        // needs CN for this expectation
-        // expect(await hip1215.getValue()).to.equal(63n);
+        // execution check in 'after'
+        testsCheck.push({ id: testId, expirySecond: expirySecond });
       });
     });
 
@@ -193,14 +187,11 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with gasLimit 0", async () => {
         await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          await hip1215.getAddress(),
+          getExpirySecond(),
           0,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall fail gasLimit 0"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall fail gasLimit 0"]),
         );
         await testScheduleCallEvent(tx, 30n);
       });
@@ -208,14 +199,11 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with gasLimit 1000", async () => {
         await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          await hip1215.getAddress(),
+          getExpirySecond(),
           GAS_LIMIT_1_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall fail gasLimit 1000"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall fail gasLimit 1000"]),
         );
         await testScheduleCallEvent(tx, 30n);
       });
@@ -223,14 +211,11 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with gasLimit uint.maxvalue", async () => {
         await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          await hip1215.getAddress(),
+          getExpirySecond(),
           ethers.MaxUint256,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall fail uint.maxvalue"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall fail uint.maxvalue"]),
         );
         await testScheduleCallEvent(tx, 370n);
       });
@@ -243,13 +228,10 @@ describe("HIP-1215 System Contract testing", () => {
         );
         const tx = await hip1215.scheduleCallWithFullParam(
           htsAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           balance + ONE_HBAR,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall fail amount"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall fail amount"]),
         );
         await testScheduleCallEvent(tx, 10n);
       });
@@ -257,14 +239,11 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with 0 expiry", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           0,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall fail expiry 0"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall fail expiry 0"]),
         );
         await testScheduleCallEvent(tx, 307n);
       });
@@ -272,14 +251,11 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with expiry at current time", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           new Date().getUTCSeconds(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall fail expiry current"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall fail expiry current"]),
         );
         await testScheduleCallEvent(tx, 307n);
       });
@@ -287,14 +263,11 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with expiry at max expiry + 1", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           new Date().getUTCSeconds() + MAX_EXPIRY + 1,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCall fail expiry + 1"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCall fail expiry + 1"]),
         );
         await testScheduleCallEvent(tx, 307n);
       });
@@ -309,15 +282,12 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should schedule a call with payer", async () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCallWithPayer"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
@@ -326,13 +296,10 @@ describe("HIP-1215 System Contract testing", () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           signers[0].address,
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCallWithPayer eoa"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer eoa"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
@@ -341,28 +308,22 @@ describe("HIP-1215 System Contract testing", () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCallWithPayer address(this)"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer address(this)"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with amount sent to contract", async () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           ONE_HBAR,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCallWithPayer amount"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer amount"]),
           { value: ONE_HBAR },
         );
         await testScheduleCallEvent(tx, 22n);
@@ -370,9 +331,9 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should succeed with empty calldata", async () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
           GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
           0,
@@ -383,9 +344,9 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should succeed schedule but fail execution with invalid calldata", async () => {
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
           GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
           0,
@@ -397,21 +358,20 @@ describe("HIP-1215 System Contract testing", () => {
       it("should change the state after schedule executed", async () => {
         const testId = "scheduleCallWithPayer state";
         expect(await hip1215.getTests()).to.not.contain(testId);
+        const expirySecond = getExpirySecond();
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
           await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          expirySecond,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, testId],
+          abi.encodeFunctionData("addTest", [testId],
           ),
         );
         await testScheduleCallEvent(tx, 22n);
         expect(await hip1215.getTests()).to.not.contain(testId);
-        // TODO add execution check logic
-        // await new Promise((resolve) => setTimeout(resolve, 100));
+        // execution check in 'after'
+        testsCheck.push({ id: testId, expirySecond: expirySecond });
       });
     });
 
@@ -419,15 +379,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with gasLimit 0", async () => {
         await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           0,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCallWithPayer fail gasLimit 0"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer fail gasLimit 0"]),
         );
         await testScheduleCallEvent(tx, 30n);
       });
@@ -435,18 +392,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with gasLimit 1000", async () => {
         await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "scheduleCallWithPayer fail gasLimit 1000",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer fail gasLimit 1000"]),
         );
         await testScheduleCallEvent(tx, 30n);
       });
@@ -454,18 +405,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with gasLimit uint.maxvalue", async () => {
         await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           ethers.MaxUint256,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "scheduleCallWithPayer fail gasLimit uint.maxvalue",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer fail gasLimit uint.maxvalue"]),
         );
         await testScheduleCallEvent(tx, 370n);
       });
@@ -477,15 +422,12 @@ describe("HIP-1215 System Contract testing", () => {
           await hip1215.getAddress(),
         );
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           balance + ONE_HBAR,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCallWithPayer fail amount"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer fail amount"]),
         );
         await testScheduleCallEvent(tx, 10n);
       });
@@ -493,15 +435,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with 0 expiry", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
           0,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCallWithPayer fail expiry 0"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer fail expiry 0"]),
         );
         await testScheduleCallEvent(tx, 307n);
       });
@@ -509,18 +448,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with expiry at current time", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
           new Date().getUTCSeconds(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "scheduleCallWithPayer fail expiry current",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer fail expiry current"]),
         );
         await testScheduleCallEvent(tx, 307n);
       });
@@ -528,15 +461,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with expiry at max expiry + 1", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
           new Date().getUTCSeconds() + MAX_EXPIRY + 1,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "scheduleCallWithPayer fail expiry + 1"],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer fail expiry + 1"]),
         );
         await testScheduleCallEvent(tx, 307n);
       });
@@ -544,41 +474,29 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with sender as zero address", async () => {
         await mockSetFailResponse(impl1215, 21);
         const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           ethers.ZeroAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "scheduleCallWithPayer fail sender zero address",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer fail sender zero address"]),
         );
         await testScheduleCallEvent(tx, 21n);
       });
 
       // TODO why contract cant be a sender?
-      it("should fail with sender as contract", async () => {
-        await mockSetFailResponse(impl1215, 210);
-        const tx = await hip1215.scheduleCallWithPayerWithFullParam(
-          htsAddress,
-          await hip1215.getAddress(),
-          Math.floor(Date.now() / 1000) + 5,
-          GAS_LIMIT_1_000_000.gasLimit,
-          0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "scheduleCallWithPayer fail sender contract",
-            ],
-          ),
-        );
-        await testScheduleCallEvent(tx, 210n);
-      });
+      // it("should fail with sender as contract", async () => {
+      //   await mockSetFailResponse(impl1215, 210);
+      //   const tx = await hip1215.scheduleCallWithPayerWithFullParam(
+      //     htsAddress,
+      //     await hip1215.getAddress(),
+      //     getExpirySecond(),
+      //     GAS_LIMIT_1_000_000.gasLimit,
+      //     0,
+      //     abi.encodeFunctionData("addTest", ["scheduleCallWithPayer fail sender zero contract"]),
+      //   );
+      //   await testScheduleCallEvent(tx, 210n);
+      // });
     });
   });
 
@@ -590,15 +508,12 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should schedule a call with sender signature", async () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "executeCallOnSenderSignature"],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
@@ -607,13 +522,10 @@ describe("HIP-1215 System Contract testing", () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           signers[0].address,
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "executeCallOnSenderSignature eoa"],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature eoa"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
@@ -622,31 +534,22 @@ describe("HIP-1215 System Contract testing", () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "executeCallOnSenderSignature address(this)",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature address(this)"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with amount sent to contract", async () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           ONE_HBAR,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "executeCallOnSenderSignature amount"],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature amount"]),
           { value: ONE_HBAR },
         );
         await testScheduleCallEvent(tx, 22n);
@@ -654,9 +557,9 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should succeed with empty calldata", async () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
           GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
           0,
@@ -667,9 +570,9 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should succeed schedule but fail execution with invalid calldata", async () => {
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
           GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
           0,
@@ -681,21 +584,20 @@ describe("HIP-1215 System Contract testing", () => {
       it("should change the state after schedule executed", async () => {
         const testId = "executeCallOnSenderSignature state";
         expect(await hip1215.getTests()).to.not.contain(testId);
+        const expirySecond = getExpirySecond();
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
           await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          expirySecond,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, testId],
+          abi.encodeFunctionData("addTest", [testId],
           ),
         );
         await testScheduleCallEvent(tx, 22n);
         expect(await hip1215.getTests()).to.not.contain(testId);
-        // TODO add execution check logic
-        // await new Promise((resolve) => setTimeout(resolve, 100));
+        // execution check in 'after'
+        testsCheck.push({ id: testId, expirySecond: expirySecond });
       });
     });
 
@@ -703,18 +605,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with gasLimit 0", async () => {
         await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           0,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "executeCallOnSenderSignature fail gasLimit 0",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature fail gasLimit 0"]),
         );
         await testScheduleCallEvent(tx, 30n);
       });
@@ -722,18 +618,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with gasLimit 1000", async () => {
         await mockSetFailResponse(impl1215, 30);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "executeCallOnSenderSignature fail gasLimit 1000",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature fail gasLimit 1000"]),
         );
         await testScheduleCallEvent(tx, 30n);
       });
@@ -741,18 +631,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with gasLimit uint.maxvalue", async () => {
         await mockSetFailResponse(impl1215, 370);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           ethers.MaxUint256,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "executeCallOnSenderSignature fail uint.maxvalue",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature fail uint.maxvalue"]),
         );
         await testScheduleCallEvent(tx, 370n);
       });
@@ -764,18 +648,12 @@ describe("HIP-1215 System Contract testing", () => {
           await hip1215.getAddress(),
         );
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           balance + ONE_HBAR,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "executeCallOnSenderSignature fail amount",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature fail amount"]),
         );
         await testScheduleCallEvent(tx, 10n);
       });
@@ -783,18 +661,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with 0 expiry", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
           0,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "executeCallOnSenderSignature fail expiry 0",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature fail expiry 0"]),
         );
         await testScheduleCallEvent(tx, 307n);
       });
@@ -802,18 +674,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with expiry at current time", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
           new Date().getUTCSeconds(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "executeCallOnSenderSignature fail expiry current",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature fail expiry current"]),
         );
         await testScheduleCallEvent(tx, 307n);
       });
@@ -821,18 +687,12 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with expiry at max expiry + 1", async () => {
         await mockSetFailResponse(impl1215, 307);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           signers[1].address,
           new Date().getUTCSeconds() + MAX_EXPIRY + 1,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "executeCallOnSenderSignature fail expiry + 1",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature fail expiry + 1"]),
         );
         await testScheduleCallEvent(tx, 307n);
       });
@@ -840,41 +700,29 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with sender as zero address", async () => {
         await mockSetFailResponse(impl1215, 21);
         const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           ethers.ZeroAddress,
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "executeCallOnSenderSignature fail sender zero address",
-            ],
-          ),
+          abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature fail sender zero address"]),
         );
         await testScheduleCallEvent(tx, 21n);
       });
 
       // TODO why contract cant be a sender?
-      it("should fail with sender as contract", async () => {
-        await mockSetFailResponse(impl1215, 15);
-        const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
-          htsAddress,
-          await hip1215.getAddress(),
-          Math.floor(Date.now() / 1000) + 5,
-          GAS_LIMIT_1_000_000.gasLimit,
-          0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [
-              addTestFunctionSignature,
-              "executeCallOnSenderSignature fail sender contract",
-            ],
-          ),
-        );
-        await testScheduleCallEvent(tx, 15n);
-      });
+      // it("should fail with sender as contract", async () => {
+      //   await mockSetFailResponse(impl1215, 15);
+      //   const tx = await hip1215.executeCallOnSenderSignatureWithFullParam(
+      //     htsAddress,
+      //     await hip1215.getAddress(),
+      //     getExpirySecond(),
+      //     GAS_LIMIT_1_000_000.gasLimit,
+      //     0,
+      //     abi.encodeFunctionData("addTest", ["executeCallOnSenderSignature fail sender contract"]),
+      //   );
+      //   await testScheduleCallEvent(tx, 15n);
+      // });
     });
   });
 
@@ -887,14 +735,11 @@ describe("HIP-1215 System Contract testing", () => {
       it("should delete schedule", async () => {
         // create schedule
         const createTx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           Math.floor(Date.now() / 1000) + 60,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "deleteSchedule"],
-          ),
+          abi.encodeFunctionData("addTest", ["deleteSchedule"]),
         );
         const scheduleAddress = await testScheduleCallEvent(createTx, 22n);
         // delete schedule
@@ -902,18 +747,14 @@ describe("HIP-1215 System Contract testing", () => {
         await testDeleteScheduleEvent(deleteTx, 22n);
       });
 
-      // TODO failed with INVALID_SIGNATURE
       it("should delete schedule through proxy", async () => {
         // create schedule
-        const createTx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
+        const createTx = await hip1215.scheduleCallWithDelegateCall(
+          await hip1215.getAddress(),
           Math.floor(Date.now() / 1000) + 60,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "deleteSchedule proxy"],
-          ),
+          abi.encodeFunctionData("addTest", ["deleteSchedule proxy"]),
         );
         const scheduleAddress = await testScheduleCallEvent(createTx, 22n);
         // delete schedule
@@ -923,7 +764,6 @@ describe("HIP-1215 System Contract testing", () => {
     });
 
     describe("negative cases", () => {
-
       it("should fail with random address for to", async () => {
         const tx = await hip1215.deleteSchedule(randomAddress);
         await testDeleteScheduleEvent(tx, 21n);
@@ -932,14 +772,11 @@ describe("HIP-1215 System Contract testing", () => {
       it("should fail with expired address for to", async () => {
         // create schedule
         const tx = await hip1215.scheduleCallWithFullParam(
-          htsAddress,
+          await hip1215.getAddress(),
           Math.floor(Date.now() / 1000) + 2, // just enought to execute transaction
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          AbiCoder.encode(
-            ["bytes4", "string"],
-            [addTestFunctionSignature, "deleteSchedule fail expired"],
-          ),
+          abi.encodeFunctionData("addTest", ["deleteSchedule fail expired"]),
         );
         const scheduleAddress = await testScheduleCallEvent(tx, 22n);
         await Async.wait(2000);
@@ -959,7 +796,7 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should have enough capacity", async () => {
         const tx = await hip1215.hasScheduleCapacity(
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
         );
         await testHasScheduleCapacityEvent(tx, true);
@@ -967,7 +804,7 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should return true for valid expiry and max gas limit - 1", async () => {
         const tx = await hip1215.hasScheduleCapacity(
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_15M.gasLimit - 1,
         );
         await testHasScheduleCapacityEvent(tx, true);
@@ -981,9 +818,7 @@ describe("HIP-1215 System Contract testing", () => {
             // somehow Mock state change not always appears just after this call returns on local node.
             // so we are adding 1s wait as a temp fix for this
             .then(() =>
-              MOCK_ENABLED
-                ? Async.wait(1000)
-                : Promise.resolve("resolved"),
+              MOCK_ENABLED ? Async.wait(1000) : Promise.resolve("resolved"),
             )
         );
       });
@@ -1006,7 +841,7 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("Should return false for valid expiry and max gas limit + 1", async () => {
         const tx = await hip1215.hasScheduleCapacity(
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           GAS_LIMIT_15M.gasLimit + 1,
         );
         await testHasScheduleCapacityEvent(tx, false);
@@ -1014,7 +849,7 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("Should return false for valid expiry and max long + 1 gas limit", async () => {
         const tx = await hip1215.hasScheduleCapacity(
-          Math.floor(Date.now() / 1000) + 5,
+          getExpirySecond(),
           BigInt("9223372036854775808"),
         );
         await testHasScheduleCapacityEvent(tx, false);
