@@ -31,7 +31,7 @@ contract HIP1215Contract {
         return (responseCode, scheduleAddress);
     }
 
-    function scheduleCallWithPayer(address to, address sender, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
+    function scheduleCallWithSender(address to, address sender, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
     external payable returns (int64 responseCode, address scheduleAddress) {
         (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCallWithSender.selector, to, sender, expirySecond, gasLimit, value, callData));
         (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
@@ -65,7 +65,7 @@ contract HIP1215Contract {
         return responseCode;
     }
 
-    function signSchedule(address scheduleAddress) external returns (int64 responseCode) {
+    function authorizeSchedule(address scheduleAddress) external returns (int64 responseCode) {
         (bool success, bytes memory result) = HSS.call(
             abi.encodeWithSelector(IHederaScheduleService_HIP755.authorizeSchedule.selector, scheduleAddress));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;

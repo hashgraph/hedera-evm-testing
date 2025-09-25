@@ -95,7 +95,7 @@ describe("HIP-1215 System Contract testing", () => {
   after(async () => {
     for (const check of testsCheck) {
       console.log("Wait for '%s' at %s second", check.id, check.expirySecond);
-      await Async.waitFor(check.expirySecond * 1000 + 1000, 1000);
+      await Async.waitFor(check.expirySecond * 1000 + 3000, 1000);
       expect(await hip1215.getTests()).to.contain(check.id);
     }
   });
@@ -189,7 +189,7 @@ describe("HIP-1215 System Contract testing", () => {
         const scheduleId = await testScheduleCallEvent(scheduleTx, 22n);
         expect(await hip1215.getTests()).to.not.contain(testId);
         // sign schedule
-        const signTx = await hip1215.signSchedule(scheduleId);
+        const signTx = await hip1215.authorizeSchedule(scheduleId);
         await testResponseCodeEvent(signTx, 22n);
         // execution check in 'after'
         testsCheck.push({ id: testId, expirySecond: expirySecond });
@@ -294,64 +294,64 @@ describe("HIP-1215 System Contract testing", () => {
     });
   });
 
-  describe("scheduleCallWithPayer()", () => {
+  describe("scheduleCallWithSender()", () => {
     describe("positive cases", () => {
       before(async () => {
         return mockSetSuccessResponse(impl1215);
       });
 
       it("should schedule a call with payer", async () => {
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer"]),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithSender"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with eoa address for to", async () => {
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           signers[0].address,
           signers[1].address,
           getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
-          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer eoa"]),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithSender eoa"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with address(this) for to", async () => {
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           abi.encodeFunctionData("addTest", [
-            "scheduleCallWithPayer address(this)",
+            "scheduleCallWithSender address(this)",
           ]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with amount sent to contract", async () => {
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           ONE_HBAR,
-          abi.encodeFunctionData("addTest", ["scheduleCallWithPayer amount"]),
+          abi.encodeFunctionData("addTest", ["scheduleCallWithSender amount"]),
         );
         await testScheduleCallEvent(tx, 22n);
       });
 
       it("should succeed with empty calldata", async () => {
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           getExpirySecond(),
@@ -364,7 +364,7 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should succeed schedule but fail execution with invalid calldata", async () => {
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           getExpirySecond(),
@@ -377,10 +377,10 @@ describe("HIP-1215 System Contract testing", () => {
       });
 
       it("should change the state after schedule executed", async () => {
-        const testId = "scheduleCallWithPayer state";
+        const testId = "scheduleCallWithSender state";
         expect(await hip1215.getTests()).to.not.contain(testId);
         const expirySecond = getExpirySecond();
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           expirySecond,
@@ -391,7 +391,7 @@ describe("HIP-1215 System Contract testing", () => {
         const scheduleId = await testScheduleCallEvent(tx, 22n);
         expect(await hip1215.getTests()).to.not.contain(testId);
         // sign schedule //TODO signers[1].address should sign
-        const signTx = await hip1215.signSchedule(scheduleId);
+        const signTx = await hip1215.authorizeSchedule(scheduleId);
         await testResponseCodeEvent(signTx, 22n);
         // execution check in 'after'
         testsCheck.push({ id: testId, expirySecond: expirySecond });
@@ -401,14 +401,14 @@ describe("HIP-1215 System Contract testing", () => {
     describe("negative cases", () => {
       it("should fail with gasLimit 0", async () => {
         await mockSetFailResponse(impl1215, 30);
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           getExpirySecond(),
           0,
           0,
           abi.encodeFunctionData("addTest", [
-            "scheduleCallWithPayer fail gasLimit 0",
+            "scheduleCallWithSender fail gasLimit 0",
           ]),
         );
         await testScheduleCallEvent(tx, 30n);
@@ -416,14 +416,14 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should fail with gasLimit 1000", async () => {
         await mockSetFailResponse(impl1215, 30);
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           getExpirySecond(),
           GAS_LIMIT_1_000.gasLimit,
           0,
           abi.encodeFunctionData("addTest", [
-            "scheduleCallWithPayer fail gasLimit 1000",
+            "scheduleCallWithSender fail gasLimit 1000",
           ]),
         );
         await testScheduleCallEvent(tx, 30n);
@@ -431,14 +431,14 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should fail with gasLimit uint.maxvalue", async () => {
         await mockSetFailResponse(impl1215, 370);
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           getExpirySecond(),
           ethers.MaxUint256,
           0,
           abi.encodeFunctionData("addTest", [
-            "scheduleCallWithPayer fail gasLimit uint.maxvalue",
+            "scheduleCallWithSender fail gasLimit uint.maxvalue",
           ]),
         );
         await testScheduleCallEvent(tx, 370n);
@@ -450,14 +450,14 @@ describe("HIP-1215 System Contract testing", () => {
         const balance = await signers[0].provider.getBalance(
           await hip1215.getAddress(),
         );
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           balance + ONE_HBAR,
           abi.encodeFunctionData("addTest", [
-            "scheduleCallWithPayer fail amount",
+            "scheduleCallWithSender fail amount",
           ]),
         );
         await testScheduleCallEvent(tx, 10n);
@@ -465,14 +465,14 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should fail with 0 expiry", async () => {
         await mockSetFailResponse(impl1215, 307);
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           0,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           abi.encodeFunctionData("addTest", [
-            "scheduleCallWithPayer fail expiry 0",
+            "scheduleCallWithSender fail expiry 0",
           ]),
         );
         await testScheduleCallEvent(tx, 307n);
@@ -480,14 +480,14 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should fail with expiry at current time", async () => {
         await mockSetFailResponse(impl1215, 307);
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           new Date().getUTCSeconds(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           abi.encodeFunctionData("addTest", [
-            "scheduleCallWithPayer fail expiry current",
+            "scheduleCallWithSender fail expiry current",
           ]),
         );
         await testScheduleCallEvent(tx, 307n);
@@ -495,14 +495,14 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should fail with expiry at max expiry + 1", async () => {
         await mockSetFailResponse(impl1215, 307);
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           signers[1].address,
           new Date().getUTCSeconds() + MAX_EXPIRY + 1,
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           abi.encodeFunctionData("addTest", [
-            "scheduleCallWithPayer fail expiry + 1",
+            "scheduleCallWithSender fail expiry + 1",
           ]),
         );
         await testScheduleCallEvent(tx, 307n);
@@ -510,14 +510,14 @@ describe("HIP-1215 System Contract testing", () => {
 
       it("should fail with sender as zero address", async () => {
         await mockSetFailResponse(impl1215, 21);
-        const tx = await hip1215.scheduleCallWithPayer(
+        const tx = await hip1215.scheduleCallWithSender(
           await hip1215.getAddress(),
           ethers.ZeroAddress,
           getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
           0,
           abi.encodeFunctionData("addTest", [
-            "scheduleCallWithPayer fail sender zero address",
+            "scheduleCallWithSender fail sender zero address",
           ]),
         );
         await testScheduleCallEvent(tx, 21n);
@@ -526,13 +526,13 @@ describe("HIP-1215 System Contract testing", () => {
       // TODO why contract cant be a sender?
       // it("should fail with sender as contract", async () => {
       //   await mockSetFailResponse(impl1215, 210);
-      //   const tx = await hip1215.scheduleCallWithPayer(
+      //   const tx = await hip1215.scheduleCallWithSender(
       //     htsAddress,
       //     await hip1215.getAddress(),
       //     getExpirySecond(),
       //     GAS_LIMIT_1_000_000.gasLimit,
       //     0,
-      //     abi.encodeFunctionData("addTest", ["scheduleCallWithPayer fail sender zero contract"]),
+      //     abi.encodeFunctionData("addTest", ["scheduleCallWithSender fail sender zero contract"]),
       //   );
       //   await testScheduleCallEvent(tx, 210n);
       // });
@@ -640,7 +640,7 @@ describe("HIP-1215 System Contract testing", () => {
         const scheduleId = await testScheduleCallEvent(tx, 22n);
         expect(await hip1215.getTests()).to.not.contain(testId);
         // sign schedule //TODO signers[1].address should sign
-        const signTx = await hip1215.signSchedule(scheduleId);
+        const signTx = await hip1215.authorizeSchedule(scheduleId);
         await testResponseCodeEvent(signTx, 22n);
         // execution check in 'after'
         testsCheck.push({ id: testId, expirySecond: expirySecond });
