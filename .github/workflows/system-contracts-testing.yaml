@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 name: System contracts testing
 'on':
+  workflow_dispatch:
   push:
     paths:
       - system-contract-testing/**
