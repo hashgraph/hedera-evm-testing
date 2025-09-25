@@ -27,7 +27,7 @@ env:
 jobs:
   system-contracts-regression:
     name: Standard
-    runs-on: hiero-smart-contracts-linux-medium
+    runs-on: smart-contracts-linux-medium
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911
