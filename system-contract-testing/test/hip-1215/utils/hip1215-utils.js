@@ -33,7 +33,7 @@ function hasScheduleCapacityCallData(expirySecond, gasLimit) {
   ]);
 }
 
-function payableCallCallData() {
+function payableCallData() {
   return payableCallAbi.encodeFunctionData("payableCall");
 }
 // ---------------------------------------------------------------------------
@@ -163,7 +163,7 @@ async function getScheduledTxStatus(
 module.exports = {
   addTestCallData,
   hasScheduleCapacityCallData,
-  payableCallCallData,
+  payableCallData,
   getSignatureMap,
   getExpirySecond,
   testScheduleCallEvent,

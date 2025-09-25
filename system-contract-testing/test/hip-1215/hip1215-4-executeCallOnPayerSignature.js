@@ -9,7 +9,7 @@ const {
 const { randomAddress } = require("../../utils/address");
 const {
   addTestCallData,
-  payableCallCallData,
+  payableCallData,
   hasScheduleCapacityCallData,
   getExpirySecond,
   testScheduleCallEvent,
@@ -27,7 +27,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
   const balanceCheck = [];
   const scheduleTxCheck = [];
 
-  async function testScheduleCallEventAndSign(
+  async function testExecuteCallOnPayerSignatureAndSign(
     testId,
     to,
     payer,
@@ -76,7 +76,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
 
   describe("positive cases", () => {
     it("should schedule a call with payer signature", async () => {
-      const [testId, scheduleTx] = await testScheduleCallEventAndSign(
+      const [testId, scheduleTx] = await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature",
         await hip1215.getAddress(),
         signers[1].address,
@@ -90,7 +90,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
     });
 
     it("should succeed with eoa address for to", async () => {
-      await testScheduleCallEventAndSign(
+      await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature eoa",
         signers[0].address,
         signers[1].address,
@@ -98,7 +98,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
     });
 
     it("should succeed with address(this) for to", async () => {
-      const [testId, scheduleTx] = await testScheduleCallEventAndSign(
+      const [testId, scheduleTx] = await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature address(this)",
         await hip1215.getAddress(),
         signers[1].address,
@@ -112,7 +112,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
     });
 
     it("should succeed with system contract for to", async () => {
-      await testScheduleCallEventAndSign(
+      await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature system contract",
         HSS_ADDRESS,
         signers[1].address,
@@ -126,18 +126,18 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
     });
 
     it("should succeed with amount sent to contract", async () => {
-      await testScheduleCallEventAndSign(
+      await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature amount",
         await hip1215.getAddress(),
         signers[1].address,
         100_000_000, // 1 HBAR in TINYBARS
-        () => payableCallCallData(),
+        () => payableCallData(),
         "SUCCESS",
       );
     });
 
     it("should succeed with empty callData", async () => {
-      await testScheduleCallEventAndSign(
+      await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature empty callData",
         await hip1215.getAddress(),
         signers[1].address,
@@ -147,7 +147,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
     });
 
     it("should succeed schedule but fail execution with invalid callData", async () => {
-      await testScheduleCallEventAndSign(
+      await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature invalid callData",
         await hip1215.getAddress(),
         signers[1].address,
@@ -158,7 +158,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
     });
 
     it("should succeed schedule but fail execution with invalid contract deploy", async () => {
-      await testScheduleCallEventAndSign(
+      await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature fail invalid contract deploy",
         ethers.ZeroAddress,
         signers[1].address,
@@ -172,7 +172,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       const deployContract = await ethers.getContractFactory(
         "HIP1215DeployContract",
       );
-      await testScheduleCallEventAndSign(
+      await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature fail valid contract deploy",
         ethers.ZeroAddress,
         signers[1].address,
@@ -184,7 +184,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
 
     it("should change the state after schedule executed", async () => {
       const [testId, scheduleTx] =
-        await testScheduleCallEventAndSign(
+        await testExecuteCallOnPayerSignatureAndSign(
           "executeCallOnPayerSignature state",
           await hip1215.getAddress(),
           signers[1].address,
@@ -203,7 +203,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       const address = randomAddress(); // hollow account creation
       const balance = 100_000_000n; // 1 HBAR in TINYBARS
       const [, scheduleTx] =
-        await testScheduleCallEventAndSign(
+        await testExecuteCallOnPayerSignatureAndSign(
           "executeCallOnPayerSignature balance",
           address,
           signers[1].address,
@@ -221,7 +221,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
     it("should succeed schedule but fail execution for value more than balance", async () => {
       const address = randomAddress(); // hollow account creation
       const balance = 100_000_000_000_000n; // 1_000_000 HBAR in TINYBARS, more than contact balance
-      await testScheduleCallEventAndSign(
+      await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature balance",
         address,
         signers[1].address,
