@@ -19,7 +19,7 @@ permissions:
   statuses: write
   id-token: write
 env:
-  SOLO_VERSION: 0.43.0
+  SOLO_VERSION: latest
   SOLO_CLUSTER_NAME: solo-system-contracts-e2e
   SOLO_NAMESPACE: solo-system-contracts-e2e
   SOLO_DEPLOYMENT: solo-system-contracts-deployment
