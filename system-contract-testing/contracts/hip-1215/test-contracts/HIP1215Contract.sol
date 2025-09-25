@@ -14,11 +14,10 @@ contract HIP1215Contract {
     event ScheduleCall(int64 responseCode, address scheduleAddress);
     event HasScheduleCapacity(bool hasCapacity);
 
-    int internal variableValue;
+    string[] public tests;
 
     constructor(IHederaScheduleService_HIP1215 _scheduleServiceAddress) {
         scheduleService = _scheduleServiceAddress;
-        variableValue = 0;
     }
 
     function scheduleCallWithFullParam(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
@@ -48,12 +47,24 @@ contract HIP1215Contract {
         return hasCapacity;
     }
 
-    // Functions used as scheduled calls
-    function setValue(int _value) external {
-        variableValue = _value;
+    function deleteSchedule(address scheduleAddress) external returns (int64 responseCode) {
+        responseCode = scheduleService.deleteSchedule(scheduleAddress);
+        emit ResponseCode(responseCode);
+        return responseCode;
     }
 
-    function getValue() view external returns (int) {
-        return variableValue;
+    function deleteScheduleProxy(address scheduleAddress) external returns (int64 responseCode) {
+        responseCode = IHRC1215ScheduleFacade(scheduleAddress).deleteSchedule();
+        emit ResponseCode(responseCode);
+        return responseCode;
+    }
+
+    // Functions used as scheduled calls
+    function addTest(string memory _value) external {
+        tests.push(_value);
+    }
+
+    function getTests() view external returns (string[] memory) {
+        return tests;
     }
 }
