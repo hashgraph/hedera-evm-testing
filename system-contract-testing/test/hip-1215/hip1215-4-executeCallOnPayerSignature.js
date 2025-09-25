@@ -157,7 +157,30 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       );
     });
 
-    //TODO add contract deploy tests after discussion
+    it("should succeed schedule but fail execution with invalid contract deploy", async () => {
+      await testScheduleCallEventAndSign(
+        "executeCallOnPayerSignature fail invalid contract deploy",
+        ethers.ZeroAddress,
+        signers[1].address,
+        0,
+        () => "0xabc123",
+        "INVALID_ETHEREUM_TRANSACTION",
+      );
+    });
+
+    it("should succeed schedule but fail execution with valid contract deploy", async () => {
+      const deployContract = await ethers.getContractFactory(
+        "HIP1215DeployContract",
+      );
+      await testScheduleCallEventAndSign(
+        "executeCallOnPayerSignature fail valid contract deploy",
+        ethers.ZeroAddress,
+        signers[1].address,
+        0,
+        () => deployContract.bytecode,
+        "INVALID_ETHEREUM_TRANSACTION",
+      );
+    });
 
     it("should change the state after schedule executed", async () => {
       const [testId, scheduleTx] =

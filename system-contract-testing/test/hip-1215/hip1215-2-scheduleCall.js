@@ -144,7 +144,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
     });
 
-    //TODO discuss if call with invalid contract deploy should result with INSUFFICIENT_TX_FEE
     it("should succeed schedule but fail execution with invalid contract deploy", async () => {
       await testScheduleCallEventAndSign(
         "scheduleCall fail invalid contract deploy",
@@ -155,7 +154,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
     });
 
-    //TODO discuss if call with valid contract deploy should result with INSUFFICIENT_TX_FEE
     it("should succeed schedule but fail execution with valid contract deploy", async () => {
       const deployContract = await ethers.getContractFactory(
         "HIP1215DeployContract",
