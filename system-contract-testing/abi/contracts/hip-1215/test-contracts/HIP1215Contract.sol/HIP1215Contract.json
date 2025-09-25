@@ -15,6 +15,19 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "bool",
+        "name": "hasCapacity",
+        "type": "bool"
+      }
+    ],
+    "name": "HasScheduleCapacity",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "int64",
         "name": "responseCode",
         "type": "int64"
@@ -192,7 +205,7 @@
         "type": "bool"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
