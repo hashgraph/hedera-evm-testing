@@ -9,6 +9,7 @@ const {
   Events,
 } = require("../../utils/constants");
 const Async = require("../../utils/async");
+const { randomAddress } = require("../../utils/address");
 const { mockSetSuccessResponse, mockSetFailResponse } = require("./mock/utils");
 const { MOCK_ENABLED } = require("../../utils/environment");
 const { getSignatureMap } = require("./utils/hip-1215-utils");
@@ -18,11 +19,11 @@ describe("HIP-1215 System Contract testing", () => {
   let gasIncrement = 0;
   const htsAddress = "0x0000000000000000000000000000000000000167";
   const mockedResponseAddress = "0x000000000000000000000000000000000000007B";
-  const randomAddress = "0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97";
   const addTestFunctionSignature = "0xa432d339";
   const abiStr = ["function addTest(string memory _value)"];
   const abi = new ethers.Interface(abiStr);
-  const testsCheck = [];
+  const scheduleCheck = [];
+  const balanceCheck = [];
 
   // ----------------- Test helper functions
   async function testScheduleCallEvent(tx, responseCode) {
@@ -88,11 +89,27 @@ describe("HIP-1215 System Contract testing", () => {
     ethers.provider.estimateGas = async () => 2_000_000;
   });
 
+  // schedules result check ofter tests passes to save the time
   after(async () => {
-    for (const check of testsCheck) {
-      console.log("Wait for '%s' at %s second", check.id, check.expirySecond);
-      await Async.waitFor(check.expirySecond * 1000 + 3000, 1000);
+    for (const check of scheduleCheck) {
+      console.log(
+        "Wait for schedule '%s' at %s second",
+        check.id,
+        check.expirySecond,
+      );
+      await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
       expect(await hip1215.getTests()).to.contain(check.id);
+    }
+    for (const check of balanceCheck) {
+      console.log(
+        "Wait for balance '%s' at %s second",
+        check.id,
+        check.expirySecond,
+      );
+      await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
+      expect(await signers[0].provider.getBalance(check.address)).to.equal(
+        check.balance,
+      );
     }
   });
 
@@ -188,7 +205,33 @@ describe("HIP-1215 System Contract testing", () => {
         const signTx = await hip1215.authorizeSchedule(scheduleAddress);
         await testResponseCodeEvent(signTx, 22n);
         // execution check in 'after'
-        testsCheck.push({ id: testId, expirySecond: expirySecond });
+        scheduleCheck.push({ id: testId, expirySecond: expirySecond });
+      });
+
+      it("should create account with balance change after schedule executed", async () => {
+        const testId = "scheduleCall balance";
+        // create schedule
+        const address = randomAddress();
+        const expirySecond = getExpirySecond();
+        const balance = 100_000_000n; // 1 HBAR in TINYBARS
+        const scheduleTx = await hip1215.scheduleCall(
+          address, // hollow account creation
+          expirySecond,
+          GAS_LIMIT_1_000_000.gasLimit,
+          balance,
+          "0x",
+        );
+        const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+        // sign schedule
+        const signTx = await hip1215.authorizeSchedule(scheduleAddress);
+        await testResponseCodeEvent(signTx, 22n);
+        // balance check in 'after'
+        balanceCheck.push({
+          id: testId,
+          expirySecond: expirySecond,
+          address: address,
+          balance: balance * 10_000_000_000n, // converting TINYBAR -> WAIBAR
+        });
       });
     });
 
@@ -372,10 +415,44 @@ describe("HIP-1215 System Contract testing", () => {
         expect(await hip1215.getTests()).to.not.contain(testId);
         // sign schedule
         const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
-        const signTx = await hip1215.signSchedule(scheduleAddress, sigMapProtoEncoded);
+        const signTx = await hip1215.signSchedule(
+          scheduleAddress,
+          sigMapProtoEncoded,
+        );
         await testResponseCodeEvent(signTx, 22n);
         // execution check in 'after'
-        testsCheck.push({ id: testId, expirySecond: expirySecond });
+        scheduleCheck.push({ id: testId, expirySecond: expirySecond });
+      });
+
+      it("should create account with balance change after schedule executed", async () => {
+        const testId = "scheduleCallWithSender balance";
+        // create schedule
+        const address = randomAddress();
+        const expirySecond = getExpirySecond();
+        const balance = 100_000_000n; // 1 HBAR in TINYBARS
+        const scheduleTx = await hip1215.scheduleCallWithSender(
+          address, // hollow account creation
+          signers[1].address,
+          expirySecond,
+          GAS_LIMIT_1_000_000.gasLimit,
+          balance,
+          "0x",
+        );
+        const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+        // sign schedule
+        const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
+        const signTx = await hip1215.signSchedule(
+          scheduleAddress,
+          sigMapProtoEncoded,
+        );
+        await testResponseCodeEvent(signTx, 22n);
+        // balance check in 'after'
+        balanceCheck.push({
+          id: testId,
+          expirySecond: expirySecond,
+          address: address,
+          balance: balance * 10_000_000_000n, // converting TINYBAR -> WAIBAR
+        });
       });
     });
 
@@ -590,11 +667,43 @@ describe("HIP-1215 System Contract testing", () => {
         expect(await hip1215.getTests()).to.not.contain(testId);
         // sign schedule
         const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
-        const signTx = await hip1215.signSchedule(scheduleAddress, sigMapProtoEncoded);
+        const signTx = await hip1215.signSchedule(
+          scheduleAddress,
+          sigMapProtoEncoded,
+        );
         await testResponseCodeEvent(signTx, 22n);
         // execution check just after signing
         await Async.wait(1000);
         expect(await hip1215.getTests()).to.contain(testId);
+      });
+
+      it("should create account with balance change after schedule executed", async () => {
+        const testId = "executeCallOnSenderSignature balance";
+        // create schedule
+        const address = randomAddress();
+        const expirySecond = getExpirySecond();
+        const balance = 100_000_000n; // 1 HBAR in TINYBARS
+        const scheduleTx = await hip1215.executeCallOnSenderSignature(
+          address, // hollow account creation
+          signers[1].address,
+          expirySecond,
+          GAS_LIMIT_1_000_000.gasLimit,
+          balance,
+          "0x",
+        );
+        const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+        // sign schedule
+        const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
+        const signTx = await hip1215.signSchedule(
+          scheduleAddress,
+          sigMapProtoEncoded,
+        );
+        await testResponseCodeEvent(signTx, 22n);
+        // execution check just after signing
+        await Async.wait(1000);
+        expect(await signers[0].provider.getBalance(address)).to.equal(
+          balance * 10_000_000_000n, // converting TINYBAR -> WAIBAR
+        );
       });
     });
 
@@ -745,7 +854,7 @@ describe("HIP-1215 System Contract testing", () => {
 
     describe("negative cases", () => {
       it("should fail with random address for to", async () => {
-        const tx = await hip1215.deleteSchedule(randomAddress);
+        const tx = await hip1215.deleteSchedule(randomAddress());
         await testResponseCodeEvent(tx, 21n);
       });
 
