@@ -9,7 +9,7 @@ const abiStr = ["function addTest(string memory _value)"];
 const abi = new ethers.Interface(abiStr);
 
 function callData(value) {
-  return abi.encodeFunctionData("addTest", [value])
+  return abi.encodeFunctionData("addTest", [value]);
 }
 
 function convertScheduleIdToUint8Array(scheduleId) {
@@ -54,7 +54,7 @@ async function testScheduleCallEvent(tx, responseCode) {
   expect(log.args[0]).to.equal(responseCode);
   const address = log.args[1];
   if (responseCode === 22n) {
-      expect(address.length).to.equal(42);
+    expect(address.length).to.equal(42);
   } else {
     expect(address).to.equal(ethers.ZeroAddress);
   }
@@ -84,5 +84,5 @@ module.exports = {
   getExpirySecond,
   testScheduleCallEvent,
   testResponseCodeEvent,
-  testHasScheduleCapacityEvent
+  testHasScheduleCapacityEvent,
 };
