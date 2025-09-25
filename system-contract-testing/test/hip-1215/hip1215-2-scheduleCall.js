@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
+  HTS_ADDRESS,
   GAS_LIMIT_1_000_000,
   GAS_LIMIT_1_000,
   MAX_EXPIRY,
@@ -64,6 +65,17 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     it("should succeed with address(this) for to", async () => {
       const tx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
+        getExpirySecond(),
+        GAS_LIMIT_1_000_000.gasLimit,
+        0,
+        callData("scheduleCall address(this)"),
+      );
+      await testScheduleCallEvent(tx, 22n);
+    });
+
+    it("should succeed with system contract for to", async () => {
+      const tx = await hip1215.scheduleCall(
+        HTS_ADDRESS,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
