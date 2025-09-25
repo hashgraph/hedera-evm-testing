@@ -44,12 +44,17 @@ jobs:
         with:
           distribution: temurin
           java-version: 21.0.6
+      # Set up the node environment
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96
         with:
           cache-read-only: false
       - name: Build hiero-consensus-node
         run: '${GRADLE_EXEC} assemble'
+      - name: Setup NodeJS Environment
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
       - name: Install npm testing dependencies
         run: npm ci
         working-directory: system-contract-testing/
