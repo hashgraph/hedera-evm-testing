@@ -74,11 +74,6 @@ describe("HIP-1215 System Contract testing", () => {
     );
     impl1215 = await HIP1215ImplFactory.deploy();
     await impl1215.waitForDeployment();
-    // transfer funds to impl contract
-    await signers[0].sendTransaction({
-      to: impl1215.target,
-      value: ONE_HBAR * 10n,
-    });
     // deploy test contract
     const HIP1215Factory = await ethers.getContractFactory("HIP1215Contract");
     console.log("Deploy hip1215 with impl:", impl1215.target);
@@ -145,7 +140,7 @@ describe("HIP-1215 System Contract testing", () => {
           await hip1215.getAddress(),
           getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
-          ONE_HBAR,
+          100_000_000, // 1 HBAR in TINYBARS
           abi.encodeFunctionData("addTest", ["scheduleCall amount"]),
         );
         await testScheduleCallEvent(tx, 22n);
@@ -345,7 +340,7 @@ describe("HIP-1215 System Contract testing", () => {
           signers[1].address,
           getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
-          ONE_HBAR,
+          100_000_000, // 1 HBAR in TINYBARS
           abi.encodeFunctionData("addTest", ["scheduleCallWithSender amount"]),
         );
         await testScheduleCallEvent(tx, 22n);
@@ -594,7 +589,7 @@ describe("HIP-1215 System Contract testing", () => {
           signers[1].address,
           getExpirySecond(),
           GAS_LIMIT_1_000_000.gasLimit,
-          ONE_HBAR,
+          100_000_000, // 1 HBAR in TINYBARS
           abi.encodeFunctionData("addTest", [
             "executeCallOnSenderSignature amount",
           ]),
