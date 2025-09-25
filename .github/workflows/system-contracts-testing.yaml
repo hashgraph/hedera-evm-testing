@@ -50,9 +50,9 @@ jobs:
           cache-read-only: false
       - name: Build hiero-consensus-node
         run: '${GRADLE_EXEC} assemble'
-      - name: Install NodeJS Dependencies (json-rpc-relay)
+      - name: Install npm testing dependencies
         run: npm ci
-        working-directory: ./system-contract-testing
+        working-directory: system-contract-testing/
       - name: Install Solo
         run: npm install -g @hashgraph/solo@latest
       - name: Setup Kind
