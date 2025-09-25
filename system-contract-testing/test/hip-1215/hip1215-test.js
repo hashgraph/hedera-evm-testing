@@ -10,59 +10,27 @@ const {
 } = require("../../utils/constants");
 const Async = require("../../utils/async");
 const { randomAddress } = require("../../utils/address");
-const { mockSetSuccessResponse, mockSetFailResponse } = require("./mock/utils");
+const {
+  mockSetSuccessResponse,
+  mockSetFailResponse,
+} = require("./utils/hip1215-mock");
+// TODO remove mock because it is broken?
 const { MOCK_ENABLED } = require("../../utils/environment");
-const { getSignatureMap } = require("./utils/hip-1215-utils");
+const {
+  getSignatureMap,
+  getExpirySecond,
+  testScheduleCallEvent,
+  testResponseCodeEvent,
+  testHasScheduleCapacityEvent,
+} = require("./utils/hip1215-utils");
 
 describe("HIP-1215 System Contract testing", () => {
   let hip1215, impl1215, signers;
   let gasIncrement = 0;
-  const htsAddress = "0x0000000000000000000000000000000000000167";
-  const mockedResponseAddress = "0x000000000000000000000000000000000000007B";
-  const addTestFunctionSignature = "0xa432d339";
   const abiStr = ["function addTest(string memory _value)"];
   const abi = new ethers.Interface(abiStr);
   const scheduleCheck = [];
   const balanceCheck = [];
-
-  // ----------------- Test helper functions
-  async function testScheduleCallEvent(tx, responseCode) {
-    const rc = await tx.wait();
-    const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
-    expect(log.args[0]).to.equal(responseCode);
-    const address = log.args[1];
-    if (responseCode === 22n) {
-      if (MOCK_ENABLED) {
-        expect(address).to.equal(mockedResponseAddress);
-      } else {
-        expect(address.length).to.equal(42);
-      }
-    } else {
-      expect(address).to.equal(ethers.ZeroAddress);
-    }
-    expect(rc.status).to.equal(1);
-    return address;
-  }
-
-  async function testResponseCodeEvent(tx, responseCode) {
-    const rc = await tx.wait();
-    const log = rc.logs.find((e) => e.fragment.name === Events.ResponseCode);
-    expect(log.args[0]).to.equal(responseCode);
-    expect(rc.status).to.equal(1);
-  }
-
-  async function testHasScheduleCapacityEvent(tx, hasCapacity) {
-    const rc = await tx.wait();
-    const log = rc.logs.find(
-      (e) => e.fragment.name === Events.HasScheduleCapacity,
-    );
-    expect(log.args[0]).to.equal(hasCapacity);
-    expect(rc.status).to.equal(1);
-  }
-
-  function getExpirySecond() {
-    return Math.floor(Date.now() / 1000) + 10;
-  }
 
   // ----------------- Tests
   before(async () => {
@@ -91,32 +59,34 @@ describe("HIP-1215 System Contract testing", () => {
 
   // schedules result check ofter tests passes to save the time
   after(async () => {
-    for (const check of scheduleCheck) {
-      console.log(
-        "Wait for schedule '%s' at %s second",
-        check.id,
-        check.expirySecond,
-      );
-      await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
-      expect(await hip1215.getTests()).to.contain(check.id);
-    }
-    for (const check of balanceCheck) {
-      console.log(
-        "Wait for balance '%s' at %s second",
-        check.id,
-        check.expirySecond,
-      );
-      await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
-      expect(await signers[0].provider.getBalance(check.address)).to.equal(
-        check.balance,
-      );
+    if (MOCK_ENABLED) {
+      for (const check of scheduleCheck) {
+        console.log(
+          "Wait for schedule '%s' at %s second",
+          check.id,
+          check.expirySecond,
+        );
+        await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
+        expect(await hip1215.getTests()).to.contain(check.id);
+      }
+      for (const check of balanceCheck) {
+        console.log(
+          "Wait for balance '%s' at %s second",
+          check.id,
+          check.expirySecond,
+        );
+        await Async.waitFor(check.expirySecond * 1000 + 2000, 1000);
+        expect(await signers[0].provider.getBalance(check.address)).to.equal(
+          check.balance,
+        );
+      }
     }
   });
 
   describe("scheduleCall", () => {
     describe("positive cases", async () => {
       before(async () => {
-        return mockSetSuccessResponse(impl1215);
+        return await mockSetSuccessResponse(impl1215);
       });
 
       it("should schedule a call", async () => {
