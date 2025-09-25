@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: hiero-ledger/hiero-consensus-node
-          ref: 20604-HIP-1215-Finalize-Smart-contract-tests-described-in-test-plan
+          ref: 20599-HIP-1215-Finish-Java-integration-with-services
           fetch-depth: 0
       - name: Setup Java
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
