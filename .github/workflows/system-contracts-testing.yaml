@@ -103,7 +103,7 @@ jobs:
           solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
           solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
       - name: Run the tests
-         if: steps.run_solo.outcome == 'success'
+        if: steps.run_solo.outcome == 'success'
         run: |
           npx hardhat test --network local
         working-directory:  evm-testing/system-contract-testing
