@@ -15,6 +15,14 @@ const {
   testResponseCodeEvent,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
+const Utils = require("./../../utils/utils");
+const {
+  ScheduleId,
+  ScheduleInfoQuery,
+  TransactionReceiptQuery,
+  StatusError,
+} = require("@hashgraph/sdk");
+const Async = require("../../utils/async");
 
 describe("HIP-1215 System Contract testing. scheduleCall()", () => {
   let hip1215, impl1215, signers;
@@ -40,6 +48,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       callDataFunction(testId, expirySecond),
     );
     const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+    console.log("scheduleAddress", scheduleAddress); // TODO
     // sign schedule
     const signTx = await hip1215.authorizeSchedule(scheduleAddress);
     await testResponseCodeEvent(signTx, 22n);
@@ -66,11 +75,10 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
   describe("positive cases", async () => {
     it("should schedule a call", async () => {
-      const [testId, expirySecond, scheduleTx] =
-        await testScheduleCallAndSign(
-          "scheduleCall",
-          await hip1215.getAddress(),
-        );
+      const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
+        "scheduleCall",
+        await hip1215.getAddress(),
+      );
       // execution check in 'after'
       scheduleCheck.push({
         id: testId,
@@ -89,11 +97,10 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should succeed with address(this) for to", async () => {
-      const [testId, expirySecond, scheduleTx] =
-        await testScheduleCallAndSign(
-          "scheduleCall address(this)",
-          await hip1215.getAddress(),
-        );
+      const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
+        "scheduleCall address(this)",
+        await hip1215.getAddress(),
+      );
       // execution check in 'after'
       scheduleCheck.push({
         id: testId,
@@ -168,13 +175,12 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should change the state after schedule executed", async () => {
-      const [testId, expirySecond, scheduleTx] =
-        await testScheduleCallAndSign(
-          "scheduleCall state",
-          await hip1215.getAddress(),
-          0,
-          (testId) => addTestCallData(testId),
-        );
+      const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
+        "scheduleCall state",
+        await hip1215.getAddress(),
+        0,
+        (testId) => addTestCallData(testId),
+      );
       // execution check in 'after'
       scheduleCheck.push({
         id: testId,
@@ -186,13 +192,12 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     it("should create account with balance change after schedule executed", async () => {
       const address = randomAddress(); // hollow account creation
       const balance = 100_000_000n; // 1 HBAR in TINYBARS
-      const [testId, expirySecond, scheduleTx] =
-        await testScheduleCallAndSign(
-          "scheduleCall balance",
-          address,
-          balance,
-          () => "0x",
-        );
+      const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
+        "scheduleCall balance",
+        address,
+        balance,
+        () => "0x",
+      );
       // balance check in 'after'
       balanceCheck.push({
         id: testId,
@@ -282,5 +287,63 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
       await testScheduleCallEvent(tx, 307n);
     });
+  });
+
+  //TODO CN port forward test
+  //  ps aux | grep kubectl
+  //  kubectl port-forward svc/haproxy-node1-svc -n "${SOLO_NAMESPACE}" 50211:50211
+  it("CN port forward test", async () => {
+    sdkClient = await Utils.createSDKClient();
+    // create
+    const scheduleTx = await hip1215.scheduleCall(
+      await hip1215.getAddress(),
+      getExpirySecond() + 1000,
+      // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
+      GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
+      0,
+      addTestCallData("CN port forward test"),
+    );
+    const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+    // check
+    console.log("Call 1 scheduleAddress:%s", scheduleAddress);
+    console.log(await sdkCall(sdkClient, scheduleAddress));
+  });
+});
+
+//TODO CN port forward test
+async function sdkCall(sdkClient, scheduleAddress) {
+  const scheduleId = ScheduleId.fromSolidityAddress(scheduleAddress);
+  const scheduleInfo = await new ScheduleInfoQuery()
+    .setScheduleId(scheduleId)
+    .execute(sdkClient);
+  try {
+    if (scheduleInfo.executed) {
+      const txReceipt = await new TransactionReceiptQuery()
+        .setTransactionId(scheduleInfo.scheduledTransactionId)
+        .execute(sdkClient);
+      return txReceipt.status;
+    } else {
+      return -1;
+    }
+  } catch (error) {
+    console.log(error.message);
+    if (error instanceof StatusError) {
+      return error.status._code;
+    }
+    return -2;
+  }
+}
+
+//TODO CN port forward test
+describe("CN port forward test", () => {
+  it("CN port forward test", async () => {
+    sdkClient = await Utils.createSDKClient();
+    for (let i = 0; i < 1000; i++) {
+      // the id is available just up to 'expirySecond'
+      const scheduleAddress = "0x00000000000000000000000000000000000003F5";
+      console.log("Call 2 scheduleAddress:%s", scheduleAddress);
+      console.log(await sdkCall(sdkClient, scheduleAddress));
+      await Async.wait(3000);
+    }
   });
 });
