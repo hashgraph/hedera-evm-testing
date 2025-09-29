@@ -69,7 +69,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
       expirySecond: expirySecond,
       scheduleTx: scheduleTx.hash,
       scheduleAddress: scheduleAddress,
-      expectedStatus: executionExpectedResult,
+      executionResult: executionExpectedResult,
     });
     return [testId, expirySecond, scheduleTx];
   }

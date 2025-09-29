@@ -74,11 +74,11 @@ async function afterTests(
       check.expirySecond,
     );
     await Async.waitFor(check.expirySecond * 1000 + WAIT_STEP, WAIT_STEP);
-    const scheduledTxStatus = await getScheduledTxStatus(
+    const scheduledTxResult = await getScheduledTxStatus(
       mnClient,
       check.scheduleAddress,
     );
-    expect(scheduledTxStatus).to.equal(check.expectedStatus);
+    expect(scheduledTxResult).to.equal(check.executionResult);
   }
 }
 

@@ -70,7 +70,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       expirySecond: expirySecond,
       scheduleTx: scheduleTx.hash,
       scheduleAddress: scheduleAddress,
-      expectedStatus: executionExpectedResult,
+      executionResult: executionExpectedResult,
     });
     return [testId, scheduleTx];
   }
