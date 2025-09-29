@@ -23,12 +23,22 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
   const balanceCheck = [];
   const scheduleTxCheck = [];
 
+  /**
+   * This function create schedule with scheduleCreate*, signs schedule,
+   * check the result of the 'schedule execution' in tests 'after' function
+   * @param testId unique identifier of the test
+   * @param to 'to' param of the scheduleCall
+   * @param value 'value' param of the scheduleCall
+   * @param callDataFunction function that returns 'callData' param of the scheduleCall
+   * @param executionExpectedResult result of the 'schedule execution' transaction
+   * @returns {Promise<*[]>} [testId, expirySecond, schedule transaction object]
+   */
   async function testScheduleCallAndSign(
     testId,
     to,
     value = 0,
     callDataFunction = (testId) => addTestCallData(testId),
-    executionExpectedStatus = "SUCCESS",
+    executionExpectedResult = "SUCCESS",
   ) {
     const expirySecond = getExpirySecond();
     const scheduleTx = await hip1215.scheduleCall(
@@ -49,7 +59,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       expirySecond: expirySecond,
       scheduleTx: scheduleTx.hash,
       scheduleAddress: scheduleAddress,
-      expectedStatus: executionExpectedStatus,
+      expectedStatus: executionExpectedResult,
     });
     return [testId, expirySecond, scheduleTx];
   }
@@ -150,6 +160,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         ethers.ZeroAddress,
         0,
         () => "0xabc123",
+        // in this case schedule creation is SUCCESS, but schedule execution fails with INVALID_ETHEREUM_TRANSACTION
         "INVALID_ETHEREUM_TRANSACTION",
       );
     });

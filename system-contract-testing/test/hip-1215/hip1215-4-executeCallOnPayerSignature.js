@@ -27,13 +27,24 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
   const balanceCheck = [];
   const scheduleTxCheck = [];
 
+  /**
+   * This function create schedule with scheduleCreate*, signs schedule,
+   * check the result of the 'schedule execution' in tests 'after' function
+   * @param testId unique identifier of the test
+   * @param to 'to' param of the scheduleCall
+   * @param payer 'payer' param of the scheduleCall
+   * @param value 'value' param of the scheduleCall
+   * @param callDataFunction function that returns 'callData' param of the scheduleCall
+   * @param executionExpectedResult result of the 'schedule execution' transaction
+   * @returns {Promise<*[]>} [testId, expirySecond, schedule transaction object]
+   */
   async function testExecuteCallOnPayerSignatureAndSign(
     testId,
     to,
     payer,
     value = 0,
     callDataFunction = (testId) => addTestCallData(testId),
-    executionExpectedStatus = "SUCCESS",
+    executionExpectedResult = "SUCCESS",
   ) {
     const expirySecond = getExpirySecond();
     const scheduleTx = await hip1215.executeCallOnPayerSignature(
@@ -59,7 +70,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       expirySecond: expirySecond,
       scheduleTx: scheduleTx.hash,
       scheduleAddress: scheduleAddress,
-      expectedStatus: executionExpectedStatus,
+      expectedStatus: executionExpectedResult,
     });
     return [testId, scheduleTx];
   }
