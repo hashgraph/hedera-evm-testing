@@ -271,10 +271,13 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         addTestCallData(testId),
       );
-      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+      const scheduleAddress = await testScheduleCallEvent(
+        scheduleTx,
+        ResponseCodeEnum.SUCCESS.valueOf(),
+      );
       // sign schedule
       const signTx = await payerContract.authorizeSchedule(scheduleAddress);
-      await testResponseCodeEvent(signTx, 22n);
+      await testResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
       // execution check in 'after'
       scheduleCheck.push({ id: testId, expirySecond: expirySecond });
     });
@@ -290,7 +293,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         addTestCallData("scheduleCallWithPayer fail payer zero address"),
       );
-      await testScheduleCallEvent(tx, 21n);
+      await testScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });
 
     it("should fail with gasLimit 0", async () => {

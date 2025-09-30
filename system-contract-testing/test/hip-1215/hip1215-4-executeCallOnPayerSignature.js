@@ -264,10 +264,10 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         0n,
         addTestCallData(testId),
       );
-      const scheduleAddress = await testScheduleCallEvent(scheduleTx, 22n);
+      const scheduleAddress = await testScheduleCallEvent(scheduleTx, ResponseCodeEnum.SUCCESS.valueOf());
       // sign schedule
       const signTx = await payerContract.authorizeSchedule(scheduleAddress);
-      await testResponseCodeEvent(signTx, 22n);
+      await testResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
       // execution check just after signing
       await Async.wait(1000);
       expect(await hip1215.getTests()).to.contain(testId);
@@ -284,7 +284,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         0,
         addTestCallData("executeCallOnPayerSignature fail payer zero address"),
       );
-      await testScheduleCallEvent(tx, 21n);
+      await testScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });
 
     it("should fail with gasLimit 0", async () => {
