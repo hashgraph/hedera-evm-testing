@@ -44,7 +44,7 @@ async function testScheduleCallEvent(tx, responseCode) {
   const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
   expect(log.args[0]).to.equal(responseCode);
   const address = log.args[1];
-  if (responseCode === 22n) {
+  if (responseCode === 22) {
     expect(address.length).to.equal(42);
   } else {
     expect(address).to.equal(ethers.ZeroAddress);
