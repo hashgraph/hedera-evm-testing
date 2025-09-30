@@ -16,7 +16,7 @@ describe("CN port forward test", () => {
         .setAccountId(AccountId.fromEvmAddress(0,0, accountAddress))
         .execute(sdkClient);
       console.log("Balance:%s", info.balance);
-      sdkClient.close(); //TODO w/o close execution lead to port-forward failing
+      // sdkClient.close(); //TODO w/o close execution lead to port-forward failing
       await Async.wait(1000);
     }
   });
