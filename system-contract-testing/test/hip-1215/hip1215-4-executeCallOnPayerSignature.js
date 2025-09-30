@@ -328,7 +328,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       );
       await testScheduleCallEvent(
         tx,
-        ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf()(),
+        ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf(),
       );
     });
 
