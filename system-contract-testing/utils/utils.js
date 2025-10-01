@@ -546,11 +546,13 @@ class Utils {
     operatorKey =
       operatorKey || hre.config.networks[network].sdkClient.operatorKey;
 
-    const client = Client.forNetwork(hederaNetwork)
-      .setMirrorNetwork(mirrorNode)
-      .setOperator(operatorId, operatorKey);
+    const requestTimeout =
+      hre.config.networks[network].sdkClient.requestTimeout || 30000;
 
-    return client;
+    return Client.forNetwork(hederaNetwork)
+      .setMirrorNetwork(mirrorNode)
+      .setOperator(operatorId, operatorKey)
+      .setRequestTimeout(requestTimeout);
   }
 
   static async getAccountId(evmAddress, client) {

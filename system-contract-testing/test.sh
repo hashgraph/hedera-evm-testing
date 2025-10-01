@@ -52,31 +52,17 @@ solo_start() {
   cd "${CONSENSUS_NODE_DIR}"
   ./gradlew assemble
   cd "${WORK_DIR}"
-#  build_consensus_release
   # ----------------------------------------------------------------------------
   # network components
   # --------- with local consensus build
   solo network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
   solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
   solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
-  # ----------------------------------------------------------------------------
-  # --------- with local consensus build and release package
-#  solo network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
-#  solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --release-tag "v0.64.2" --dev
-#  upgrade_solo_consensus
-#  solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
-  # ----------------------------------------------------------------------------
-  # --------- with latest release version
-#  solo network deploy --deployment "${SOLO_DEPLOYMENT}" --dev
-#  solo node setup -i node1 --deployment "${SOLO_DEPLOYMENT}" --release-tag "v0.64.2" --dev
-#  solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
-  # ----------------------------------------------------------------------------
-  # --------- with remote debug and local consensus build
-#  solo network deploy --deployment "${SOLO_DEPLOYMENT}" -i node1 --debug-node-alias node1 --dev
-#  solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
-#  solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --debug-node-alias node1 --dev
-  # ----------------------------------------------------------------------------
-  solo mirror-node deploy --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --enable-ingress --dev
+  # TODO Port forwarding fails with
+  #  E0922 16:21:12.458388   30038 portforward.go:424] "Unhandled Error" err="an error occurred forwarding 50211 -> 50211: error forwarding port 50211 to pod da6e875b14dd3ca1bd22b6d58d0710e391a097bf20cc50c6b651d6b767d58d86, uid : failed to execute portforward in network namespace \"/var/run/netns/cni-4238efbe-a960-1885-009c-184292bbdac8\": readfrom tcp4 127.0.0.1:56702->127.0.0.1:50211: write tcp4 127.0.0.1:56702->127.0.0.1:50211: write: broken pipe"
+       #error: lost connection to pod
+  # Re-forward: kubectl port-forward svc/haproxy-node1-svc -n "${SOLO_NAMESPACE}" 50211:50211 > /dev/null 2>&1 &
+  solo mirror-node deploy --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
   solo relay deploy --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
   solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
@@ -87,6 +73,7 @@ solo_start() {
 }
 
 solo_stop() {
+  solo explorer destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
   solo relay destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
   solo mirror-node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
   solo node stop --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true

@@ -1,12 +1,13 @@
 const { GAS_LIMIT_1_000_000 } = require("../../utils/constants");
 const { randomAddress } = require("../../utils/address");
 const {
-  callData,
+  addTestCallData,
   testScheduleCallEvent,
   testResponseCodeEvent,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
 const Async = require("../../utils/async");
+const ResponseCodeEnum = require("@hashgraph/proto").proto.ResponseCodeEnum;
 
 describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
   let hip1215, impl1215, signers;
@@ -30,12 +31,12 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         Math.floor(Date.now() / 1000) + 60,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("deleteSchedule"),
+        addTestCallData("deleteSchedule"),
       );
-      const scheduleAddress = await testScheduleCallEvent(createTx, 22n);
+      const scheduleAddress = await testScheduleCallEvent(createTx, ResponseCodeEnum.SUCCESS.valueOf());
       // delete schedule
       const deleteTx = await hip1215.deleteSchedule(scheduleAddress);
-      await testResponseCodeEvent(deleteTx, 22n);
+      await testResponseCodeEvent(deleteTx, ResponseCodeEnum.SUCCESS.valueOf());
     });
 
     it("should delete schedule through proxy", async () => {
@@ -45,19 +46,19 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         Math.floor(Date.now() / 1000) + 60,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("deleteSchedule proxy"),
+        addTestCallData("deleteSchedule proxy"),
       );
-      const scheduleAddress = await testScheduleCallEvent(createTx, 22n);
+      const scheduleAddress = await testScheduleCallEvent(createTx, ResponseCodeEnum.SUCCESS.valueOf());
       // delete schedule
       const deleteTx = await hip1215.deleteScheduleProxy(scheduleAddress);
-      await testResponseCodeEvent(deleteTx, 22n);
+      await testResponseCodeEvent(deleteTx, ResponseCodeEnum.SUCCESS.valueOf());
     });
   });
 
   describe("negative cases", () => {
     it("should fail with random address for to", async () => {
       const tx = await hip1215.deleteSchedule(randomAddress());
-      await testResponseCodeEvent(tx, 21n);
+      await testResponseCodeEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });
 
     it("should fail with expired address for to", async () => {
@@ -67,13 +68,13 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         Math.floor(Date.now() / 1000) + 2, // just enough to execute transaction
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        callData("deleteSchedule fail expired"),
+        addTestCallData("deleteSchedule fail expired"),
       );
-      const scheduleAddress = await testScheduleCallEvent(tx, 22n);
+      const scheduleAddress = await testScheduleCallEvent(tx, ResponseCodeEnum.SUCCESS.valueOf());
       await Async.wait(2000);
       // delete schedule
       const deleteTx = await hip1215.deleteSchedule(scheduleAddress);
-      await testResponseCodeEvent(deleteTx, 201n);
+      await testResponseCodeEvent(deleteTx, ResponseCodeEnum.INVALID_SCHEDULE_ID.valueOf());
     });
   });
 });

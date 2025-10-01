@@ -1,17 +1,76 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const HashgraphProto = require("@hashgraph/proto");
-const { PrivateKey, AccountId } = require("@hashgraph/sdk");
+const { PrivateKey, AccountId, ScheduleId } = require("@hashgraph/sdk");
 const Utils = require("../../../utils/utils");
 const { Events } = require("../../../utils/constants");
+const { Logger, HederaMirrorNode } = require("@hashgraphonline/standards-sdk");
+const hre = require("hardhat");
+const Async = require("../../../utils/async");
 
-const abiStr = ["function addTest(string memory _value)"];
-const abi = new ethers.Interface(abiStr);
+const addTestAbiStr = ["function addTest(string memory _value)"];
+const addTestAbi = new ethers.Interface(addTestAbiStr);
+const hasScheduleCapacityAbiStr = [
+  "function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit)",
+];
+const hasScheduleCapacityAbi = new ethers.Interface(hasScheduleCapacityAbiStr);
+const payableCallAbiStr = ["function payableCall()"];
+const payableCallAbi = new ethers.Interface(payableCallAbiStr);
 
-function callData(value) {
-  return abi.encodeFunctionData("addTest", [value]);
+// Schedule params functions --------------------------------------------------
+function getExpirySecond(shift = 10) {
+  return Math.floor(Date.now() / 1000) + shift;
 }
 
+function addTestCallData(value) {
+  return addTestAbi.encodeFunctionData("addTest", [value]);
+}
+
+function hasScheduleCapacityCallData(expirySecond, gasLimit) {
+  return hasScheduleCapacityAbi.encodeFunctionData("hasScheduleCapacity", [
+    expirySecond,
+    gasLimit,
+  ]);
+}
+
+function payableCallData() {
+  return payableCallAbi.encodeFunctionData("payableCall");
+}
+// ---------------------------------------------------------------------------
+
+// Test checker functions --------------------------------------------------
+async function testScheduleCallEvent(tx, responseCode) {
+  const rc = await tx.wait();
+  const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
+  expect(log.args[0]).to.equal(responseCode);
+  const address = log.args[1];
+  if (responseCode === 22) {
+    expect(address.length).to.equal(42);
+  } else {
+    expect(address).to.equal(ethers.ZeroAddress);
+  }
+  expect(rc.status).to.equal(1);
+  return address;
+}
+
+async function testResponseCodeEvent(tx, responseCode) {
+  const rc = await tx.wait();
+  const log = rc.logs.find((e) => e.fragment.name === Events.ResponseCode);
+  expect(log.args[0]).to.equal(responseCode);
+  expect(rc.status).to.equal(1);
+}
+
+async function testHasScheduleCapacityEvent(tx, hasCapacity) {
+  const rc = await tx.wait();
+  const log = rc.logs.find(
+    (e) => e.fragment.name === Events.HasScheduleCapacity,
+  );
+  expect(log.args[0]).to.equal(hasCapacity);
+  expect(rc.status).to.equal(1);
+}
+// ---------------------------------------------------------------------------
+
+// Sign functions --------------------------------------------------
 function convertScheduleIdToUint8Array(scheduleId) {
   const [shard, realm, num] = scheduleId.split(".");
 
@@ -43,46 +102,73 @@ async function getSignatureMap(accountIndex, scheduleAddress) {
     ],
   }).finish();
 }
+// ---------------------------------------------------------------------------
 
-function getExpirySecond(shift = 10) {
-  return Math.floor(Date.now() / 1000) + shift;
+// Hedera sdk client functions --------------------------------------------------
+// (!!!) not used because of CN port forward problem
+// async function getScheduledTxStatus(sdkClient, scheduleAddress) {
+//   const scheduleId = ScheduleId.fromSolidityAddress(scheduleAddress);
+//   const scheduleInfo = await new ScheduleInfoQuery()
+//     .setScheduleId(scheduleId)
+//     .execute(sdkClient);
+//   try {
+//     const txReceipt = await new TransactionReceiptQuery()
+//       .setTransactionId(scheduleInfo.scheduledTransactionId)
+//       .execute(sdkClient);
+//     return txReceipt.status;
+//   } catch (error) {
+//     if (error instanceof StatusError) {
+//       return error.status._code;
+//     }
+//     return -1;
+//   }
+// }
+// ---------------------------------------------------------------------------
+
+// Mirror node client functions --------------------------------------------------
+function createMirrorNodeClient() {
+  const logger = new Logger({ module: "test/hip-1215", level: "warn" });
+  const { mirrorNode } =
+    hre.config.networks[Utils.getCurrentNetwork()].sdkClient;
+  return new HederaMirrorNode("local", logger, {
+    customUrl: mirrorNode,
+  });
 }
 
-async function testScheduleCallEvent(tx, responseCode) {
-  const rc = await tx.wait();
-  const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
-  expect(log.args[0]).to.equal(responseCode);
-  const address = log.args[1];
-  if (responseCode === 22n) {
-    expect(address.length).to.equal(42);
-  } else {
-    expect(address).to.equal(ethers.ZeroAddress);
-  }
-  expect(rc.status).to.equal(1);
-  return address;
-}
-
-async function testResponseCodeEvent(tx, responseCode) {
-  const rc = await tx.wait();
-  const log = rc.logs.find((e) => e.fragment.name === Events.ResponseCode);
-  expect(log.args[0]).to.equal(responseCode);
-  expect(rc.status).to.equal(1);
-}
-
-async function testHasScheduleCapacityEvent(tx, hasCapacity) {
-  const rc = await tx.wait();
-  const log = rc.logs.find(
-    (e) => e.fragment.name === Events.HasScheduleCapacity,
+async function getScheduledTxStatus(
+  mnClient,
+  scheduleAddress,
+  waitStep = 5000,
+  maxAttempts = 10,
+) {
+  const scheduleId = ScheduleId.fromSolidityAddress(scheduleAddress).toString();
+  const scheduleObj = await Async.waitForCondition(
+    "executed_timestamp",
+    () => mnClient.getScheduleInfo(scheduleId),
+    (result) => result.executed_timestamp != null,
+    waitStep,
+    maxAttempts,
   );
-  expect(log.args[0]).to.equal(hasCapacity);
-  expect(rc.status).to.equal(1);
+  const transactions = await mnClient.getTransactionByTimestamp(
+    scheduleObj.executed_timestamp,
+  );
+  if (transactions.length > 0) {
+    return transactions[0].result;
+  } else {
+    throw "Cant find scheduled transaction";
+  }
 }
+// ---------------------------------------------------------------------------
 
 module.exports = {
-  callData,
+  addTestCallData,
+  hasScheduleCapacityCallData,
+  payableCallData,
   getSignatureMap,
   getExpirySecond,
   testScheduleCallEvent,
   testResponseCodeEvent,
   testHasScheduleCapacityEvent,
+  createMirrorNodeClient,
+  getScheduledTxStatus,
 };
