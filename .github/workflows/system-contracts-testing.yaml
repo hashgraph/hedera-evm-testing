@@ -78,7 +78,7 @@ jobs:
 
       - name: Install npm testing dependencies
         run: npm ci
-        working-directory:  evm-testing/system-contract-testing
+        working-directory: evm-testing/system-contract-testing
 
       - name: Install Solo
         run: npm install -g @hashgraph/solo@${SOLO_VERSION}
