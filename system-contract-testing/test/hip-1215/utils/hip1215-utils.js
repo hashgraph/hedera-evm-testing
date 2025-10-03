@@ -158,6 +158,80 @@ async function getScheduledTxStatus(
     throw "Cant find scheduled transaction";
   }
 }
+
+async function getRecursiveScheduleStatus(
+  mnClient,
+  scheduleAddress,
+  waitStep = 10000,
+  maxAttempts = 5
+) {
+  const scheduleId = ScheduleId.fromSolidityAddress(scheduleAddress).toString();
+  const scheduleObj = await Async.waitForCondition(
+    "executed_timestamp",
+    () => mnClient.getScheduleInfo(scheduleId),
+    (result) => result.executed_timestamp != null,
+    waitStep,
+    maxAttempts
+  );
+
+  const transactions = await mnClient.getTransactionByTimestamp(
+    scheduleObj.executed_timestamp
+  );
+
+  if (transactions.length > 0) {
+    const txn = transactions[0];
+    const result = txn.result;
+    console.log(`Scheduled call by ${scheduleAddress} has status: ${result}`);
+
+    // If the status is SUCCESS, we are checking for the schedule address in the transaction details
+    if (result === "SUCCESS" && txn.scheduled) {
+
+      const newScheduleAddress = await findNewScheduleAddress(mnClient, txn.consensus_timestamp, txn.hash, waitStep, maxAttempts);
+      if (newScheduleAddress) {
+        console.log(
+          `Found new schedule address: ${newScheduleAddress}, recursively checking...`
+        );
+        // Recursive call with next schedule
+        return await getRecursiveScheduleStatus(
+          mnClient,
+          newScheduleAddress,
+          waitStep,
+          maxAttempts
+        );
+      }
+    }
+
+    // Final status reached
+    console.log(
+      `Schedule ${scheduleAddress} reached final status: ${result}`
+    );
+    return result;
+  }
+}
+
+async function findNewScheduleAddress(mnClient, timestamp, transactionHash, waitStep, maxAttempts) {
+
+  const limit = 1;
+  // Query MN for contract call logs
+  const contractCallLogs = await Async.waitForCondition(
+    "contract_call_logs",
+    () => mnClient.getContractLogs({ limit, timestamp, transactionHash, }),
+    (result) => result != null,
+    waitStep,
+    maxAttempts,
+  );
+
+  // Check inside the log of the already executed scheduled call for the next schedule
+  if (contractCallLogs != null && contractCallLogs.length > 0) {
+    const log = contractCallLogs[0].data;
+    // We already now that the execution was successful so we only get the last 20 bytes
+    const nextScheduleAdrress = "0x" + log.slice(-40);
+    return nextScheduleAdrress;
+  }
+
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 
 module.exports = {
@@ -171,4 +245,5 @@ module.exports = {
   testHasScheduleCapacityEvent,
   createMirrorNodeClient,
   getScheduledTxStatus,
+  getRecursiveScheduleStatus,
 };

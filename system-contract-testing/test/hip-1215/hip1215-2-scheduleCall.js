@@ -3,6 +3,7 @@ const {
   TINYBAR_TO_WAIBAR_CORF,
   HSS_ADDRESS,
   GAS_LIMIT_1_000_000,
+  GAS_LIMIT_2_000_000,
   GAS_LIMIT_1_000,
   MAX_EXPIRY,
 } = require("../../utils/constants");
@@ -14,12 +15,14 @@ const {
   getExpirySecond,
   testScheduleCallEvent,
   testResponseCodeEvent,
+  getRecursiveScheduleStatus,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
+const { expect } = require("chai");
 const ResponseCodeEnum = require("@hashgraph/proto").proto.ResponseCodeEnum;
 
 describe("HIP-1215 System Contract testing. scheduleCall()", () => {
-  let hip1215, impl1215, signers;
+  let hip1215, impl1215, signers, mnClient;
   let gasIncrement = 0;
   const scheduleCheck = [];
   const balanceCheck = [];
@@ -72,7 +75,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
   // ----------------- Tests
   before(async () => {
-    [hip1215, impl1215, signers] = await beforeTests();
+    [hip1215, impl1215, signers, mnClient] = await beforeTests();
   });
 
   // schedules result check ofter tests passes to save the time
@@ -313,5 +316,22 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf(),
       );
     });
+  });
+
+  describe("Recursive scheduling test", () => {
+
+    it("should create recoursive scheduls until payer runs out of funds", async () => {
+      const tx = await hip1215.recursiveScheduleCall(
+        await hip1215.getAddress(),
+        getExpirySecond(),
+        GAS_LIMIT_2_000_000.gasLimit,
+        0,
+      );
+
+      const scheduleAddress = await testScheduleCallEvent(tx, 22);
+      // Validate execution and recursive behaviour
+      const finalResponse = await getRecursiveScheduleStatus(mnClient, scheduleAddress);
+      expect(finalResponse).to.not.eq("SUCCESS");
+    }).timeout(300_000); // We are recursively querying MN so we need more time for execution of the test
   });
 });
