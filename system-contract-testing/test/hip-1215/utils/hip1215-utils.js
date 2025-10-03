@@ -6,8 +6,15 @@ const { Events } = require("../../../utils/constants");
 const { Logger, HederaMirrorNode } = require("@hashgraphonline/standards-sdk");
 const hre = require("hardhat");
 const Async = require("../../../utils/async");
-const { SUCCESS } = require("../../../utils/constants");
 const { ResponseCodeEnum, SignatureMap } = require("@hashgraph/proto").proto;
+
+const SUCCESS = ResponseCodeEnum[ResponseCodeEnum.SUCCESS];
+const INVALID_ETHEREUM_TRANSACTION =
+  ResponseCodeEnum[ResponseCodeEnum.INVALID_ETHEREUM_TRANSACTION];
+const INSUFFICIENT_PAYER_BALANCE =
+  ResponseCodeEnum[ResponseCodeEnum.INSUFFICIENT_PAYER_BALANCE];
+const CONTRACT_REVERT_EXECUTED =
+  ResponseCodeEnum[ResponseCodeEnum.CONTRACT_REVERT_EXECUTED];
 
 const addTestAbiStr = ["function addTest(string memory _value)"];
 const addTestAbi = new ethers.Interface(addTestAbiStr);
@@ -255,4 +262,8 @@ module.exports = {
   createMirrorNodeClient,
   getScheduledTxStatus,
   getRecursiveScheduleStatus,
+  SUCCESS,
+  INVALID_ETHEREUM_TRANSACTION,
+  INSUFFICIENT_PAYER_BALANCE,
+  CONTRACT_REVERT_EXECUTED,
 };

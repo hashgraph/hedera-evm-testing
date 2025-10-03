@@ -6,10 +6,6 @@ const {
   GAS_LIMIT_2_000_000,
   GAS_LIMIT_1_000,
   MAX_EXPIRY,
-  SUCCESS,
-  CONTRACT_REVERT_EXECUTED,
-  INVALID_ETHEREUM_TRANSACTION,
-  INSUFFICIENT_PAYER_BALANCE,
 } = require("../../utils/constants");
 const { randomAddress } = require("../../utils/address");
 const {
@@ -20,6 +16,10 @@ const {
   testScheduleCallEvent,
   testResponseCodeEvent,
   getRecursiveScheduleStatus,
+  SUCCESS,
+  INSUFFICIENT_PAYER_BALANCE,
+  INVALID_ETHEREUM_TRANSACTION,
+  CONTRACT_REVERT_EXECUTED,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
 const { expect } = require("chai");
@@ -333,7 +333,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
       const scheduleAddress = await testScheduleCallEvent(
         tx,
-        ResponseCodeEnum.SUCCESS
+        ResponseCodeEnum.SUCCESS.valueOf()
       );
       // Validate execution and recursive behaviour
       const finalResponse = await getRecursiveScheduleStatus(
