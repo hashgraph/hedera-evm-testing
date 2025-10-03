@@ -1,12 +1,13 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const HashgraphProto = require("@hashgraph/proto");
 const { PrivateKey, AccountId, ScheduleId } = require("@hashgraph/sdk");
 const Utils = require("../../../utils/utils");
 const { Events } = require("../../../utils/constants");
 const { Logger, HederaMirrorNode } = require("@hashgraphonline/standards-sdk");
 const hre = require("hardhat");
 const Async = require("../../../utils/async");
+const { SUCCESS } = require("../../../utils/constants");
+const { ResponseCodeEnum, SignatureMap } = require("@hashgraph/proto").proto;
 
 const addTestAbiStr = ["function addTest(string memory _value)"];
 const addTestAbi = new ethers.Interface(addTestAbiStr);
@@ -44,12 +45,12 @@ async function testScheduleCallEvent(tx, responseCode) {
   const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
   expect(log.args[0]).to.equal(responseCode);
   const address = log.args[1];
-  if (responseCode === 22) {
+  if (responseCode === ResponseCodeEnum.SUCCESS.valueOf()) {
     expect(address.length).to.equal(42);
   } else {
     expect(address).to.equal(ethers.ZeroAddress);
   }
-  expect(rc.status).to.equal(1);
+  expect(rc.status).to.equal(ResponseCodeEnum.INVALID_TRANSACTION.valueOf());
   return address;
 }
 
@@ -57,16 +58,16 @@ async function testResponseCodeEvent(tx, responseCode) {
   const rc = await tx.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ResponseCode);
   expect(log.args[0]).to.equal(responseCode);
-  expect(rc.status).to.equal(1);
+  expect(rc.status).to.equal(ResponseCodeEnum.INVALID_TRANSACTION.valueOf());
 }
 
 async function testHasScheduleCapacityEvent(tx, hasCapacity) {
   const rc = await tx.wait();
   const log = rc.logs.find(
-    (e) => e.fragment.name === Events.HasScheduleCapacity,
+    (e) => e.fragment.name === Events.HasScheduleCapacity
   );
   expect(log.args[0]).to.equal(hasCapacity);
-  expect(rc.status).to.equal(1);
+  expect(rc.status).to.equal(ResponseCodeEnum.INVALID_TRANSACTION.valueOf());
 }
 // ---------------------------------------------------------------------------
 
@@ -88,12 +89,12 @@ function convertScheduleIdToUint8Array(scheduleId) {
 
 async function getSignatureMap(accountIndex, scheduleAddress) {
   const privateKey = PrivateKey.fromStringECDSA(
-    Utils.getHardhatSignerPrivateKeyByIndex(accountIndex),
+    Utils.getHardhatSignerPrivateKeyByIndex(accountIndex)
   );
   const scheduleIdAsBytes = convertScheduleIdToUint8Array(
-    AccountId.fromEvmAddress(0, 0, scheduleAddress).toString(),
+    AccountId.fromEvmAddress(0, 0, scheduleAddress).toString()
   );
-  return HashgraphProto.proto.SignatureMap.encode({
+  return SignatureMap.encode({
     sigPair: [
       {
         pubKeyPrefix: privateKey.publicKey.toBytesRaw(),
@@ -139,7 +140,7 @@ async function getScheduledTxStatus(
   mnClient,
   scheduleAddress,
   waitStep = 5000,
-  maxAttempts = 10,
+  maxAttempts = 10
 ) {
   const scheduleId = ScheduleId.fromSolidityAddress(scheduleAddress).toString();
   const scheduleObj = await Async.waitForCondition(
@@ -147,10 +148,10 @@ async function getScheduledTxStatus(
     () => mnClient.getScheduleInfo(scheduleId),
     (result) => result.executed_timestamp != null,
     waitStep,
-    maxAttempts,
+    maxAttempts
   );
   const transactions = await mnClient.getTransactionByTimestamp(
-    scheduleObj.executed_timestamp,
+    scheduleObj.executed_timestamp
   );
   if (transactions.length > 0) {
     return transactions[0].result;
@@ -184,9 +185,14 @@ async function getRecursiveScheduleStatus(
     console.log(`Scheduled call by ${scheduleAddress} has status: ${result}`);
 
     // If the status is SUCCESS, we are checking for the schedule address in the transaction details
-    if (result === "SUCCESS" && txn.scheduled) {
-
-      const newScheduleAddress = await findNewScheduleAddress(mnClient, txn.consensus_timestamp, txn.hash, waitStep, maxAttempts);
+    if (result === SUCCESS && txn.scheduled) {
+      const newScheduleAddress = await findNewScheduleAddress(
+        mnClient,
+        txn.consensus_timestamp,
+        txn.hash,
+        waitStep,
+        maxAttempts
+      );
       if (newScheduleAddress) {
         console.log(
           `Found new schedule address: ${newScheduleAddress}, recursively checking...`
@@ -202,23 +208,26 @@ async function getRecursiveScheduleStatus(
     }
 
     // Final status reached
-    console.log(
-      `Schedule ${scheduleAddress} reached final status: ${result}`
-    );
+    console.log(`Schedule ${scheduleAddress} reached final status: ${result}`);
     return result;
   }
 }
 
-async function findNewScheduleAddress(mnClient, timestamp, transactionHash, waitStep, maxAttempts) {
-
+async function findNewScheduleAddress(
+  mnClient,
+  timestamp,
+  transactionHash,
+  waitStep,
+  maxAttempts
+) {
   const limit = 1;
   // Query MN for contract call logs
   const contractCallLogs = await Async.waitForCondition(
     "contract_call_logs",
-    () => mnClient.getContractLogs({ limit, timestamp, transactionHash, }),
+    () => mnClient.getContractLogs({ limit, timestamp, transactionHash }),
     (result) => result != null,
     waitStep,
-    maxAttempts,
+    maxAttempts
   );
 
   // Check inside the log of the already executed scheduled call for the next schedule

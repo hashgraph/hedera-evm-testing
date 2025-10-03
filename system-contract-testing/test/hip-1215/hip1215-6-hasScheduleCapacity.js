@@ -20,11 +20,10 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
 
   // TODO add hasScheduleCapacity test from a 'view' function when 'hasScheduleCapacity' will be available on MN
   describe("positive cases", () => {
-
     it("should have enough capacity", async () => {
       const tx = await hip1215.hasScheduleCapacity(
         getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit,
+        GAS_LIMIT_1_000_000.gasLimit
       );
       await testHasScheduleCapacityEvent(tx, true);
     });
@@ -32,18 +31,17 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
     it("should return true for valid expiry and max gas limit - 1", async () => {
       const tx = await hip1215.hasScheduleCapacity(
         getExpirySecond(),
-        GAS_LIMIT_15M.gasLimit - 1,
+        GAS_LIMIT_15M.gasLimit - 1
       );
       await testHasScheduleCapacityEvent(tx, true);
     });
   });
 
   describe("negative cases", () => {
-
     it("should return false for expiry in the past", async () => {
       const tx = await hip1215.hasScheduleCapacity(
         1716666666,
-        GAS_LIMIT_1_000_000.gasLimit,
+        GAS_LIMIT_1_000_000.gasLimit
       );
       await testHasScheduleCapacityEvent(tx, false);
     });
@@ -51,7 +49,7 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
     it("should return false for 0 expiry", async () => {
       const tx = await hip1215.hasScheduleCapacity(
         0,
-        GAS_LIMIT_1_000_000.gasLimit,
+        GAS_LIMIT_1_000_000.gasLimit
       );
       await testHasScheduleCapacityEvent(tx, false);
     });
@@ -59,7 +57,7 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
     it("Should return false for valid expiry and max gas limit + 1", async () => {
       const tx = await hip1215.hasScheduleCapacity(
         getExpirySecond(),
-        GAS_LIMIT_15M.gasLimit + 1,
+        GAS_LIMIT_15M.gasLimit + 1
       );
       await testHasScheduleCapacityEvent(tx, false);
     });
@@ -67,7 +65,7 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
     it("Should return false for valid expiry and max long + 1 gas limit", async () => {
       const tx = await hip1215.hasScheduleCapacity(
         getExpirySecond(),
-        BigInt("9223372036854775808"),
+        BigInt("9223372036854775808")
       );
       await testHasScheduleCapacityEvent(tx, false);
     });
