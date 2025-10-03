@@ -83,6 +83,14 @@ contract HIP1215Contract {
         return responseCode;
     }
 
+    function recursiveScheduleCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value)
+    external payable returns (int64 responseCode, address scheduleAddress) {
+        bytes memory callData = abi.encodeWithSelector(this.recursiveScheduleCall.selector, to, expirySecond + 1, gasLimit, value);
+        (responseCode, scheduleAddress) = scheduleService.scheduleCall(to, expirySecond, gasLimit, value, callData);
+        emit ScheduleCall(responseCode, scheduleAddress);
+        return (responseCode, scheduleAddress);
+    }
+
     // functions used as scheduled calls
     function addTest(string memory _value) external {
         tests.push(_value);
