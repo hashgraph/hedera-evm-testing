@@ -170,6 +170,7 @@ async function getScheduledTxStatus(
 async function getRecursiveScheduleStatus(
   mnClient,
   scheduleAddress,
+  recursiveCounter = 0,
   waitStep = 10000,
   maxAttempts = 5
 ) {
@@ -208,6 +209,7 @@ async function getRecursiveScheduleStatus(
         return await getRecursiveScheduleStatus(
           mnClient,
           newScheduleAddress,
+          ++recursiveCounter,
           waitStep,
           maxAttempts
         );
@@ -216,7 +218,7 @@ async function getRecursiveScheduleStatus(
 
     // Final status reached
     console.log(`Schedule ${scheduleAddress} reached final status: ${result}`);
-    return result;
+    return { result, recursiveCounter };
   }
 }
 
