@@ -86,7 +86,8 @@ contract HIP1215Contract {
     function recursiveScheduleCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value)
     external payable returns (int64 responseCode, address scheduleAddress) {
         bytes memory callData = abi.encodeWithSelector(this.recursiveScheduleCall.selector, to, expirySecond + 1, gasLimit, value);
-        (responseCode, scheduleAddress) = scheduleService.scheduleCall(to, expirySecond, gasLimit, value, callData);
+        (bool success, bytes memory result) =  HSS.call(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCall.selector, to, expirySecond, gasLimit, value, callData));
+        (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
         emit ScheduleCall(responseCode, scheduleAddress);
         return (responseCode, scheduleAddress);
     }
