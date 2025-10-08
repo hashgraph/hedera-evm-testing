@@ -166,30 +166,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
     });
 
-    it("should succeed schedule but fail execution with invalid contract deploy", async () => {
-      await testScheduleCallAndSign(
-        "scheduleCall fail invalid contract deploy",
-        ethers.ZeroAddress,
-        0n,
-        () => "0xabc123",
-        // in this case schedule creation is SUCCESS, but schedule execution fails with INVALID_ETHEREUM_TRANSACTION
-        INVALID_ETHEREUM_TRANSACTION
-      );
-    });
-
-    it("should succeed schedule but fail execution with valid contract deploy", async () => {
-      const deployContract = await ethers.getContractFactory(
-        "HIP1215DeployContract"
-      );
-      await testScheduleCallAndSign(
-        "scheduleCall fail valid contract deploy",
-        ethers.ZeroAddress,
-        0n,
-        () => deployContract.bytecode,
-        INVALID_ETHEREUM_TRANSACTION
-      );
-    });
-
     it("should change the state after schedule executed", async () => {
       const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
         "scheduleCall state",
@@ -319,6 +295,37 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       await testScheduleCallEvent(
         tx,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
+      );
+    });
+
+    it("should fail with zero 'to' address and invalid contract deploy", async () => {
+      const tx = await hip1215.scheduleCall(
+        ethers.ZeroAddress,
+        getExpirySecond(),
+        GAS_LIMIT_1_000_000.gasLimit,
+        0,
+        "0xabc123"
+      );
+      await testScheduleCallEvent(
+        tx,
+        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
+      );
+    });
+
+    it("should fail with zero 'to' address and valid contract deploy", async () => {
+      const deployContract = await ethers.getContractFactory(
+        "HIP1215DeployContract"
+      );
+      const tx = await hip1215.scheduleCall(
+        ethers.ZeroAddress,
+        getExpirySecond(),
+        GAS_LIMIT_1_000_000.gasLimit,
+        0,
+        deployContract.bytecode
+      );
+      await testScheduleCallEvent(
+        tx,
+        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
     });
   });
