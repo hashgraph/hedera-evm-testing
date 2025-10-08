@@ -16,10 +16,14 @@ const {
   testScheduleCallEvent,
   testResponseCodeEvent,
   getSignatureMap,
+  SUCCESS,
+  INSUFFICIENT_PAYER_BALANCE,
+  INVALID_ETHEREUM_TRANSACTION,
+  CONTRACT_REVERT_EXECUTED,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
 const { contractDeployAndFund } = require("../../utils/contract");
-const ResponseCodeEnum = require("@hashgraph/proto").proto.ResponseCodeEnum;
+const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
 
 describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
   let hip1215, impl1215, signers;
@@ -45,7 +49,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
     payer,
     value = 0n,
     callDataFunction = (testId) => addTestCallData(testId),
-    executionExpectedResult = "SUCCESS",
+    executionExpectedResult = SUCCESS
   ) {
     const expirySecond = getExpirySecond();
     const scheduleTx = await hip1215.scheduleCallWithPayer(
@@ -55,17 +59,17 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
       // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
       GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
       value,
-      callDataFunction(testId, expirySecond),
+      callDataFunction(testId, expirySecond)
     );
     const scheduleAddress = await testScheduleCallEvent(
       scheduleTx,
-      ResponseCodeEnum.SUCCESS.valueOf(),
+      ResponseCodeEnum.SUCCESS.valueOf()
     );
     // sign schedule
     const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
     const signTx = await hip1215.signSchedule(
       scheduleAddress,
-      sigMapProtoEncoded,
+      sigMapProtoEncoded
     );
     await testResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
     // execution check in 'after'
@@ -95,7 +99,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         await testScheduleCallWithPayerAndSign(
           "scheduleCallWithPayer",
           await hip1215.getAddress(),
-          signers[1].address,
+          signers[1].address
         );
       // execution check in 'after'
       scheduleCheck.push({
@@ -111,7 +115,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         signers[0].address,
         signers[1].address,
         0n,
-        (testId) => addTestCallData(testId),
+        (testId) => addTestCallData(testId)
       );
     });
 
@@ -120,7 +124,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         await testScheduleCallWithPayerAndSign(
           "scheduleCallWithPayer address(this)",
           await hip1215.getAddress(),
-          signers[1].address,
+          signers[1].address
         );
       // execution check in 'after'
       scheduleCheck.push({
@@ -139,8 +143,8 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         (testId, expirySecond) =>
           hasScheduleCapacityCallData(
             expirySecond + 10,
-            GAS_LIMIT_1_000_000.gasLimit,
-          ),
+            GAS_LIMIT_1_000_000.gasLimit
+          )
       );
     });
 
@@ -151,7 +155,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         signers[1].address,
         100_000_000n, // 1 HBAR in TINYBARS
         () => payableCallData(),
-        "SUCCESS",
+        SUCCESS
       );
     });
 
@@ -161,7 +165,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         await hip1215.getAddress(),
         signers[1].address,
         0n,
-        () => "0x",
+        () => "0x"
       );
     });
 
@@ -172,7 +176,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         signers[1].address,
         0n,
         () => "0xabc123",
-        "CONTRACT_REVERT_EXECUTED",
+        CONTRACT_REVERT_EXECUTED
       );
     });
 
@@ -183,7 +187,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
           await hip1215.getAddress(),
           signers[1].address,
           0n,
-          (testId) => addTestCallData(testId),
+          (testId) => addTestCallData(testId)
         );
       // execution check in 'after'
       scheduleCheck.push({
@@ -202,7 +206,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
           address,
           signers[1].address,
           value,
-          () => "0x",
+          () => "0x"
         );
       // balance check in 'after'
       balanceCheck.push({
@@ -223,7 +227,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         signers[1].address,
         value,
         () => "0x",
-        "INSUFFICIENT_PAYER_BALANCE",
+        INSUFFICIENT_PAYER_BALANCE
       );
     });
 
@@ -234,7 +238,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
       const payerContract = await contractDeployAndFund(
         "HIP1215PayerContract",
         0,
-        1,
+        1
       );
       // create schedule
       const expirySecond = getExpirySecond();
@@ -244,11 +248,11 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         expirySecond,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData(testId),
+        addTestCallData(testId)
       );
       const scheduleAddress = await testScheduleCallEvent(
         scheduleTx,
-        ResponseCodeEnum.SUCCESS.valueOf(),
+        ResponseCodeEnum.SUCCESS.valueOf()
       );
       // sign schedule
       const signTx = await payerContract.authorizeSchedule(scheduleAddress);
@@ -266,7 +270,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCallWithPayer fail payer zero address"),
+        addTestCallData("scheduleCallWithPayer fail payer zero address")
       );
       await testScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });
@@ -278,11 +282,11 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         getExpirySecond(),
         0,
         0,
-        addTestCallData("scheduleCallWithPayer fail gasLimit 0"),
+        addTestCallData("scheduleCallWithPayer fail gasLimit 0")
       );
       await testScheduleCallEvent(
         tx,
-        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf(),
+        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
     });
 
@@ -293,11 +297,11 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         getExpirySecond(),
         GAS_LIMIT_1_000.gasLimit,
         0,
-        addTestCallData("scheduleCallWithPayer fail gasLimit 1000"),
+        addTestCallData("scheduleCallWithPayer fail gasLimit 1000")
       );
       await testScheduleCallEvent(
         tx,
-        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf(),
+        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
     });
 
@@ -308,11 +312,11 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         getExpirySecond(),
         ethers.MaxUint256,
         0,
-        addTestCallData("scheduleCallWithPayer fail gasLimit uint.maxvalue"),
+        addTestCallData("scheduleCallWithPayer fail gasLimit uint.maxvalue")
       );
       await testScheduleCallEvent(
         tx,
-        ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf(),
+        ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf()
       );
     });
 
@@ -323,11 +327,11 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCallWithPayer fail expiry 0"),
+        addTestCallData("scheduleCallWithPayer fail expiry 0")
       );
       await testScheduleCallEvent(
         tx,
-        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf(),
+        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
     });
 
@@ -338,11 +342,11 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         new Date().getUTCSeconds(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCallWithPayer fail expiry current"),
+        addTestCallData("scheduleCallWithPayer fail expiry current")
       );
       await testScheduleCallEvent(
         tx,
-        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf(),
+        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
     });
 
@@ -353,11 +357,11 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         new Date().getUTCSeconds() + MAX_EXPIRY + 1,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCallWithPayer fail expiry + 1"),
+        addTestCallData("scheduleCallWithPayer fail expiry + 1")
       );
       await testScheduleCallEvent(
         tx,
-        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf(),
+        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
     });
 
@@ -368,17 +372,17 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        "0xabc123",
+        "0xabc123"
       );
       await testScheduleCallEvent(
         tx,
-        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf(),
+        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
     });
 
     it("should fail with zero 'to' address and valid contract deploy", async () => {
       const deployContract = await ethers.getContractFactory(
-        "HIP1215DeployContract",
+        "HIP1215DeployContract"
       );
       const tx = await hip1215.scheduleCallWithPayer(
         ethers.ZeroAddress,
@@ -386,11 +390,11 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        deployContract.bytecode,
+        deployContract.bytecode
       );
       await testScheduleCallEvent(
         tx,
-        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf(),
+        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
     });
   });
