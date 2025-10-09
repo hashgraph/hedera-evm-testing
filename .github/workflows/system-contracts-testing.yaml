@@ -6,12 +6,9 @@ on:
     required: true
     branches: main
     paths:
-      - system-contract-testing/**
       - .github/workflows/system-contracts-testing.yaml
   pull_request:
     required: true
-    paths:
-      - system-contract-testing/**
 
 defaults:
   run:
