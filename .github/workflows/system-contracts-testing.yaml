@@ -3,10 +3,12 @@ name: System contracts testing
 on:
   workflow_dispatch:
   push:
-    required: true
     branches: main
   pull_request:
-    required: true
+      types:
+      - opened
+      - reopened
+      - synchronize
 
 defaults:
   run:
