@@ -10,12 +10,18 @@ on:
   pull_request:
     paths:
       - system-contract-testing/**
+      - .github/workflows/system-contracts-testing.yaml
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 defaults:
   run:
     shell: bash
 permissions:
   contents: read
+
 env:
   SOLO_VERSION: 0.43.2
   SOLO_CLUSTER_NAME: solo-system-contracts-e2e
