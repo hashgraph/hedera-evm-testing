@@ -12,6 +12,8 @@
 ### Run with local Hedera Network (using solo)
 `npx hardhat test --network local`
 
+Example update here
+
 ## Run solo
 
 ### Requirements
