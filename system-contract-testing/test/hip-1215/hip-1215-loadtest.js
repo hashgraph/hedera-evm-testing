@@ -9,7 +9,8 @@ const payableIncrementCallAbi = new ethers.Interface(
   payableIncrementCallAbiStr,
 );
 
-describe("HIP-1215 Loadtest", () => {
+// This tests are used as an example of HIP-1215 load-tests located at https://github.com/hashgraph/network-load-generator
+xdescribe("HIP-1215 Loadtest", () => {
   let hip1215;
 
   before(async () => {
@@ -49,16 +50,5 @@ describe("HIP-1215 Loadtest", () => {
     const scheduleCounter = await hip1215.getScheduleCounter();
     console.log("scheduleCounter:", scheduleCounter);
     expect(scheduleCounter).to.equal(1);
-  });
-
-  it("Get count", async () => {
-    const HIP1215Factory = await ethers.getContractFactory(
-      "LoadTestContract",
-    );
-    const contract = HIP1215Factory.attach(
-      "0x000000000000000000000000000000000005ffaa" // The deployed contract address
-    );
-    console.log("getScheduleCounter", await contract.getScheduleCounter());
-
   });
 });
