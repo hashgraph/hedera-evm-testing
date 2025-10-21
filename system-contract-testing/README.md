@@ -1,5 +1,4 @@
-## System contracts testing 
-test
+## System contracts testing
 
 ## Run tests
 
