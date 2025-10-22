@@ -3,14 +3,9 @@ name: System contracts testing
 on:
   workflow_dispatch:
   push:
-    branches: main
-    paths:
-      - system-contract-testing/**
-      - .github/workflows/system-contracts-testing.yaml
+    branches:
+      - main
   pull_request:
-    paths:
-      - system-contract-testing/**
-      - .github/workflows/system-contracts-testing.yaml
     types:
       - opened
       - reopened
