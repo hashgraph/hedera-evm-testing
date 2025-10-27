@@ -18,7 +18,6 @@ const {
   getSignatureMap,
   SUCCESS,
   INSUFFICIENT_PAYER_BALANCE,
-  INVALID_ETHEREUM_TRANSACTION,
   CONTRACT_REVERT_EXECUTED,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");

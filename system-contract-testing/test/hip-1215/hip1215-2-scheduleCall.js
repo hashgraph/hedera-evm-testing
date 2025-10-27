@@ -18,7 +18,6 @@ const {
   getRecursiveScheduleStatus,
   SUCCESS,
   INSUFFICIENT_PAYER_BALANCE,
-  INVALID_ETHEREUM_TRANSACTION,
   CONTRACT_REVERT_EXECUTED,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
@@ -106,8 +105,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       await testScheduleCallAndSign(
         "scheduleCall eoa",
         signers[0].address,
-        0n,
-        (testId) => addTestCallData(testId)
       );
     });
 
@@ -331,7 +328,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
   });
 
   describe("Recursive scheduling test", () => {
-    it("should create recoursive schedules until payer runs out of funds", async () => {
+    it("should create recursive schedules until payer runs out of funds", async () => {
       const contractAddress = await hip1215.getAddress();
       // const contractBalance = await hip1215.getAccountBalance();
       const initialBalance = await getAccountBalance(contractAddress);

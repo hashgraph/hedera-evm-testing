@@ -18,7 +18,6 @@ const {
   getSignatureMap,
   SUCCESS,
   INSUFFICIENT_PAYER_BALANCE,
-  INVALID_ETHEREUM_TRANSACTION,
   CONTRACT_REVERT_EXECUTED,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
@@ -114,8 +113,6 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         "scheduleCallWithPayer eoa",
         signers[0].address,
         signers[1].address,
-        0n,
-        (testId) => addTestCallData(testId)
       );
     });
 
