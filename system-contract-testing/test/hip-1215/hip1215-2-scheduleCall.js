@@ -330,10 +330,12 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       const contractBalance =
         (await ethers.provider.getBalance(contractAddress)) /
         TINYBAR_TO_WAIBAR_CORF;
-      const expectedGasUsed = 1438769n; // ~ gas usage for used schedule create operation
       console.log("contractBalance", contractBalance);
+      const expectedGasUsed = 1_438_769n; // ~ gas usage for used schedule create operation
+      const expectedFee = expectedGasUsed * 71n; // ~ fee for schedule create operation
+      const expectedHasCapacityFee = 2_000_000n * 71n; // max fee for schedule create operation, calculated based on schedule gasLimit
       const expectedCalls =
-        contractBalance / (expectedGasUsed * 71n); /*tinybars for 1 gas unit*/
+        (contractBalance - expectedHasCapacityFee) / expectedFee + 1n;
       console.log("expectedCalls", expectedCalls);
       const tx = await hip1215.recursiveScheduleCall(
         contractAddress,
