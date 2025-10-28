@@ -22,6 +22,9 @@
 - Doc: https://solo.hiero.org/v0.42.0/docs/step-by-step-guide/
 - Doc with local consensus node build: https://solo.hiero.org/v0.42.0/docs/platform-developer/
 
+### Specific solo version install
+`npm install -g @hashgraph/solo@0.43.2`
+
 ### Deploy manual 
 With 'local build' consensus node From https://solo.hiero.org/v0.42.0/docs/platform-developer/)
 
