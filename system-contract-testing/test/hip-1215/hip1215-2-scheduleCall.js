@@ -331,6 +331,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         (await ethers.provider.getBalance(contractAddress)) /
         TINYBAR_TO_WAIBAR_CORF;
       console.log("contractBalance", contractBalance);
+      // TODO use actual gas estimate after MN will support it
       const expectedGasUsed = 1_438_769n; // ~ gas usage for used schedule create operation
       const expectedFee = expectedGasUsed * 71n; // ~ fee for schedule create operation
       const expectedHasCapacityFee = 2_000_000n * 71n; // max fee for schedule create operation, calculated based on schedule gasLimit
