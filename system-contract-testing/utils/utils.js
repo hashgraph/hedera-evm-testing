@@ -396,18 +396,16 @@ class Utils {
     return receipt.revertReason;
   }
 
-  static async getHbarBalance(address) {
-    const balanceJson = (await this.getAccountBalance(address)).toJSON();
-    const balanceFloat = parseFloat(balanceJson.hbars);
-
-    return balanceFloat;
+  static async getHbarBalance(client, address) {
+    const balanceJson = (await this.getAccountBalance(client, address)).toJSON();
+    return parseFloat(balanceJson.hbars);
   }
 
-  static async getTokenBalance(accountAddress, tokenAddress) {
+  static async getTokenBalance(client, accountAddress, tokenAddress) {
     const accountBalanceJson = (
-      await this.getAccountBalance(accountAddress)
+      await this.getAccountBalance(client, accountAddress)
     ).toJSON();
-    const tokenId = await AccountId.fromEvmAddress(
+    const tokenId = AccountId.fromEvmAddress(
       0,
       0,
       tokenAddress
@@ -653,13 +651,12 @@ class Utils {
     }
   }
 
-  static async getAccountBalance(address) {
-    const client = await Utils.createSDKClient();
+  static async getAccountBalance(client, address) {
     const accountId = await Utils.getAccountId(address, client);
-    const tokenBalance = await new AccountBalanceQuery()
+
+    return await new AccountBalanceQuery()
       .setAccountId(accountId)
       .execute(client);
-    return tokenBalance;
   }
 
   static async updateTokenKeysViaHapi(

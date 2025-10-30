@@ -9,7 +9,6 @@ set -e
 WORK_DIR="$(pwd)"
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
 APP_PROPERTIES_PATH="local/application.properties"
-LATEST_CONSENSUS_COMMIT=""
 
 export SOLO_BASE_NAME=hedera
 export SOLO_CLUSTER_NAME="solo-${SOLO_BASE_NAME}"
@@ -43,11 +42,11 @@ solo_start() {
   # solo deploy
   check_k8s_context
   solo init --dev
-  solo cluster-ref connect --cluster-ref kind-${SOLO_CLUSTER_NAME} --context kind-${SOLO_CLUSTER_NAME} --dev
-  solo deployment create -n "${SOLO_NAMESPACE}" --deployment "${SOLO_DEPLOYMENT}" --dev
-  solo deployment add-cluster --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --num-consensus-nodes 1 --dev
-  solo node keys --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
-  solo cluster-ref setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
+  solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
+  solo cluster-ref config connect --cluster-ref kind-${SOLO_CLUSTER_NAME} --context kind-${SOLO_CLUSTER_NAME} --dev
+  solo deployment config create -n "${SOLO_NAMESPACE}" --deployment "${SOLO_DEPLOYMENT}" --dev
+  solo deployment cluster attach --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --num-consensus-nodes 1 --dev
+  solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
   # --------- build (./gradlew assemble) in consensus node dir
   cd "${CONSENSUS_NODE_DIR}"
   ./gradlew assemble
@@ -55,28 +54,28 @@ solo_start() {
   # ----------------------------------------------------------------------------
   # network components
   # --------- with local consensus build
-  solo network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
-  solo node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
-  solo node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
-  solo mirror-node deploy --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
-  solo relay deploy --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
-  solo explorer deploy --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+  solo consensus network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
+  solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
+  solo consensus node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+  solo mirror node add --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+  solo relay node add --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+  solo explorer node add --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # add test accounts to the network
-  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
-  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
-  solo account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
+  solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
+  solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
+  solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
 }
 
 solo_stop() {
-  solo explorer destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
-  solo relay destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
-  solo mirror-node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
-  solo node stop --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
-  solo network destroy --deployment="${SOLO_DEPLOYMENT}" --force --delete-pvcs --delete-secrets --dev || true
+  solo explorer node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
+  solo relay node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
+  solo mirror-node node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
+  solo consensus node stop --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
+  solo consensus network destroy --deployment="${SOLO_DEPLOYMENT}" --force --delete-pvcs --delete-secrets --dev || true
   # next step is hanging and not ending by itself. Do we need it?
   # solo cluster-ref reset --cluster-ref kind-${SOLO_CLUSTER_NAME} -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --force || true
-  solo cluster-ref disconnect --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev || true
+  solo cluster-ref config disconnect --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev || true
   solo_destroy
 }
 
@@ -91,63 +90,6 @@ solo_destroy() {
   kubectl delete namespace "${SOLO_CLUSTER_SETUP_NAMESPACE}" || true
   kind delete cluster -n "${SOLO_CLUSTER_NAME}" || true
   rm -rf ~/.solo
-}
-
-# Building consensus node from local sources
-# Build logic is taken from https://github.com/hiero-ledger/hiero-consensus-node/blob/main/.github/workflows/node-zxc-build-release-artifact.yaml
-# from 'Build Artifact' job, steps:
-# - Gradle Assemble
-# - Stage Artifact Build Folder
-# - Write Artifact Version Descriptor
-# - Create Artifact Archive
-# - Compute SHA Hash
-# build_consensus_release -> additionally required git, zip
-build_consensus_release() {
-  # Gradle Assemble
-  cd "${CONSENSUS_NODE_DIR}"
-  ./gradlew assemble
-  LATEST_CONSENSUS_COMMIT="$(git log -n 1 --pretty=format:"%H")"
-  cd "${WORK_DIR}"
-
-  # Stage Artifact Build Folder
-  BUILD_BASE_DIR="build-${LATEST_CONSENSUS_COMMIT}"
-  mkdir -p "${BUILD_BASE_DIR}/data/lib"
-  mkdir -p "${BUILD_BASE_DIR}/data/apps"
-
-  cp -f ${CONSENSUS_NODE_DIR}/hedera-node/data/lib/*.jar "${BUILD_BASE_DIR}/data/lib"
-  cp -f ${CONSENSUS_NODE_DIR}/hedera-node/data/apps/*.jar "${BUILD_BASE_DIR}/data/apps"
-  cp -f ${CONSENSUS_NODE_DIR}/hedera-node/configuration/update/immediate.sh "${BUILD_BASE_DIR}"
-  cp -f ${CONSENSUS_NODE_DIR}/hedera-node/configuration/update/during-freeze.sh "${BUILD_BASE_DIR}"
-
-  # Write Artifact Version Descriptor
-  printf "VERSION=%s\nCOMMIT=%s\nDATE=%s" "${LATEST_CONSENSUS_COMMIT}" "${LATEST_CONSENSUS_COMMIT}" "$(date -u)" | tee "${BUILD_BASE_DIR}/VERSION"
-  printf "\n"
-
-  # Create Artifact Archive
-  printf "Artifact Folder=%s\n" "${BUILD_BASE_DIR}"
-  ARTIFACT="build-${LATEST_CONSENSUS_COMMIT}.zip"
-  # we should zip from BUILD_BASE_DIR to get zip w/o any additional directories, for correct unzip on the node
-  cd "${BUILD_BASE_DIR}"
-  zip -D -rq "${ARTIFACT}" *
-  mv "${ARTIFACT}" "${WORK_DIR}"
-  cd "${WORK_DIR}"
-  rm -rf "${BUILD_BASE_DIR}"
-
-  # Compute SHA Hash
-  sha384sum "${ARTIFACT}" | tee "build-${LATEST_CONSENSUS_COMMIT}.sha384"
-
-  printf "Build Done. Artifact %s\n" "${ARTIFACT}"
-}
-
-# push release archive to node and unzip to /opt/hgcapp/services-hedera/HapiApp2.0
-upgrade_solo_consensus() {
-  cd "${CONSENSUS_NODE_DIR}"
-  LATEST_CONSENSUS_COMMIT="$(git log -n 1 --pretty=format:"%H")"
-  cd "${WORK_DIR}"
-
-  kubectl cp "build-${LATEST_CONSENSUS_COMMIT}.zip" network-node1-0:/home/hedera -n "${SOLO_NAMESPACE}"
-  kubectl cp "build-${LATEST_CONSENSUS_COMMIT}.sha384" network-node1-0:/home/hedera -n "${SOLO_NAMESPACE}"
-  kubectl exec network-node1-0 -n "${SOLO_NAMESPACE}" -- bash /home/hedera/extract-platform.sh "${LATEST_CONSENSUS_COMMIT}"
 }
 
 ######################### main #########################
@@ -173,21 +115,6 @@ case "$1" in
     		;;
     esac
     ;;
-
-    node)
-      case "$2" in
-        release)
-          build_consensus_release
-          ;;
-        upgrade)
-          upgrade_solo_consensus
-          ;;
-      	*)
-      		echo "Usage: [release|upgrade]"
-      		exit 1
-      		;;
-      esac
-      ;;
 
 	*)
 		echo "Usage: [solo|node]"

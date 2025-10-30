@@ -78,7 +78,7 @@ const WEEK = 7 * DAY;
 const GWEI = 1e9;
 const HTS_SYSTEM_CONTRACT_ID = "0.0.359";
 const HAS_SYSTEM_CONTRACT_ID = "0.0.362";
-const MAX_EXPIRY = 8_000_001; // 3 months in seconds
+const MAX_EXPIRY = 5_356_800; // max expiration for CN config https://github.com/hiero-ledger/hiero-consensus-node/blob/4bf94c67432c373c2abf18e7b6725c482d2e11d4/hedera-node/hedera-config/src/main/java/com/hedera/node/config/data/SchedulingConfig.java#L22
 
 module.exports = {
   Events,
