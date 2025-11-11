@@ -1,46 +1,21 @@
 const { ethers } = require("hardhat");
-const { Wallet, AccountId, PrivateKey, AccountCreateTransaction, fromTinybars } = require("@hashgraph/sdk");
+const {
+  Wallet,
+  PrivateKey,
+  AccountCreateTransaction,
+  Hbar,
+} = require("@hashgraph/sdk");
 const { proto } = require("@hashgraph/proto");
-const { testAccountAuthorization } = require("./utils/hip-820-utils");
+const {
+  testAccountAuthorization,
+  hedera_signMessage,
+} = require("./utils/hip-820-utils");
 const { createSDKClient } = require("../../utils/utils");
-
-// hedera-wallet-connect functions -----------------------------
-function prefixMessageToSign(message) {
-  return "\x19Hedera Signed Message:\n" + message.length + message;
-}
-
-function stringToSignerMessage(message) {
-  return [Buffer.from(prefixMessageToSign(message))];
-}
-
-function signerSignaturesToSignatureMap(signerSignatures) {
-  return proto.SignatureMap.create({
-    sigPair: signerSignatures.map((s) =>
-      s.publicKey._toProtobufSignature(s.signature),
-    ),
-  });
-}
-
-function signatureMapToBase64String(signatureMap) {
-  const encoded = proto.SignatureMap.encode(signatureMap).finish();
-  return Buffer.from(encoded).toString("base64");
-}
-
-async function hedera_signMessage(id, topic, body, signer) {
-  // signer takes an array of Uint8Arrays though spec allows for 1 message to be signed
-  const signerSignatures = await signer.sign(stringToSignerMessage(body));
-  console.log("signerSignatures:" + signerSignatures);
-  const _signatureMap = proto.SignatureMap.create(
-    signerSignaturesToSignatureMap(signerSignatures),
-  );
-
-  return signatureMapToBase64String(_signatureMap);
-}
-// hedera-wallet-connect functions -----------------------------
 
 describe("HIP-820 tests", () => {
   let signers, hip820, sdkClient, edPK, edSignerAccount, wallet;
 
+  // preconditions before test run
   before(async () => {
     signers = await ethers.getSigners();
     // deploy test contract
@@ -55,18 +30,14 @@ describe("HIP-820 tests", () => {
       await (
         await new AccountCreateTransaction()
           .setKeyWithoutAlias(edPK.publicKey)
-          .setInitialBalance(fromTinybars(1000))
+          .setInitialBalance(Hbar.fromTinybars(1000))
           .execute(sdkClient)
       ).getReceipt(sdkClient)
     ).accountId;
+    console.log("ED account created:", edSignerAccount.toEvmAddress());
     // create test hedera wallet that can be obtained from 'hedera-wallet-connect'
-    // using //TODO add function
-    wallet = await new Wallet(
-      AccountId.fromString("0.0.1003"),
-      PrivateKey.fromStringED25519(
-        "0x748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04",
-      ),
-    );
+    // wallet using 'getHederaWallet' function (see https://github.com/hashgraph/hedera-wallet-connect/blob/3597314461cc981ff6cf6c83f0c35cdc29252dd4/src/lib/wallet/index.ts#L102)
+    wallet = await new Wallet(edSignerAccount, edPK);
   });
 
   after(async () => {
@@ -75,7 +46,6 @@ describe("HIP-820 tests", () => {
     }
   });
 
-  // TODO example https://github.com/hashgraph/hedera-wallet-connect/blob/3597314461cc981ff6cf6c83f0c35cdc29252dd4/test/wallet/methods/wallet-signMessage.test.ts#L62
   it("hedera_signMessage check with isAuthorizedRaw", async () => {
     const id = 1;
     const topic = "test-topic";
@@ -109,6 +79,7 @@ describe("HIP-820 tests", () => {
       ethers.hashMessage(message).substring(2),
       "hex",
     );
+    const hexMessageHash = "0x" + messageHash.toString("hex");
     const signaturesArray = await wallet.sign([messageHash]);
     const hexEncodedSignature =
       "0x" + Buffer.from(signaturesArray[0].signature).toString("hex");
@@ -116,17 +87,17 @@ describe("HIP-820 tests", () => {
     console.log(
       "Signing message:'%s' messageHash:'%s' hexEncodedSignature:'%s'",
       message,
-      messageHash,
+      hexMessageHash,
       hexEncodedSignature,
     );
     // execute isAuthorizedRaw check
     const tx = await hip820.isAuthorizedRawPublic(
       "0x" + wallet.accountId.toEvmAddress(),
-      messageHash,
+      hexMessageHash,
       hexEncodedSignature,
       { gasLimit: 10_000_000 },
     );
-    console.log("Transaction:", tx);
+    console.log("Transaction.hash:", tx.hash);
     await testAccountAuthorization(
       tx,
       proto.ResponseCodeEnum.SUCCESS.valueOf(),
