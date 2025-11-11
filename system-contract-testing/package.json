@@ -9,6 +9,7 @@
   "author": "Hedera Smart Contracts Team",
   "license": "Apache-2.0",
   "dependencies": {
+    "@hashgraph/hedera-wallet-connect": "^2.0.3",
     "@hashgraph/proto": "2.22.0",
     "@hashgraphonline/standards-sdk": "0.1.106",
     "@nomicfoundation/solidity-analyzer": "0.1.2",

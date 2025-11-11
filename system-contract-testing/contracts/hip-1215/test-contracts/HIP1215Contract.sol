@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import "../IHederaScheduleService_HIP1215.sol";
 import "../IHederaScheduleService_HIP755.sol";
 import "../IHRC1215ScheduleFacade.sol";
-import "../impl/HederaResponseCodes.sol";
+import "../../utils/HederaResponseCodes.sol";
 
 contract HIP1215Contract {
 
