@@ -49,6 +49,7 @@ for (const test of tests) {
                                 result = await runners[executor].run([testCase.code]);
                                 if (!result.success) result = await runners[executor].run([testCase.code]);
                             } catch (e) { // try twice;
+                                console.error(e);
                                 result = await runners[executor].run([testCase.code]);
                             }
                             assert.notEqual(result.length, 0, `Failed to run ${testCase.name} on the ${executor} executor, no new transactions were found`);
