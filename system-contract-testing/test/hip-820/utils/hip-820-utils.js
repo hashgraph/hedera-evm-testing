@@ -1,4 +1,5 @@
 const { expect } = require("chai");
+const { proto } = require("@hashgraph/proto");
 
 async function testAccountAuthorization(tx, responseCode, isAuthorized) {
   const rc = await tx.wait();
@@ -10,11 +11,14 @@ async function testAccountAuthorization(tx, responseCode, isAuthorized) {
 
 // hedera-wallet-connect functions -----------------------------
 function prefixMessageToSign(message) {
+  console.log("message:" + message);
   return "\x19Hedera Signed Message:\n" + message.length + message;
 }
 
 function stringToSignerMessage(message) {
-  return [Buffer.from(prefixMessageToSign(message))];
+  const messageWithPrefix = prefixMessageToSign(message);
+  console.log("messageWithPrefix:" + messageWithPrefix);
+  return [Buffer.from(messageWithPrefix)];
 }
 
 function signerSignaturesToSignatureMap(signerSignatures) {
@@ -27,17 +31,18 @@ function signerSignaturesToSignatureMap(signerSignatures) {
 
 function signatureMapToBase64String(signatureMap) {
   const encoded = proto.SignatureMap.encode(signatureMap).finish();
+  console.log("SignatureMap.encoded:'%s'", encoded);
   return Buffer.from(encoded).toString("base64");
 }
 
 async function hedera_signMessage(id, topic, body, signer) {
   // signer takes an array of Uint8Arrays though spec allows for 1 message to be signed
   const signerSignatures = await signer.sign(stringToSignerMessage(body));
-  console.log("signerSignatures:" + signerSignatures);
+  console.log("SignerSignature:" + Buffer.from(signerSignatures[0].signature).toString("hex"));
   const _signatureMap = proto.SignatureMap.create(
     signerSignaturesToSignatureMap(signerSignatures),
   );
-
+  console.log("SignatureMap:" + Buffer.from(_signatureMap.sigPair[0].ed25519).toString("hex"));
   return signatureMapToBase64String(_signatureMap);
 }
 // hedera-wallet-connect functions -----------------------------

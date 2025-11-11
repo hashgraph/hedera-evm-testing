@@ -50,33 +50,67 @@ describe("HIP-820 tests", () => {
     const id = 1;
     const topic = "test-topic";
     const message = "Test message";
+
+    // (!!!) use copy of 'hedera-wallet-connect' function
     const base64EncodedSignatureMap = await hedera_signMessage(
       id,
       topic,
       message,
       wallet,
     );
-    console.log("hedera_signMessage result:", base64EncodedSignatureMap);
+    console.log("hedera_signMessage result:'%s'", base64EncodedSignatureMap);
 
-    const messageHash = Buffer.from(
-      ethers
-        .hashMessage("\x19Hedera Signed Message:\n" + message.length + message)
-        .substring(2),
-      "hex",
+    console.log(
+      "---------------- Prepare arguments for isAuthorizedRaw ----------------",
     );
+    // Prepare arguments for isAuthorizedRaw
+    // Message: add prefix as at 'hedera-wallet-connect' -> hash -> Buffer
+    const hexMessageHash = ethers.hashMessage(
+      "\x19Hedera Signed Message:\n" + message.length + message,
+    );
+    // TODO row message will be successfully validated by 'isAuthorizedRaw'
+    //  if we use SignatureVerifier.MessageType.RAW on CN for validation
+    // const hexMessageHash = Buffer.from("\x19Hedera Signed Message:\n" + message.length + message);
 
-    const signatureMap = proto.SignatureMap.decode(
-      Buffer.from(base64EncodedSignatureMap, "base64"),
+    // Signature: base64EncodedSignatureMap is:
+    // Message with prefix -> Buffer -> SignerSignature[] -> SignatureMap -> base64 encode
+    const revertedSignatureMapEncoded = Buffer.from(
+      base64EncodedSignatureMap,
+      "base64",
     );
-    //TODO
-    console.log("signerSignatures decoded:" + signerSignatures);
-    hip820.isAuthorizedRawPublic(signers[1].address, messageHash);
+    console.log(
+      "Reverted - SignatureMap.encoded:'%s'",
+      revertedSignatureMapEncoded,
+    );
+    const revertedSignatureMap = proto.SignatureMap.decode(
+      revertedSignatureMapEncoded,
+    );
+    const revertedHexSignature = Buffer.from(
+      revertedSignatureMap.sigPair[0].ed25519,
+    ).toString("hex");
+    console.log("Reverted - SignatureMap:'%s'", revertedHexSignature);
+
+    // execute isAuthorizedRaw check
+    const tx = await hip820.isAuthorizedRawPublic(
+      "0x" + wallet.accountId.toEvmAddress(),
+      hexMessageHash,
+      "0x" + revertedHexSignature,
+      { gasLimit: 2_000_000 },
+    );
+    console.log("Transaction.hash:", tx.hash);
+    //TODO this is not working because 'hedera_signMessage' is really signing message
+    // but 'isAuthorizedRaw' expecting hash(message) to be signed
+    await testAccountAuthorization(
+      tx,
+      proto.ResponseCodeEnum.SUCCESS.valueOf(),
+      true,
+    );
   });
 
   it("manual sign with @hashgraph/sdk check with isAuthorizedRaw", async () => {
     const message = "Test message";
     const messageHash = Buffer.from(
-      ethers.hashMessage(message).substring(2),
+      ethers.hashMessage(message).substring(2), // remove '0x'
       "hex",
     );
     const hexMessageHash = "0x" + messageHash.toString("hex");
@@ -88,14 +122,14 @@ describe("HIP-820 tests", () => {
       "Signing message:'%s' messageHash:'%s' hexEncodedSignature:'%s'",
       message,
       hexMessageHash,
-      hexEncodedSignature,
+      "0x" + hexEncodedSignature,
     );
     // execute isAuthorizedRaw check
     const tx = await hip820.isAuthorizedRawPublic(
       "0x" + wallet.accountId.toEvmAddress(),
       hexMessageHash,
       hexEncodedSignature,
-      { gasLimit: 10_000_000 },
+      { gasLimit: 2_000_000 },
     );
     console.log("Transaction.hash:", tx.hash);
     await testAccountAuthorization(
