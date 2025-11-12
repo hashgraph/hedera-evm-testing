@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.4.9 <0.9.0;
 
-interface IHederaScheduleService_HIP1215 {
+interface IHederaScheduleService {
 
     /// Allows for the creation of a schedule transaction to schedule any contract call for a given smart contract
     /// address, expiration time, the gas limit for the future call, the value to send with that call

@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {IHederaAccountService} from "../utils/IHederaAccountService.sol";
 import {HederaResponseCodes} from "../utils/HederaResponseCodes.sol";
 
-contract HIP820Contract {
+contract HIP632Contract {
 
     address internal constant HAS = address(0x16a);
 
