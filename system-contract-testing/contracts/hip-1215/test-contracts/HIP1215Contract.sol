@@ -9,6 +9,8 @@ import "../impl/HederaResponseCodes.sol";
 contract HIP1215Contract {
 
     address internal constant HSS = address(0x16b);
+    address internal constant HAS = address(0x16a);
+
     IHederaScheduleService_HIP1215 public scheduleService;
 
     receive() external payable {}
@@ -23,6 +25,7 @@ contract HIP1215Contract {
         scheduleService = _scheduleServiceAddress;
     }
 
+    // ------------------------------ HIP-1215 ------------------------------
     function scheduleCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
     external payable returns (int64 responseCode, address scheduleAddress) {
         (bool success, bytes memory result) = address(scheduleService).delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCall.selector, to, expirySecond, gasLimit, value, callData));
@@ -67,6 +70,7 @@ contract HIP1215Contract {
         return responseCode;
     }
 
+    // ------------------------------ schedule signing ------------------------------
     function authorizeSchedule(address schedule) external returns (int64 responseCode) {
         (bool success, bytes memory result) = HSS.call(
             abi.encodeWithSelector(IHederaScheduleService_HIP755.authorizeSchedule.selector, schedule));
@@ -83,6 +87,16 @@ contract HIP1215Contract {
         return responseCode;
     }
 
+    // ------------------------------ schedule trx parent + child ------------------------------
+    function signSchedule(address schedule, bytes memory signatureMap) external returns (int64 responseCode) {
+        (bool success, bytes memory result) = HSS.call(
+            abi.encodeWithSelector(IHederaScheduleService_HIP755.signSchedule.selector, schedule, signatureMap));
+        responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
+        emit ResponseCode(responseCode);
+        return responseCode;
+    }
+
+    // ------------------------------ recursion ------------------------------
     function recursiveScheduleCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value)
     external payable returns (int64 responseCode, address scheduleAddress) {
         bytes memory callData = abi.encodeWithSelector(this.recursiveScheduleCall.selector, to, expirySecond + 1, gasLimit, value);
@@ -92,7 +106,7 @@ contract HIP1215Contract {
         return (responseCode, scheduleAddress);
     }
 
-    // functions used as scheduled calls
+    // ------------------------------ functions used as scheduled calls ------------------------------
     function addTest(string memory _value) external {
         tests.push(_value);
     }
