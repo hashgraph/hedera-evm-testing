@@ -351,7 +351,8 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
       const tx = await hip1215.scheduleCallWithPayer(
         await hip1215.getAddress(),
         signers[1].address,
-        Math.floor(Date.now() / 1000) + MAX_EXPIRY + 1,
+        // adding +100 to exclude consensus time shift
+        Math.floor(Date.now() / 1000) + MAX_EXPIRY + 100 + 1, // +10 is a shift in case of some delay
         GAS_LIMIT_1_000_000.gasLimit,
         0,
         addTestCallData("scheduleCallWithPayer fail expiry + 1"),
