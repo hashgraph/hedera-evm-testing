@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "../IHederaScheduleService_HIP755.sol";
-import "../../utils/HederaResponseCodes.sol";
+import "../../services/HederaResponseCodes.sol";
 
 contract HIP1215PayerContract {
 

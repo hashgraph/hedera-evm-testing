@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.4.9 <0.9.0;
 
-import "../../utils/HederaResponseCodes.sol";
+import "../../services/HederaResponseCodes.sol";
 import "../IHRC1215ScheduleFacade.sol";
 
 abstract contract HRC1215ScheduleFacade {

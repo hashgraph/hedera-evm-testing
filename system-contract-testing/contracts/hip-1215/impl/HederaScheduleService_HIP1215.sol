@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.5.0 <0.9.0;
 
-import "../../utils/HederaResponseCodes.sol";
-import "../../utils/IHederaScheduleService.sol";
+import "../../services/HederaResponseCodes.sol";
+import "../IHederaScheduleService_HIP1215.sol";
 
-contract HederaScheduleService_HIP1215 is IHederaScheduleService {
+contract HederaScheduleService_HIP1215 is IHederaScheduleService_HIP1215 {
 
     address internal constant HSS = address(0x16b);
 
@@ -25,7 +25,7 @@ contract HederaScheduleService_HIP1215 is IHederaScheduleService {
     function scheduleCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
     external returns (int64 responseCode, address scheduleAddress) {
         (bool success, bytes memory result) = HSS.call(
-            abi.encodeWithSelector(IHederaScheduleService.scheduleCall.selector, to, expirySecond, gasLimit, value, callData));
+            abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCall.selector, to, expirySecond, gasLimit, value, callData));
         (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
     }
 
@@ -46,7 +46,7 @@ contract HederaScheduleService_HIP1215 is IHederaScheduleService {
     function scheduleCallWithPayer(address to, address payer, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
     external returns (int64 responseCode, address scheduleAddress) {
         (bool success, bytes memory result) = HSS.call(
-            abi.encodeWithSelector(IHederaScheduleService.scheduleCallWithPayer.selector, to, payer, expirySecond, gasLimit, value, callData));
+            abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCallWithPayer.selector, to, payer, expirySecond, gasLimit, value, callData));
         (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
     }
 
@@ -67,7 +67,7 @@ contract HederaScheduleService_HIP1215 is IHederaScheduleService {
     function executeCallOnPayerSignature(address to, address payer, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
     external returns (int64 responseCode, address scheduleAddress) {
         (bool success, bytes memory result) = HSS.call(
-            abi.encodeWithSelector(IHederaScheduleService.executeCallOnPayerSignature.selector, to, payer, expirySecond, gasLimit, value, callData));
+            abi.encodeWithSelector(IHederaScheduleService_HIP1215.executeCallOnPayerSignature.selector, to, payer, expirySecond, gasLimit, value, callData));
         (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
     }
 
@@ -76,7 +76,7 @@ contract HederaScheduleService_HIP1215 is IHederaScheduleService {
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
     function deleteSchedule(address scheduleAddress) external returns (int64 responseCode) {
         (bool success, bytes memory result) = HSS.call(
-            abi.encodeWithSelector(IHederaScheduleService.deleteSchedule.selector, scheduleAddress));
+            abi.encodeWithSelector(IHederaScheduleService_HIP1215.deleteSchedule.selector, scheduleAddress));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
     }
 
@@ -87,7 +87,7 @@ contract HederaScheduleService_HIP1215 is IHederaScheduleService {
     /// with the specified gas limit.
     function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) view external returns (bool hasCapacity) {
         (bool success, bytes memory result) = HSS.staticcall(
-            abi.encodeWithSelector(IHederaScheduleService.hasScheduleCapacity.selector, expirySecond, gasLimit));
+            abi.encodeWithSelector(IHederaScheduleService_HIP1215.hasScheduleCapacity.selector, expirySecond, gasLimit));
         hasCapacity = success ? abi.decode(result, (bool)) : false;
     }
 
