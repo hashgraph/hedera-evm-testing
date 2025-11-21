@@ -347,7 +347,8 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       const tx = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
-        Math.floor(Date.now() / 1000) + MAX_EXPIRY + 1,
+        // adding +100 to exclude consensus time shift
+        Math.floor(Date.now() / 1000) + MAX_EXPIRY + 100 + 1,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
         addTestCallData("executeCallOnPayerSignature fail expiry + 1"),

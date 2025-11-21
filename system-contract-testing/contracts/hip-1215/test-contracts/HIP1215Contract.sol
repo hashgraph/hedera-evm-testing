@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.10;
 
+import "../../system-contract-references/HederaResponseCodes.sol";
 import "../IHederaScheduleService_HIP1215.sol";
-import "../IHederaScheduleService_HIP755.sol";
 import "../IHRC1215ScheduleFacade.sol";
-import "../impl/HederaResponseCodes.sol";
+import "../IHederaScheduleService_HIP755.sol";
 
 contract HIP1215Contract {
 
