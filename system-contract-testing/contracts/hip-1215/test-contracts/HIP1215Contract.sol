@@ -53,6 +53,11 @@ contract HIP1215Contract {
         return hasCapacity;
     }
 
+    function hasScheduleCapacityView(uint256 expirySecond, uint256 gasLimit) external view returns (bool hasCapacity) {
+        hasCapacity = scheduleService.hasScheduleCapacity(expirySecond, gasLimit);
+        return hasCapacity;
+    }
+
     function deleteSchedule(address scheduleAddress) external returns (int64 responseCode) {
         (bool success, bytes memory result) = address(scheduleService).delegatecall(
             abi.encodeWithSelector(IHederaScheduleService_HIP1215.deleteSchedule.selector, scheduleAddress));

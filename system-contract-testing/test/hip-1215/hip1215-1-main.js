@@ -13,10 +13,9 @@ let hip1215, impl1215, signers, mnClient;
 
 async function beforeTests() {
   // provider configs override
-  ethers.provider.estimateGas = async () => 2_000_000;
   signers = await ethers.getSigners();
   // deploy impl contract
-  impl1215 = await contractDeployAndFund("HederaScheduleService_HIP1215", 0, 0);
+  impl1215 = await contractDeployAndFund("HederaScheduleService_HIP1215", 0);
   // deploy test contract
   const HIP1215Factory = await ethers.getContractFactory("HIP1215Contract");
   console.log("Deploy hip1215 with impl:", impl1215.target);
@@ -36,14 +35,14 @@ async function beforeTests() {
 async function afterTests(
   scheduleCheck = [],
   balanceCheck = [],
-  scheduleTxCheck = [],
+  scheduleTxCheck = []
 ) {
   for (const check of scheduleCheck) {
     console.log(
       "'%s': Wait for 'addTests' schedule tx:%s at %s second",
       check.id,
       check.scheduleTx,
-      check.expirySecond,
+      check.expirySecond
     );
     await Async.waitFor(check.expirySecond * 1000 + WAIT_STEP, WAIT_STEP);
     expect(await hip1215.getTests()).to.contain(check.id);
@@ -53,11 +52,11 @@ async function afterTests(
       "'%s': Wait for balance tx:%s at %s second",
       check.id,
       check.scheduleTx,
-      check.expirySecond,
+      check.expirySecond
     );
     await Async.waitFor(check.expirySecond * 1000 + WAIT_STEP, WAIT_STEP);
     expect(await signers[0].provider.getBalance(check.address)).to.equal(
-      check.balance,
+      check.balance
     );
   }
   for (const check of scheduleTxCheck) {
@@ -65,12 +64,12 @@ async function afterTests(
       "'%s': Wait for schedule status tx:%s at %s second",
       check.id,
       check.scheduleTx,
-      check.expirySecond,
+      check.expirySecond
     );
     await Async.waitFor(check.expirySecond * 1000 + WAIT_STEP, WAIT_STEP);
     const scheduledTxResult = await getScheduledTxStatus(
       mnClient,
-      check.scheduleAddress,
+      check.scheduleAddress
     );
     expect(scheduledTxResult).to.equal(check.executionResult);
   }

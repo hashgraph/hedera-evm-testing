@@ -1,11 +1,7 @@
 const { ethers } = require("hardhat");
 const { ONE_HBAR } = require("./constants");
 
-async function contractDeployAndFund(name, gas = 0, value = 0) {
-  // provider configs override
-  if (gas > 0) {
-    ethers.provider.estimateGas = async () => gas;
-  }
+async function contractDeployAndFund(name, value = 0) {
   signers = await ethers.getSigners();
   // deploy contract
   const factory = await ethers.getContractFactory(name);
@@ -22,7 +18,7 @@ async function contractDeployAndFund(name, gas = 0, value = 0) {
     "Deployed '%s' contract address:%s balance:%s HBAR",
     name,
     contract.target,
-    value,
+    value
   );
   return contract;
 }
