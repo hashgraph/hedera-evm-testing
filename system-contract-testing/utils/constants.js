@@ -50,6 +50,7 @@ const Path = {};
 
 const Contract = {
   HIP1215Contract: "HIP1215Contract",
+  TokenCreateContract: "TokenCreateContract",
 };
 
 const TINYBAR_TO_WAIBAR_CORF = 10_000_000_000n;
