@@ -232,14 +232,15 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         mnClient,
         schedule
       );
-      expect(childrenCount).not.be(0);
+      expect(childrenCount).not.to.be.null;
+      expect(childrenCount).not.to.eq(0);
       //Scheduled transaction contract call
       //   -> call to token create contract
       //      -> call to HTS create fungible
       //   -> call to HTS associate
       //   -> call to HTS transferToken
       // Expecting 5 transactions
-      expect(childrenCount).to.be(5);
+      expect(childrenCount).to.eq(5);
     });
   });
 
