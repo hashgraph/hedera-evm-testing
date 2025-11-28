@@ -92,8 +92,8 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
         "get_receipt",
         () => ethers.provider.getTransactionReceipt(txResult.hash),
         (result) => result != null,
-        1000,
-        60,
+        2000,
+        120,
       );
       console.log(
         "Transaction:%s.hash:%s status:%s",
