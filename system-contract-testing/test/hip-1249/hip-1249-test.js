@@ -38,12 +38,6 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
         value,
       );
     }
-    //TODO
-    // wait for all funds to be transferred.
-    // we are doing this in parallel to speedup signers creation process
-    // console.log("Wait for all signers funds transfers...")
-    // await Promise.all(transferPromises);
-    // console.log("signers funds transfers done.")
     return newSigners;
   }
 
@@ -99,7 +93,7 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
         () => ethers.provider.getTransactionReceipt(txResult.hash),
         (result) => result != null,
         1000,
-        10,
+        60,
       );
       console.log(
         "Transaction:%s.hash:%s status:%s",
