@@ -5,7 +5,11 @@ require("@openzeppelin/hardhat-upgrades");
 require("@nomicfoundation/hardhat-chai-matchers");
 require("solidity-coverage");
 
-const { NETWORKS } = require("./utils/environment");
+const {
+  NETWORKS,
+  PREVIEWNET_PRIVATE_KEYS,
+  TESTNET_PRIVATE_KEYS,
+} = require("./utils/environment");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -55,11 +59,26 @@ module.exports = {
       ],
       sdkClient: {
         operatorId: "0.0.1002",
-        operatorKey: "3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68",
+        operatorKey:
+          "3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68",
         networkNodeUrl: NETWORKS.local.networkNodeUrl,
         nodeId: NETWORKS.local.nodeId,
         mirrorNode: NETWORKS.local.mirrorNode,
       },
+    },
+    previewnet: {
+      url: NETWORKS.previewnet.url,
+      chainId: NETWORKS.previewnet.chainId,
+      gas: NETWORKS.previewnet.gas,
+      timeout: NETWORKS.previewnet.timeout,
+      accounts: PREVIEWNET_PRIVATE_KEYS,
+    },
+    testnet: {
+      url: NETWORKS.testnet.url,
+      chainId: NETWORKS.testnet.chainId,
+      gas: NETWORKS.testnet.gas,
+      timeout: NETWORKS.testnet.timeout,
+      accounts: TESTNET_PRIVATE_KEYS,
     },
   },
 };

@@ -2,6 +2,10 @@
 
 require("dotenv").config();
 
+const PREVIEWNET_PRIVATE_KEYS = process.env.PREVIEWNET_PRIVATE_KEYS
+  ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
+  : [];
+
 const TESTNET_PRIVATE_KEYS = process.env.TESTNET_PRIVATE_KEYS
   ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
   : [];
@@ -14,7 +18,17 @@ const NETWORKS = {
     networkNodeUrl: "127.0.0.1:50211",
     nodeId: "3",
     mirrorNode: "http://127.0.0.1:8081",
-    gas: 10_000_000,
+    gas: 15_000_000,
+    timeout: 60_000,
+  },
+  previewnet: {
+    name: "previewnet",
+    url: "https://previewnet.hashio.io/api",
+    chainId: 297,
+    networkNodeUrl: "0.previewnet.hedera.com:50211", // https://docs.hedera.com/hedera/networks/testnet/testnet-nodes#preview-testnet-nodes
+    nodeId: "3",
+    mirrorNode: "previewnet.mirrornode.hedera.com:443", // https://docs.hedera.com/hedera/core-concepts/mirror-nodes/hedera-mirror-node#previewnet
+    gas: 15_000_000,
     timeout: 60_000,
   },
   testnet: {
@@ -24,14 +38,8 @@ const NETWORKS = {
     networkNodeUrl: "0.testnet.hedera.com:50211", // https://docs.hedera.com/hedera/networks/testnet/testnet-nodes
     nodeId: "3",
     mirrorNode: "testnet.mirrornode.hedera.com:443", // https://docs.hedera.com/hedera/core-concepts/mirror-nodes/hedera-mirror-node#testnet
-  },
-  previewnet: {
-    name: "previewnet",
-    url: "https://previewnet.hashio.io/api",
-    chainId: 297,
-    networkNodeUrl: "0.previewnet.hedera.com:50211", // https://docs.hedera.com/hedera/networks/testnet/testnet-nodes#preview-testnet-nodes
-    nodeId: "3",
-    mirrorNode: "previewnet.mirrornode.hedera.com:443", // https://docs.hedera.com/hedera/core-concepts/mirror-nodes/hedera-mirror-node#previewnet
+    gas: 15_000_000,
+    timeout: 60_000,
   },
   besu: {
     name: "besu_local",
@@ -46,5 +54,6 @@ const NETWORKS = {
 
 module.exports = {
   NETWORKS,
+  PREVIEWNET_PRIVATE_KEYS,
   TESTNET_PRIVATE_KEYS,
 };
