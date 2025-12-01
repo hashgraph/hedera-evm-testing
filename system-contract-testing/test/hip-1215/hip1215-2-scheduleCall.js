@@ -387,7 +387,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       await hip1215.signSchedule(schedule, sigMap);
 
       // Allow some time for all child transactions
-      sleep(5000);
+      await sleep(5000);
       const childrenCount = await getChildTransactionsByScheduleId(
         mnClient,
         schedule
