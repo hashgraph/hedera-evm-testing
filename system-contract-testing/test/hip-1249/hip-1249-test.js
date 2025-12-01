@@ -84,6 +84,7 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
       cyclesToThrottling,
       50,
     );
+    // wait for simulation transactions result
     const throttledTxReceipts = [];
     for (const [i, tx] of transaction.entries()) {
       const txResult = await tx;
@@ -103,7 +104,7 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
       );
       if (txReceipt != null && txReceipt.status === 0) {
         throttledTxReceipts.push(txReceipt);
-        // TODO should we check each possible throttled tx that its error really 'CONSENSUS_GAS_EXHAUSTED'?
+        // should we check each possible throttled tx that its error really 'CONSENSUS_GAS_EXHAUSTED'?
       }
     }
     expect(throttledTxReceipts.length > 0).is.true;
@@ -111,5 +112,5 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
       "Got '%s' throttled transactions in total",
       throttledTxReceipts.length,
     );
-  }).timeout(600000);
+  }).timeout(600000); // locally increate the timeout
 });

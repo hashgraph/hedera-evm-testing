@@ -38,7 +38,8 @@ contract HIP1249Contract {
         input[10] = uint256(0x2a23af9a5ce2ba2796c1f4e453a370eb0af8c212d9dc9acd8fc02c2e907baea2);
         //(G2)y_0
         input[11] = uint256(0x23a8eb0b0996252cb548a4487da97b02422ebc0e834613f954de6c7e0afdc1fc);
-        //multiplies the pairings and stores a 1 in the first element of input
+        // Elliptic Curve Pairing. Basically, some mathematical operation to consume the gas.
+        // Multiplies the pairings and stores a 1 in the first element of input
         assembly {
             if iszero(
                 call(not(0), 0x08, 0, input, 0x0180, input, 0x20)
