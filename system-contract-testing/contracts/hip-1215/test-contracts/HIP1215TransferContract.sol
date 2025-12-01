@@ -23,20 +23,20 @@ contract HIP1215TransferContract {
 
     function createAssociateAndTransfer(address tokenCreateContract, address receiver) external payable returns (int64 responseCode) {
 
-        (bool success1, bytes memory result1) = tokenCreateContract.call{value: msg.value}(abi.encodeWithSignature("createFungibleTokenPublic(address)", tokenCreateContract));
+        (bool success, bytes memory result) = tokenCreateContract.call{value: msg.value}(abi.encodeWithSignature("createFungibleTokenPublic(address)", tokenCreateContract));
         address token;
-        if (success1){
-            token = abi.decode(result1, (address));
-        } 
-        (bool success2, bytes memory result2) = HTS.call(
+        if (success){
+            token = abi.decode(result, (address));
+        }
+        (success, result) = HTS.call(
             abi.encodeWithSelector(IHederaTokenService.associateToken.selector,
             receiver, token));
-        require(success2);
+        require(success);
 
-        (bool success3, bytes memory result3) = HTS.call(
+        (success, result) = HTS.call(
             abi.encodeWithSelector(IHederaTokenService.transferToken.selector,
             token, address(this), receiver, 10));
-        responseCode = success3 ? abi.decode(result3, (int32)) : HederaResponseCodes.UNKNOWN;
+        responseCode = success ? abi.decode(result, (int32)) : HederaResponseCodes.UNKNOWN;
         return responseCode;
     }
 }   

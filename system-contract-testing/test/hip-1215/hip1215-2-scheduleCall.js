@@ -85,7 +85,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     [hip1215, impl1215, signers, mnClient] = await beforeTests();
   });
 
-  // schedules result check ofter tests passes to save the time
+  // Check the results of the scheduled calls after the test execution to save time
   after(async () => {
     await afterTests(scheduleCheck, balanceCheck, scheduleTxCheck);
   });
@@ -207,40 +207,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         () => "0x",
         INSUFFICIENT_PAYER_BALANCE
       );
-    });
-
-    it("should schedule a call that produces child transactions", async () => {
-      const tokenContract = await Utils.deployTokenCreateContract();
-
-      const transferContract = await contractDeployAndFund(
-        "HIP1215TransferContract",
-        0,
-        60
-      );
-      const tx = await transferContract.scheduleCallForTransfer(
-        getExpirySecond(),
-        GAS_LIMIT_5_000_000.gasLimit,
-        5_000_000_000n, // 50 HBAR in TINYBARS
-        tokenContract,
-        signers[2]
-      );
-      const schedule = await testScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.SUCCESS.valueOf()
-      );
-      const childrenCount = await getChildTransactionsByScheduleId(
-        mnClient,
-        schedule
-      );
-      expect(childrenCount).not.to.be.null;
-      expect(childrenCount).not.to.eq(0);
-      //Scheduled transaction contract call
-      //   -> call to token create contract
-      //      -> call to HTS create fungible
-      //   -> call to HTS associate
-      //   -> call to HTS transferToken
-      // Expecting 5 transactions
-      expect(childrenCount).to.eq(5);
     });
   });
 
@@ -392,5 +358,41 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       expect(finalResponse).to.not.eq(SUCCESS);
       expect(recursiveCounter).to.eq(expectedCalls);
     }).timeout(300_000); // We are recursively querying MN so we need more time for execution of the test
+  });
+
+  describe("Schedule generating child records", () => {
+    it("should schedule a call that produces child transactions", async () => {
+      const tokenContract = await Utils.deployTokenCreateContract();
+
+      const transferContract = await contractDeployAndFund(
+        "HIP1215TransferContract",
+        0,
+        55
+      );
+      const tx = await transferContract.scheduleCallForTransfer(
+        getExpirySecond(),
+        GAS_LIMIT_5_000_000.gasLimit,
+        3_500_000_000n, // 35 HBAR in TINYBARS
+        tokenContract,
+        signers[2]
+      );
+      const schedule = await testScheduleCallEvent(
+        tx,
+        ResponseCodeEnum.SUCCESS.valueOf()
+      );
+      const childrenCount = await getChildTransactionsByScheduleId(
+        mnClient,
+        schedule
+      );
+      expect(childrenCount).not.to.be.null;
+      expect(childrenCount).not.to.eq(0);
+      //Scheduled transaction contract call
+      //   -> call to token create contract
+      //      -> call to HTS create fungible
+      //   -> call to HTS associate
+      //   -> call to HTS transferToken
+      // Expecting 5 transactions
+      expect(childrenCount).to.eq(5);
+    });
   });
 });

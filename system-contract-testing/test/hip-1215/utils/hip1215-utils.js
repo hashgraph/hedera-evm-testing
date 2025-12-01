@@ -175,7 +175,7 @@ async function getChildTransactionsByScheduleId(
 ) {
   const scheduleId = ScheduleId.fromSolidityAddress(scheduleAddress).toString();
   const scheduleObj = await Async.waitForCondition(
-    "executed_timestamp",
+    "child_transaction_execution",
     () => mnClient.getScheduleInfo(scheduleId),
     (result) => result.executed_timestamp != null,
     waitStep,
