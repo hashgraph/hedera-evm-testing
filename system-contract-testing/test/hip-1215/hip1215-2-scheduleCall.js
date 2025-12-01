@@ -18,6 +18,7 @@ const {
   testResponseCodeEvent,
   getRecursiveScheduleStatus,
   getChildTransactionsByScheduleId,
+  getSignatureMap,
   SUCCESS,
   INSUFFICIENT_PAYER_BALANCE,
   CONTRACT_REVERT_EXECUTED,
@@ -26,6 +27,7 @@ const Utils = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
 const { expect } = require("chai");
+const { sleep } = require("@hashgraphonline/standards-sdk");
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
 
 describe("HIP-1215 System Contract testing. scheduleCall()", () => {
@@ -380,6 +382,12 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         tx,
         ResponseCodeEnum.SUCCESS.valueOf()
       );
+
+      const sigMap = getSignatureMap(2, schedule);
+      await hip1215.signSchedule(schedule, sigMap);
+
+      // Allow some time for all child transactions
+      sleep(5000);
       const childrenCount = await getChildTransactionsByScheduleId(
         mnClient,
         schedule
