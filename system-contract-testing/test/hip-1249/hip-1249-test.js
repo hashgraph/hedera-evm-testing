@@ -2,9 +2,10 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { GAS_LIMIT_15M, ONE_HBAR } = require("../../utils/constants");
 const Async = require("../../utils/async");
+const { createMirrorNodeClient } = require("../../utils/mirrorNode");
 
 describe("HIP-1249 'ops duration throttling' tests", () => {
-  let signers, hip1249;
+  let signers, hip1249, mnClient;
 
   // preconditions before test run
   before(async () => {
@@ -14,6 +15,7 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
     hip1249 = await HIP1249Factory.deploy();
     await hip1249.waitForDeployment();
     console.log("Deploy hip1249:", hip1249.target);
+    mnClient = createMirrorNodeClient();
   });
 
   async function createSigners(count, value) {
@@ -41,7 +43,7 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
     return newSigners;
   }
 
-  async function simulateOpsDurationThrottling(newSigners, cycles, sleep) {
+  async function simulateThrottling(newSigners, cycles, sleep) {
     if (cycles * sleep > 1000) {
       throw Error(
         `cycles * sleep cant be more change opsDuration bucket (1000 ms)`,
@@ -55,14 +57,16 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
     for (const [n, signer] of newSigners.entries()) {
       let nonce = 0;
       for (let i = 0; i < cycles; i++) {
-        const tx = hip1249.connect(signer).simulateOpsDurationThrottling(130, {
-          gasLimit: GAS_LIMIT_15M.gasLimit,
-          nonce: nonce,
-        });
+        const tx = hip1249
+          .connect(signer)
+          .simulateOpsDurationThrottling(62000, {
+            gasLimit: GAS_LIMIT_15M.gasLimit,
+            nonce: nonce,
+          });
         transactions.push(tx);
         console.log(
           "Transaction:%s signer:%s time:%s, nonce:%s",
-          (n + 1) * (i + 1),
+          n * cycles + i + 1,
           signer.address,
           new Date(),
           nonce,
@@ -76,41 +80,34 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
   }
 
   it("simulate ops duration throttling", async () => {
-    const signers = 10; // each signer used to fill 1 opsDuration bucket (1000 ms)
+    const signers = 5; // each signer used to fill 1 opsDuration bucket (1000 ms)
     const cyclesToThrottling = 4;
-    const newSigners = await createSigners(signers, cyclesToThrottling * 10);
-    const transaction = await simulateOpsDurationThrottling(
+    const newSigners = await createSigners(signers, cyclesToThrottling * 11);
+    const transaction = await simulateThrottling(
       newSigners,
       cyclesToThrottling,
-      50,
+      20,
     );
-    // wait for simulation transactions result
-    const throttledTxReceipts = [];
-    for (const [i, tx] of transaction.entries()) {
-      const txResult = await tx;
-      const txReceipt = await Async.waitForCondition(
-        // sometimes txReceipt can be null, mb because nodes need more time to sync, skipping status for this ones
-        "get_receipt",
-        () => ethers.provider.getTransactionReceipt(txResult.hash),
-        (result) => result != null,
-        2000,
-        120,
-      );
-      console.log(
-        "Transaction:%s.hash:%s status:%s",
-        i + 1,
-        txResult.hash,
-        txReceipt == null ? null : txReceipt.status,
-      );
-      if (txReceipt != null && txReceipt.status === 0) {
-        throttledTxReceipts.push(txReceipt);
-        // should we check each possible throttled tx that its error really 'CONSENSUS_GAS_EXHAUSTED'?
-      }
-    }
-    expect(throttledTxReceipts.length > 0).is.true;
-    console.log(
-      "Got '%s' throttled transactions in total",
-      throttledTxReceipts.length,
+    await Promise.all(transaction); // wait for all transactions
+    await Async.wait(2000); // wait a bit for MN to sync data
+    const contractCalls = await Async.waitForCondition(
+      "get_contract_results",
+      () =>
+        mnClient.getContractResultsByContract(hip1249.target, {
+          limit: "100",
+          order: "desc",
+        }),
+      (result) =>
+        result.length >= signers * cyclesToThrottling || result.length >= 100,
+      2000,
+      30,
     );
+    const throttledTxCount = contractCalls.filter(
+      (e) =>
+        // "CONSENSUS_GAS_EXHAUSTED" in hex format
+        e.error_message === "0x434f4e53454e5355535f4741535f455848415553544544",
+    ).length;
+    expect(throttledTxCount > 0).is.true;
+    console.log("Got '%s' throttled transactions in total", throttledTxCount);
   }).timeout(600000); // locally increate the timeout
 });

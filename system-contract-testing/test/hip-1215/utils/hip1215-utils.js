@@ -3,8 +3,6 @@ const { ethers } = require("hardhat");
 const { PrivateKey, AccountId, ScheduleId } = require("@hashgraph/sdk");
 const Utils = require("../../../utils/utils");
 const { Events } = require("../../../utils/constants");
-const { Logger, HederaMirrorNode } = require("@hashgraphonline/standards-sdk");
-const hre = require("hardhat");
 const Async = require("../../../utils/async");
 const { ResponseCodeEnum, SignatureMap } = require("@hashgraph/proto").proto;
 
@@ -134,15 +132,6 @@ async function getSignatureMap(accountIndex, scheduleAddress) {
 // ---------------------------------------------------------------------------
 
 // Mirror node client functions --------------------------------------------------
-function createMirrorNodeClient() {
-  const logger = new Logger({ module: "test/hip-1215", level: "warn" });
-  const { mirrorNode } =
-    hre.config.networks[Utils.getCurrentNetwork()].sdkClient;
-  return new HederaMirrorNode("local", logger, {
-    customUrl: mirrorNode,
-  });
-}
-
 async function getScheduledTxStatus(
   mnClient,
   scheduleAddress,
@@ -243,8 +232,7 @@ async function findNewScheduleAddress(
   if (contractCallLogs != null && contractCallLogs.length > 0) {
     const log = contractCallLogs[0].data;
     // We already now that the execution was successful so we only get the last 20 bytes
-    const nextScheduleAdrress = "0x" + log.slice(-40);
-    return nextScheduleAdrress;
+    return "0x" + log.slice(-40);
   }
 
   return null;
