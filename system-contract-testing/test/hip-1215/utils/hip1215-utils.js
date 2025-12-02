@@ -249,7 +249,6 @@ module.exports = {
   testScheduleCallEvent,
   testResponseCodeEvent,
   testHasScheduleCapacityEvent,
-  createMirrorNodeClient,
   getScheduledTxStatus,
   getRecursiveScheduleStatus,
   SUCCESS,
