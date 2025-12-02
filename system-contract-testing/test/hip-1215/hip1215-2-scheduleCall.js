@@ -363,7 +363,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
   });
 
   describe("Schedule generating child records", () => {
-    it.only("should schedule a call that produces child transactions", async () => {
+    it("should schedule a call that produces child transactions", async () => {
       const tokenContract = await Utils.deployTokenCreateContract();
 
       const transferContract = await contractDeployAndFund(
