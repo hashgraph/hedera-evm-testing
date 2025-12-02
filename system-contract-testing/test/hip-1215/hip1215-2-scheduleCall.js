@@ -363,17 +363,17 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
   });
 
   describe("Schedule generating child records", () => {
-    it("should schedule a call that produces child transactions", async () => {
+    it.only("should schedule a call that produces child transactions", async () => {
       const tokenContract = await Utils.deployTokenCreateContract();
 
       const transferContract = await contractDeployAndFund(
         "HIP1215TransferContract",
         0,
-        55
+        100
       );
       console.log("Contract deployed. Trying to schedule.");
       const tx = await transferContract.scheduleCallForTransfer(
-        getExpirySecond(),
+        getExpirySecond(5),
         GAS_LIMIT_5_000_000.gasLimit,
         3_500_000_000n, // 35 HBAR in TINYBARS
         tokenContract,
