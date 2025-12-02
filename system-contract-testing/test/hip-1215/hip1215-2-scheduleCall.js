@@ -371,6 +371,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         55
       );
+      console.log("Contract deployed. Trying to schedule.");
       const tx = await transferContract.scheduleCallForTransfer(
         getExpirySecond(),
         GAS_LIMIT_5_000_000.gasLimit,
@@ -378,20 +379,24 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         tokenContract,
         signers[2]
       );
+      console.log("Schedule created. Trying to get schedule logs");
       const schedule = await testScheduleCallEvent(
         tx,
         ResponseCodeEnum.SUCCESS.valueOf()
       );
-
+      console.log("Prepare signature map for signing");
       const sigMap = getSignatureMap(2, schedule);
+      console.log("Signing...");
       await hip1215.signSchedule(schedule, sigMap);
-
+      console.log("Now sleep to allow the calls to process.");
       // Allow some time for all child transactions
       await sleep(5000);
+      console.log("Try to get the child records.");
       const childrenCount = await getChildTransactionsByScheduleId(
         mnClient,
         schedule
       );
+      console.log("Now assert all is as expected...");
       expect(childrenCount).not.to.be.null;
       expect(childrenCount).not.to.eq(0);
       //Scheduled transaction contract call
