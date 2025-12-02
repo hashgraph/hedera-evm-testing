@@ -79,7 +79,7 @@ jobs:
 
       - name: Install npm testing dependencies
         run: npm ci
-        working-directory: evm-testing/system-contract-testing
+        working-directory: evm-testing/evm-functional-testing
 
       - name: Install Solo
         run: npm install -g @hashgraph/solo@${SOLO_VERSION}
@@ -118,7 +118,7 @@ jobs:
         if: ${{ steps.run_solo.outcome == 'success' }}
         run: |
           npx hardhat test --network local
-        working-directory:  evm-testing/system-contract-testing
+        working-directory:  evm-testing/evm-functional-testing
 
       - name: Stop solo
         run: |
