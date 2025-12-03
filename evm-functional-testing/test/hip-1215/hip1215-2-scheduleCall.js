@@ -1,3 +1,4 @@
+// HIP: https://hips.hedera.com/hip/hip-1215
 const { ethers } = require("hardhat");
 const {
   TINYBAR_TO_WAIBAR_CORF,

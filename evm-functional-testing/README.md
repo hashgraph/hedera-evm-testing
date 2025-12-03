@@ -1,4 +1,26 @@
-## System contracts testing
+## EVM functional testing
+
+The Hedera network utilizes System Contracts at a reserved contract address on the EVM to surface HAPI service functionality through EVM-processed transactions. These System Contracts behave like precompiled contracts whose function selectors are mapped directly to defined native network logic (HAPI services). In this way, EVM users can utilize exposed HAPI features natively in their smart contracts.
+
+The folder contains:
+- Hiero Improvement Proposals (HIP) functional, end-to-end, integration testing from EVM perspective:
+  - Verify that the specific new feature or modified behavior introduced by the HIP works correctly according to the technical specification.
+  - Verify that the new HIP functionality correctly interfaces and interacts with other components of the Hedera ecosystem.
+  - Simulate real-world user workflows from start to finish, ensuring the entire HIP works as expected.
+- System Contract functional, end-to-end, integration testing from EVM perspective:
+  - Verifies that the precompiled system contracts correctly interpret the EVM call data and execute the corresponding native Hedera service logic.
+  - Verifying the flow of control and state changes between the EVM and the Hedera layer.
+  - Simulates real-world application use cases involving multiple steps and different network components.
+- Solidity Contracts, the actual smart contract files used for testing
+- Deployment Scripts
+  - Network deployment scripts, to quickly deploy a local Hedera Network.
+  - Scripts to set up test accounts before the functional tests begin.
+  - Scripts to quickly deploy the necessary initial contracts.
+
+### Contains tests for HIPs
+- [HIP-632 isAuthorizedRaw](https://hips.hedera.com/hip/hip-632#isauthorizedrawaddress-messagehash-signatureblob-function-usage)
+- [HIP-1215](https://hips.hedera.com/hip/hip-1215)
+- [HIP-1249](https://hips.hedera.com/hip/hip-1249)
 
 ## Run tests
 
@@ -62,33 +84,3 @@ kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata
 
 ### Force Destroy
 `./test.sh solo destroy`
-
-## Run EVM execution spec tests
-
-### Requirements
-
-- pull repo / install `uv`. See: https://github.com/ethereum/execution-spec-tests?tab=readme-ov-file#installation
-
-### Run testnet
-```
-uv run execute remote -v --fork=Shanghai --rpc-endpoint=https://testnet.hashio.io/api --rpc-seed-key={your_key} --rpc-chain-id 296 ./tests/shanghai/eip3855_push0/test_push0.py::test_push0_contracts --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000
-```
-
-### Run local solo net
-Shanghai: (with https://github.com/gkozyryatskyy/execution-spec-tests/tree/quest-fight-against-nexus-king-salhadaar)
-```
-# test_push0.py::test_push0_contracts
-uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip3855_push0/test_push0.py::test_push0_contracts --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000
-# test_push0.py
-uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip3855_push0/test_push0.py --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000
-# test_initcode.py::test_contract_creating_tx
-uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip3860_initcode/test_initcode.py::test_contract_creating_tx --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000 --eoa-fund-amount-default=2000000000000000000
-# test_initcode.py::test_gas_usage
-uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip3860_initcode/test_initcode.py::TestContractCreationGasUsage::test_gas_usage --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000 --eoa-fund-amount-default=2000000000000000000
-# test_initcode.py::TestCreateInitcode
-uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip3860_initcode/test_initcode.py::TestCreateInitcode --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000 --eoa-fund-amount-default=8000000000000000000
-# test_with_eof.py::test_legacy_create_edge_code_size
-uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/eip3860_initcode/test_with_eof.py::test_legacy_create_edge_code_size --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 100000000000000000000 --eoa-fund-amount-default=8000000000000000000
-# ./tests/shanghai/
-uv run execute remote -v --fork=Shanghai --rpc-endpoint=http://localhost:7546/ --rpc-seed-key=0xde78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68 --rpc-chain-id 298 ./tests/shanghai/ --sender-funding-txs-gas-price 710000000000 --default-gas-price 710000000000 --sender-fund-refund-gas-limit 1000000 --seed-account-sweep-amount 200000000000000000000 --eoa-fund-amount-default=8000000000000000000
-```

@@ -1,3 +1,4 @@
+// HIP: https://hips.hedera.com/hip/hip-632#isauthorizedrawaddress-messagehash-signatureblob-function-usage
 const { ethers } = require("hardhat");
 const {
   Wallet,
@@ -12,7 +13,6 @@ const {
 } = require("./utils/hip-632-utils");
 const { createSDKClient } = require("../../utils/utils");
 
-// https://hips.hedera.com/hip/hip-632#isauthorizedrawaddress-messagehash-signatureblob-function-usage
 describe("HIP-632 'isAuthorizedRaw' tests", () => {
   let signers, hip632, sdkClient, edPK, edSignerAccount, wallet;
 
