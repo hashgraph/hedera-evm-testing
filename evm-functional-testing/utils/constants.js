@@ -50,6 +50,8 @@ const Path = {};
 
 const Contract = {
   HIP1215Contract: "HIP1215Contract",
+  HIP1249Contract: "HIP1249Contract",
+  HIP632Contract: "HIP632Contract",
 };
 
 const TINYBAR_TO_WAIBAR_CORF = 10_000_000_000n;

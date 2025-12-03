@@ -12,6 +12,7 @@ const {
   hedera_signMessage,
 } = require("./utils/hip-632-utils");
 const { createSDKClient } = require("../../utils/utils");
+const {Contract} = require("../../utils/constants");
 
 describe("HIP-632 'isAuthorizedRaw' tests", () => {
   let signers, hip632, sdkClient, edPK, edSignerAccount, wallet;
@@ -20,7 +21,7 @@ describe("HIP-632 'isAuthorizedRaw' tests", () => {
   before(async () => {
     signers = await ethers.getSigners();
     // deploy test contract
-    const HIP632Factory = await ethers.getContractFactory("HIP632Contract");
+    const HIP632Factory = await ethers.getContractFactory(Contract.HIP632Contract);
     hip632 = await HIP632Factory.deploy();
     await hip632.waitForDeployment();
     console.log("Deploy hip632:", hip632.target);

@@ -1,7 +1,7 @@
 // HIP: https://hips.hedera.com/hip/hip-1249
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { GAS_LIMIT_15M, ONE_HBAR } = require("../../utils/constants");
+const { GAS_LIMIT_15M, ONE_HBAR, Contract} = require("../../utils/constants");
 const Async = require("../../utils/async");
 const { createMirrorNodeClient } = require("../../utils/mirrorNode");
 
@@ -12,7 +12,7 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
   before(async () => {
     signers = await ethers.getSigners();
     // deploy test contract
-    const HIP1249Factory = await ethers.getContractFactory("HIP1249Contract");
+    const HIP1249Factory = await ethers.getContractFactory(Contract.HIP1249Contract);
     hip1249 = await HIP1249Factory.deploy();
     await hip1249.waitForDeployment();
     console.log("Deploy hip1249:", hip1249.target);
@@ -46,8 +46,10 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
 
   async function simulateThrottling(newSigners, cycles, sleep) {
     if (cycles * sleep > 1000) {
+      // The idea here is that a single signer can be used to fulfill just 1 OpsDuration bucket (over 1 second)
+      // because of the manual nonce tracking problem after the first throttling error.
       throw Error(
-        `cycles * sleep cant be more change opsDuration bucket (1000 ms)`,
+        `cycles * sleep cant be more than opsDuration bucket (1000 ms)`,
       );
     }
     // we are using single signer up to first possible 'CONSENSUS_GAS_EXHAUSTED' because:
