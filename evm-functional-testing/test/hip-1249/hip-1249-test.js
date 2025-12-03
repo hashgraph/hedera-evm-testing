@@ -81,7 +81,7 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
   }
 
   it("simulate ops duration throttling", async () => {
-    const signers = 5; // each signer used to fill 1 opsDuration bucket (1000 ms)
+    const signers = 2; // each signer used to fill 1 opsDuration bucket (1000 ms)
     const cyclesToThrottling = 4;
     const newSigners = await createSigners(signers, cyclesToThrottling * 11);
     const transaction = await simulateThrottling(

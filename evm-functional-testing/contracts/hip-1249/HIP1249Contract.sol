@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.30;
 
 import "../system-contract-references/IHederaAccountService.sol";
 import "../system-contract-references/HederaResponseCodes.sol";
