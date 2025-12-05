@@ -5,6 +5,7 @@ require("@openzeppelin/hardhat-upgrades");
 require("@nomicfoundation/hardhat-chai-matchers");
 require("solidity-coverage");
 
+
 const PREVIEWNET_PRIVATE_KEYS = process.env.PREVIEWNET_PRIVATE_KEYS
     ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
     : [];
@@ -12,6 +13,7 @@ const PREVIEWNET_PRIVATE_KEYS = process.env.PREVIEWNET_PRIVATE_KEYS
 const TESTNET_PRIVATE_KEYS = process.env.TESTNET_PRIVATE_KEYS
     ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
     : [];
+
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -24,7 +26,6 @@ module.exports = {
     reporterOption: {
       reporterEnabled: "spec, mocha-junit-reporter",
       mochaJunitReporterReporterOptions: {
-        mochaFile: "test-results.[hash].xml",
         includePending: true,
         outputs: true,
       },
@@ -48,7 +49,7 @@ module.exports = {
   defaultNetwork: "local",
   // see https://v2.hardhat.org/hardhat-runner/docs/config
   networks: {
-    hardhat: {},
+    hardhat: {loggingEnabled:false},
     local: {
       url: "http://localhost:7546",
       chainId: 298,

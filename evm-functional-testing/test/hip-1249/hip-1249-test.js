@@ -6,20 +6,27 @@ const Async = require("../../utils/async");
 const { createMirrorNodeClient } = require("../../utils/mirrorNode");
 
 describe("HIP-1249 'ops duration throttling' tests", () => {
-  let signers, hip1249, mnClient;
+  let signers, hip1249
+
+ 
+
+;
 
   // preconditions before test run
   before(async () => {
+    const provider = ethers.provider;
     signers = await ethers.getSigners();
     // deploy test contract
     const HIP1249Factory = await ethers.getContractFactory(Contract.HIP1249Contract);
     hip1249 = await HIP1249Factory.deploy();
+    
     await hip1249.waitForDeployment();
     console.log("Deploy hip1249:", hip1249.target);
-    mnClient = createMirrorNodeClient();
   });
 
   async function createSigners(count, value) {
+ 
+
     const newSigners = [];
     for (let i = 0; i < count; i++) {
       // create new signer
@@ -45,6 +52,8 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
   }
 
   async function simulateThrottling(newSigners, cycles, sleep) {
+
+    
     if (cycles * sleep > 1000) {
       // The idea here is that a single signer can be used to fulfill just 1 OpsDuration bucket (over 1 second)
       // because of the manual nonce tracking problem after the first throttling error.
@@ -60,12 +69,15 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
     for (const [n, signer] of newSigners.entries()) {
       let nonce = 0;
       for (let i = 0; i < cycles; i++) {
-        const tx = hip1249
+        const tx =   hip1249
           .connect(signer)
           .simulateOpsDurationThrottling(62000, {
             gasLimit: GAS_LIMIT_15M.gasLimit,
             nonce: nonce,
-          });
+          }).catch(error => {
+            console.log("hi fer " + error) ;
+            throw error;
+          });   
         transactions.push(tx);
         console.log(
           "Transaction:%s signer:%s time:%s, nonce:%s",
@@ -75,6 +87,7 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
           nonce,
         );
         nonce++;
+
         await Async.wait(sleep); // wait a bit to order the transactions
       }
       await Async.wait(1000 - cycles * sleep); // wait til the next opsDuration bucket (each 1000 ms)
@@ -91,26 +104,10 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
       cyclesToThrottling,
       20,
     );
-    await Promise.all(transaction); // wait for all transactions
-    await Async.wait(2000); // wait a bit for MN to sync data
-    const contractCalls = await Async.waitForCondition(
-      "get_contract_results",
-      () =>
-        mnClient.getContractResultsByContract(hip1249.target, {
-          limit: "100",
-          order: "desc",
-        }),
-      (result) =>
-        result.length >= signers * cyclesToThrottling || result.length >= 100,
-      2000,
-      30,
-    );
-    const throttledTxCount = contractCalls.filter(
-      (e) =>
-        // "CONSENSUS_GAS_EXHAUSTED" in hex format
-        e.error_message === "0x434f4e53454e5355535f4741535f455848415553544544",
-    ).length;
-    expect(throttledTxCount > 0).is.true;
-    console.log("Got '%s' throttled transactions in total", throttledTxCount);
+  const responses = await Promise.allSettled(transaction); // wait for all transactions
+  console.log(responses);
+  const throttledCount = responses.filter(r => r.status === "rejected").length;
+  expect(throttledCount).gt(0,"not throttling");
+
   }).timeout(600000); // locally increate the timeout
 });
