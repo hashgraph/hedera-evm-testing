@@ -1,0 +1,16 @@
+# Compiler files
+cache
+artifacts
+test-results.*
+
+# Npm dependencies
+node_modules/
+
+# Hardhat
+abi/
+
+# Dotenv file
+.env
+
+# WebStorm
+.idea
