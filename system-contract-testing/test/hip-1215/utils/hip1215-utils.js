@@ -167,6 +167,30 @@ async function getScheduledTxStatus(
   }
 }
 
+async function getChildTransactionsByScheduleId(
+  mnClient,
+  scheduleAddress,
+  waitStep = 5000,
+  maxAttempts = 10
+) {
+  const scheduleId = ScheduleId.fromSolidityAddress(scheduleAddress).toString();
+  const scheduleObj = await Async.waitForCondition(
+    "child_transaction_execution",
+    () => mnClient.getScheduleInfo(scheduleId),
+    (result) => result.executed_timestamp != null,
+    waitStep,
+    maxAttempts
+  );
+  const transactions = await mnClient.getTransactionByTimestamp(
+    scheduleObj.executed_timestamp
+  );
+  if (transactions.length > 0) {
+    const txId = transactions[0].transaction_id;
+    const includingChildren = await mnClient.getContractActions(txId);
+    return includingChildren.length;
+  }
+}
+
 async function getRecursiveScheduleStatus(
   mnClient,
   scheduleAddress,
@@ -264,6 +288,7 @@ module.exports = {
   createMirrorNodeClient,
   getScheduledTxStatus,
   getRecursiveScheduleStatus,
+  getChildTransactionsByScheduleId,
   SUCCESS,
   INVALID_ETHEREUM_TRANSACTION,
   INSUFFICIENT_PAYER_BALANCE,
