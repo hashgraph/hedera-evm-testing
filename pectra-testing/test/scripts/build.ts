@@ -5,8 +5,6 @@ import { promisify } from 'node:util';
  * 
  */
 export async function mochaGlobalSetup() {
-    console.log("Global setup for Mocha tests");
-
-    const { stdout, stderr } = await promisify(exec)('forge build');
-    console.log('Forge build output:', stdout);
+    const { stdout } = await promisify(exec)('forge build');
+    console.info(stdout);
 }
