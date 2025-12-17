@@ -71,8 +71,8 @@ describe('eip7702', function () {
         });
 
         it('should return delegation designation to `0x167` when an HTS token is created', async function () {
-            const operatorId = sdk.AccountId.fromString(process.env.OPERATOR_ID);
-            const operatorKey = sdk.PrivateKey.fromStringECDSA(process.env.OPERATOR_KEY);
+            const operatorId = sdk.AccountId.fromString(process.env.OPERATOR_ID!);
+            const operatorKey = sdk.PrivateKey.fromStringECDSA(process.env.OPERATOR_KEY!);
             const client = sdk.Client.forNetwork({ '127.0.0.1:50211': '0.0.3' });
             client.setOperator(operatorId, operatorKey);
 
