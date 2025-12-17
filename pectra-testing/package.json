@@ -1,0 +1,28 @@
+{
+  "name": "pectra-testing",
+  "version": "0.1.0",
+  "description": "E2E testing of Hiero's Pectra EVM Implementation",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./config": "./lib/config.ts",
+    "./log": "./lib/log.ts",
+    "./eoa": "./lib/eoa.ts",
+    "./eip7702": "./lib/eip7702.ts"
+  },
+  "scripts": {
+    "tsc": "tsc",
+    "test": "mocha"
+  },
+  "keywords": [],
+  "author": "Hashgraph Smart Contracts Team",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "chai": "^6.2.1",
+    "ethers": "^6.16.0",
+    "mocha": "^11.7.5",
+    "typescript": "^5.9.3"
+  }
+}
