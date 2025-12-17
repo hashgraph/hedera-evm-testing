@@ -14,4 +14,12 @@ contract Simple7702Account {
             Exec.revertWithReturnData();
         }
     }
+
+    fallback() external payable {
+        revert("Fallback reached");
+    }
+
+    receive() external payable {
+        revert("Plain transfers not supported");
+    }
 }
