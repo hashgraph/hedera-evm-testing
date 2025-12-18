@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-import { type BaseWallet, JsonRpcProvider, Transaction, Wallet, parseUnits } from 'ethers';
+import { type BaseWallet, Interface, JsonRpcProvider, Transaction, Wallet, parseUnits } from 'ethers';
 
 import { operatorEcdsaKey, rpcUrl } from './config.ts';
 import { log } from './log.ts';
@@ -56,14 +56,21 @@ export async function fundEOA(delegation?: string, tinyBarBalance: bigint = 100_
  * @param deployer 
  * @param gasLimit 
  */
-export async function deploy(contractName: string, deployer?: BaseWallet, gasLimit: number = 1_000_000): Promise<string> {
+export async function deploy(contractName: string, args?: unknown[], deployer?: BaseWallet, gasLimit: number = 5_000_000): Promise<string> {
     if (!deployer) deployer = await fundEOA();
 
     assert(deployer.provider !== null, 'Deployer wallet must be connected to a provider');
     const network = await deployer.provider.getNetwork();
 
     const file = readFileSync(`./out/${contractName}.sol/${contractName}.json`, 'utf-8');
-    const { bytecode } = JSON.parse(file);
+    const { abi, bytecode } = JSON.parse(file);
+
+    let consArgs = '';
+    if (args && args.length > 0) {
+        consArgs = new Interface(abi).encodeDeploy(args);
+        log('Using constructor arguments', consArgs);
+        consArgs = consArgs.slice(2);
+    }
 
     log('Deploying contract `%s` from EOA %s', contractName, deployer.address);
     const resp = await deployer.sendTransaction(Transaction.from({
@@ -71,7 +78,7 @@ export async function deploy(contractName: string, deployer?: BaseWallet, gasLim
         nonce: await deployer.getNonce(),
         gasPrice: parseUnits('10', 'gwei'),
         gasLimit,
-        data: bytecode.object,
+        data: bytecode.object + consArgs,
     }));
     const receipt = await resp.wait();
     log('Contract `%s` deployed at %s in transanction %s', contractName, receipt?.contractAddress, resp.hash);

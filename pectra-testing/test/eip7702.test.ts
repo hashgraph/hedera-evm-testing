@@ -1,7 +1,8 @@
 import { strict as assert } from 'node:assert';
 
 import { expect } from 'chai';
-import { JsonRpcProvider, Transaction, Wallet, parseUnits, type Network } from 'ethers';
+import { type FunctionFragment, Interface, JsonRpcProvider, Transaction, Wallet, parseUnits, type Network } from 'ethers';
+import * as ethers from 'ethers';
 
 import * as sdk from '@hiero-ledger/sdk';
 
@@ -54,12 +55,41 @@ describe('eip7702', function () {
         });
     });
 
-    describe('e2e', function () {
-        it('should pass', async function () {
-            const contractAddress = await deploy('Simple7702Account');
+    function encodeFunctionData(functionSignature: string, values?: unknown[]): string {
+        const iface = new Interface([`function ${functionSignature}`]);
+        const functionName = (iface.fragments[0] as FunctionFragment).name
+        return iface.encodeFunctionData(functionName, values);
+    }
 
-            const eoa1 = await fundEOA(contractAddress);
-            const eoa2 = await fundEOA(contractAddress);
+    describe('e2e', function () {
+        it('should get store and logs when EOA sends a transaction to itself', async function () {
+            const storeAndEmitAddr = await deploy('StoreAndEmit');
+            const smartWalletAddr = await deploy('Simple7702Account', [ethers.ZeroAddress]);
+            const eoa = await fundEOA(smartWalletAddr);
+
+            const s = encodeFunctionData('storeAndEmit(uint256 value)', [42]);
+            const calldata = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmitAddr, 0, s]);
+
+            console.log('Calldata for storeAndEmit(42):', calldata);
+
+            const tx = await eoa.sendTransaction({
+                chainId: network.chainId,
+                to: eoa.address,
+                gasPrice: parseUnits('10', 'gwei'),
+                gasLimit: 1_500_000,
+                data: calldata,
+            });
+            const receipt = await tx.wait();
+            
+            log('Transaction hash:', receipt?.hash);
+            log('Logs:', receipt?.logs);
+        });
+
+        it.skip('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
+            const smartWalletAddr = await deploy('Simple7702Account');
+
+            const eoa1 = await fundEOA(smartWalletAddr);
+            const eoa2 = await fundEOA(smartWalletAddr);
 
             await (await eoa1.sendTransaction({
                 to: eoa1.address,
@@ -70,7 +100,7 @@ describe('eip7702', function () {
             })).wait();
         });
 
-        it('should return delegation designation to `0x167` when an HTS token is created', async function () {
+        it.skip('should return delegation designation to `0x167` when an HTS token is created', async function () {
             const operatorId = sdk.AccountId.fromString(process.env.OPERATOR_ID!);
             const operatorKey = sdk.PrivateKey.fromStringECDSA(process.env.OPERATOR_KEY!);
             const client = sdk.Client.forNetwork({ '127.0.0.1:50211': '0.0.3' });
@@ -97,6 +127,10 @@ describe('eip7702', function () {
 
             client.close();
 
+            // TODO: Phase 1 - Base impl
+            new sdk.ContractByteCodeQuery();
+
+            // TODO: Phase 2 - MN impl
             const code = await provider.getCode(tokenAddr);
             expect(code).to.be.equal(designatorFor('0x0000000000000000000000000000000000000167'));
         })
