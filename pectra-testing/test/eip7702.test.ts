@@ -1,23 +1,20 @@
 import { strict as assert } from 'node:assert';
 
 import { expect } from 'chai';
-import { type FunctionFragment, Interface, JsonRpcProvider, Transaction, Wallet, parseUnits, type Network } from 'ethers';
 import * as ethers from 'ethers';
-
 import * as sdk from '@hiero-ledger/sdk';
 
 import { rpcUrl } from 'pectra-testing/config';
-import { deploy, fundEOA } from 'pectra-testing/eoa';
-import { designatorFor } from 'pectra-testing/eip7702';
 import { log } from 'pectra-testing/log';
+import { deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256 } from 'pectra-testing/web3';
 
 describe('eip7702', function () {
 
-    let provider: JsonRpcProvider;
-    let network: Network;
+    let provider: ethers.JsonRpcProvider;
+    let network: ethers.Network;
 
     before(async function () {
-        provider = new JsonRpcProvider(rpcUrl);
+        provider = new ethers.JsonRpcProvider(rpcUrl);
         network = await provider.getNetwork();
     });
 
@@ -32,13 +29,13 @@ describe('eip7702', function () {
                 const eoa = await fundEOA();
                 const nonce = await eoa.getNonce();
 
-                const resp = await eoa.sendTransaction(Transaction.from({
+                const resp = await eoa.sendTransaction(ethers.Transaction.from({
                     chainId: network.chainId,
                     nonce,
-                    gasPrice: parseUnits('10', 'gwei'),
+                    gasPrice: ethers.parseUnits('10', 'gwei'),
                     gasLimit: 121_000,
                     value: 10n,
-                    to: Wallet.createRandom().address,
+                    to: ethers.Wallet.createRandom().address,
                     authorizationList: [await eoa.authorize({
                         chainId: 0,
                         nonce: nonce + 1,
@@ -55,34 +52,37 @@ describe('eip7702', function () {
         });
     });
 
-    function encodeFunctionData(functionSignature: string, values?: unknown[]): string {
-        const iface = new Interface([`function ${functionSignature}`]);
-        const functionName = (iface.fragments[0] as FunctionFragment).name
-        return iface.encodeFunctionData(functionName, values);
-    }
-
     describe('e2e', function () {
         it('should get store and logs when EOA sends a transaction to itself', async function () {
+            const value = 42;
+
             const storeAndEmitAddr = await deploy('StoreAndEmit');
             const smartWalletAddr = await deploy('Simple7702Account', [ethers.ZeroAddress]);
             const eoa = await fundEOA(smartWalletAddr);
 
-            const s = encodeFunctionData('storeAndEmit(uint256 value)', [42]);
-            const calldata = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmitAddr, 0, s]);
-
-            console.log('Calldata for storeAndEmit(42):', calldata);
+            const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
+            const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmitAddr, 0, storeAndEmitCall]);
 
             const tx = await eoa.sendTransaction({
                 chainId: network.chainId,
                 to: eoa.address,
-                gasPrice: parseUnits('10', 'gwei'),
+                gasPrice: ethers.parseUnits('10', 'gwei'),
                 gasLimit: 1_500_000,
-                data: calldata,
+                data,
             });
             const receipt = await tx.wait();
-            
-            log('Transaction hash:', receipt?.hash);
-            log('Logs:', receipt?.logs);
+
+            assert(receipt !== null, 'Receipt is null');
+
+            log('Logs', receipt.logs);
+            expect(receipt.logs.length).to.be.equal(1);
+            expect(receipt.logs[0]).to.deep.include({
+                address: storeAndEmitAddr,
+                topics: [
+                    ethers.id('StoreAndEmitEvent(uint256)'),
+                    asHexUint256(value),
+                ],
+            });
         });
 
         it.skip('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
