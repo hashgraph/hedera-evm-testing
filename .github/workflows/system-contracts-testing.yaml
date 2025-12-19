@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 env:
-  SOLO_VERSION: 0.48.0
+  SOLO_VERSION: 0.52.0
   SOLO_CLUSTER_NAME: solo-system-contracts-e2e
   SOLO_NAMESPACE: solo-system-contracts-e2e
   SOLO_DEPLOYMENT: solo-system-contracts-deployment

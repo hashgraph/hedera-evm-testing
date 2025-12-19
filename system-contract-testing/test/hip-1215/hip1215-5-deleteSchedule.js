@@ -1,4 +1,8 @@
-const { GAS_LIMIT_1_000_000 } = require("../../utils/constants");
+const { ethers } = require("hardhat");
+const {
+  GAS_LIMIT_2_000_000,
+  GAS_LIMIT_1_000_000,
+} = require("../../utils/constants");
 const { randomAddress } = require("../../utils/address");
 const {
   addTestCallData,
@@ -7,7 +11,26 @@ const {
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
 const Async = require("../../utils/async");
+const Utils = require("../../utils/utils");
+const { getMirrorNodeUrl } = require("../../utils/native/utils");
+const {
+  ScheduleCreateTransaction,
+  TransferTransaction,
+  Timestamp,
+  Hbar,
+  PrivateKey,
+} = require("@hashgraph/sdk");
+const axios = require("axios");
+const { expect } = require("chai");
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
+
+const getScheduleInfoFromMN = async (scheduleAddress) => {
+  const url =
+    getMirrorNodeUrl(hre.network.name) +
+    `/schedules/0.0.${Number(scheduleAddress)}`;
+
+  return axios.get(url).then((r) => r.data);
+};
 
 describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
   let hip1215, impl1215, signers;
@@ -39,6 +62,86 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       // delete schedule
       const deleteTx = await hip1215.deleteSchedule(scheduleAddress);
       await testResponseCodeEvent(deleteTx, ResponseCodeEnum.SUCCESS.valueOf());
+    });
+
+    it("should delete a schedule created from sdk", async () => {
+      const client = await Utils.createSDKClient();
+      const key = PrivateKey.fromStringECDSA(
+        Utils.getHardhatSignerPrivateKeyByIndex(0)
+      );
+      const txn = await new ScheduleCreateTransaction()
+        .setScheduledTransaction(
+          new TransferTransaction()
+            .addHbarTransfer(await signers[0].getAddress(), new Hbar(-1))
+            .addHbarTransfer(await signers[1].getAddress(), new Hbar(1))
+        )
+        .setAdminKey(key.publicKey)
+        .setWaitForExpiry(true)
+        .setExpirationTime(new Timestamp(Date.now() / 1000 + 500))
+        .execute(client);
+      const receipt = await txn.getReceipt(client);
+      const scheduleAddress = await receipt.scheduleId.toSolidityAddress();
+      await client.close();
+
+      const contractIHRC1215 = await ethers.getContractAt(
+        "IHRC1215ScheduleFacade",
+        "0x" + scheduleAddress,
+        signers[0]
+      );
+      await new Promise((r) => setTimeout(r, 5000));
+      const deleteScheduleTx =
+        await contractIHRC1215.deleteSchedule(GAS_LIMIT_2_000_000);
+      await deleteScheduleTx.wait();
+
+      const scheduleInfo = await getScheduleInfoFromMN(
+        Utils.convertAccountIdToLongZeroAddress(scheduleAddress, true)
+      );
+      expect(scheduleInfo.deleted).to.be.true;
+    });
+
+    it("should be able to execute IHRC1215ScheduleFacade.deleteSchedule()", async () => {
+      const signerSender = signers[0];
+      const signerReceiver = signers[1];
+      const genesisSdkClient = await Utils.createSDKClient();
+      const senderInfo = await Utils.getAccountInfo(
+        signerSender.address,
+        genesisSdkClient
+      );
+      const receiverInfo = await Utils.getAccountInfo(
+        signerReceiver.address,
+        genesisSdkClient
+      );
+
+      const adminPrivateKey = PrivateKey.fromStringECDSA(
+        Utils.getHardhatSignerPrivateKeyByIndex(0)
+      );
+      const { scheduleId } = await Utils.createScheduleTransactionForTransfer(
+        senderInfo,
+        receiverInfo,
+        genesisSdkClient,
+        adminPrivateKey,
+        10000000000000
+      );
+      await new Promise((r) => setTimeout(r, 2500));
+
+      const infoBefore = await getScheduleInfoFromMN(parseInt(scheduleId.num));
+      expect(infoBefore.deleted).to.be.false;
+
+      const contractIHRC1215 = await ethers.getContractAt(
+        "IHRC1215ScheduleFacade",
+        Utils.convertAccountIdToLongZeroAddress(scheduleId.toString(), true),
+        signerSender
+      );
+      const deleteScheduleTx =
+        await contractIHRC1215.deleteSchedule(GAS_LIMIT_2_000_000);
+      await deleteScheduleTx.wait();
+
+      const infoAfter = await getScheduleInfoFromMN(
+        Utils.convertAccountIdToLongZeroAddress(scheduleId.toString(), true)
+      );
+
+      expect(infoBefore.deleted).to.be.false;
+      expect(infoAfter.deleted).to.be.true;
     });
 
     it("should delete schedule through proxy", async () => {
