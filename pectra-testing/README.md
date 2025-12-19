@@ -51,15 +51,12 @@ For more details see [`util.debuglog(section[, callback])`](https://nodejs.org/a
 
 ## Development
 
-- project structure, 
-lib is utils, not uut
-
-compilation with Foundry, no hardhat
-- Quick question: why are we using foundry for those tests, rather than sticking to hardhat for consistency?
-
-It's only needed for compilation, we could use either Foundry or Hardhat, or even solc directly. Foundry doesn't need to be added to the lock file and doesn't pollute the project.
-
 ### Contracts
+
+The tests _only_ use Ethers.js to send Ethereum transactions to the network.
+Thus, to compile the contracts we could use either Foundry, Hardhat, or even `solc` directly.
+Given Foundry does not need to be added to the lock file and does not pollute the project, we use this option to compile the contracts.
+Note that `forge build` is automatically executed before running tests.
 
 We use the Smart Wallet implementation from <https://github.com/eth-infinitism/account-abstraction>.
 In particular, `@account-abstraction/contracts/accounts/Simple7702Account.sol` which allow us to execute transactions dynamically based on calldata.
