@@ -47,7 +47,6 @@ for (const test of tests) {
                             let result = null;
                             try {
                                 result = await runners[executor].run([testCase.code]);
-                                if (!result.success) result = await runners[executor].run([testCase.code]);
                             } catch (e) { // try twice;
                                 console.error(e);
                                 result = await runners[executor].run([testCase.code]);
