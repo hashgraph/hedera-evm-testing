@@ -5,9 +5,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./config": "./lib/config.ts",
-    "./log": "./lib/log.ts",
-    "./web3": "./lib/web3.ts"
+    "./config": "./utils/config.ts",
+    "./log": "./utils/log.ts",
+    "./web3": "./utils/web3.ts"
   },
   "scripts": {
     "tsc": "tsc",
