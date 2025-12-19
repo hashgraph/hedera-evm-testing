@@ -6,7 +6,7 @@ import * as sdk from '@hiero-ledger/sdk';
 
 import { rpcUrl } from 'pectra-testing/config';
 import { log } from 'pectra-testing/log';
-import { deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256 } from 'pectra-testing/web3';
+import { deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact } from 'pectra-testing/web3';
 
 describe('eip7702', function () {
 
@@ -81,7 +81,13 @@ describe('eip7702', function () {
             ],
         });
 
-        await provider.getStorage(storeAndEmitAddr, 0);
+        const { storageLayout: { storage } } = getArtifact('StoreAndEmit');
+        const slot = storage.find(slot => slot.label === '_value');
+        assert(slot !== undefined, 'Storage slot for `_value` not found in `StoreAndEmit` contract artifact');
+
+        const storedValue = await provider.getStorage(storeAndEmitAddr, slot.slot);
+        log('Storage', storedValue);
+        expect(storedValue).to.be.equal(asHexUint256(value));
     });
 
     it.skip('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {

@@ -62,6 +62,27 @@ export async function fundEOA(delegation?: string, tinyBarBalance: bigint = 100_
 /**
  * 
  * @param contractName 
+ */
+export function getArtifact(contractName: string): {
+    abi: ethers.JsonFragment[],
+    bytecode: { object: string },
+    storageLayout: {
+        storage: {
+            label: string,
+            offset: number,
+            slot: string,
+            type: string,
+        }[]
+    },
+} {
+    const file = readFileSync(`./out/${contractName}.sol/${contractName}.json`, 'utf-8');
+    const { abi, bytecode, storageLayout } = JSON.parse(file);
+    return { abi, bytecode, storageLayout };
+}
+
+/**
+ * 
+ * @param contractName 
  * @param deployer 
  * @param gasLimit 
  */
@@ -70,9 +91,7 @@ export async function deploy(contractName: string, args?: unknown[], deployer?: 
 
     assert(deployer.provider !== null, 'Deployer wallet must be connected to a provider');
     const network = await deployer.provider.getNetwork();
-
-    const file = readFileSync(`./out/${contractName}.sol/${contractName}.json`, 'utf-8');
-    const { abi, bytecode } = JSON.parse(file);
+    const { abi, bytecode } = getArtifact(contractName)
 
     let consArgs = '';
     if (args && args.length > 0) {
