@@ -14,6 +14,11 @@ For example, Smart Wallet contract can be either <https://github.com/eth-infinit
 These kind of Smart Wallets have the ability to send transactions through contract methods like `execute` and `executeBatch`.
 Note that this includes the ability to call Hiero’s System Contracts as well, e.g., HTS method calls.
 
+## Requirements
+
+- `node` >= 22
+- `npm`
+
 ## Install
 
 ```sh
