@@ -32,6 +32,7 @@
     "allowJs": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
     // "moduleDetection": "force",
   }
 }

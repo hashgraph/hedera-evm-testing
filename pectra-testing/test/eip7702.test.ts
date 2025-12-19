@@ -91,7 +91,18 @@ describe('eip7702', function () {
     });
 
     it.skip('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
-        const smartWalletAddr = await deploy('Simple7702Account');
+        const minter = await fundEOA();
+
+        const a = getArtifact('ERC20Mintable');
+        const f = new ethers.ContractFactory(a.abi, a.bytecode, minter);
+        const c = await f.deploy('Test', 'TST', 10_000_000n);
+        const t = await c.waitForDeployment();
+
+        const m = new ethers.Wallet(minter.privateKey, provider);
+        await c.connect(m).mint(3_000n);
+
+        const erc20Addr = await deploy('ERC20Mintable', ['Test', 'TST', 10_000_000n]);
+        const smartWalletAddr = await deploy('Simple7702Account', [ethers.ZeroAddress]);
 
         const eoa1 = await fundEOA(smartWalletAddr);
         const eoa2 = await fundEOA(smartWalletAddr);
