@@ -6,7 +6,7 @@ import * as sdk from '@hiero-ledger/sdk';
 
 import { rpcUrl } from 'pectra-testing/config';
 import { log } from 'pectra-testing/log';
-import { deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact } from 'pectra-testing/web3';
+import { deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor } from 'pectra-testing/web3';
 
 describe('eip7702', function () {
 
@@ -53,12 +53,12 @@ describe('eip7702', function () {
     it('should get store and logs when EOA sends a transaction to itself', async function () {
         const value = 42;
 
-        const storeAndEmitAddr = await deploy('StoreAndEmit');
-        const smartWalletAddr = await deploy('Simple7702Account', [ethers.ZeroAddress]);
-        const eoa = await fundEOA(smartWalletAddr);
+        const storeAndEmit = await deploy('StoreAndEmit');
+        const smartWallet = await deploy('Simple7702Account', [ethers.ZeroAddress]);
+        const eoa = await fundEOA(smartWallet.address);
 
         const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
-        const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmitAddr, 0, storeAndEmitCall]);
+        const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmit.address, 0, storeAndEmitCall]);
 
         const tx = await eoa.sendTransaction({
             chainId: network.chainId,
@@ -74,7 +74,7 @@ describe('eip7702', function () {
         log('Logs', receipt.logs);
         expect(receipt.logs.length).to.be.equal(1);
         expect(receipt.logs[0]).to.deep.include({
-            address: storeAndEmitAddr,
+            address: storeAndEmit.address,
             topics: [
                 ethers.id('StoreAndEmitEvent(uint256)'),
                 asHexUint256(value),
@@ -85,35 +85,58 @@ describe('eip7702', function () {
         const slot = storage.find(slot => slot.label === '_value');
         assert(slot !== undefined, 'Storage slot for `_value` not found in `StoreAndEmit` contract artifact');
 
-        const storedValue = await provider.getStorage(storeAndEmitAddr, slot.slot);
+        const storedValue = await provider.getStorage(storeAndEmit.address, slot.slot);
         log('Storage', storedValue);
         expect(storedValue).to.be.equal(asHexUint256(value));
     });
 
-    it.skip('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
-        const minter = await fundEOA();
+    it('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
+        const erc20 = await deploy('ERC20Mintable', ['Test', 'TST', 10_000_000n]);
+        await erc20.contract.mint!(50_000n);
+        const minterBalance = await erc20.contract.balanceOf!(erc20.deployer.address);
+        log('Minter balance:', minterBalance);
+        assert(minterBalance === 50_000n + 10_000_000n, `Minter balance should be \`initialSupply+mint amount\` but got ${minterBalance}`);
 
-        const a = getArtifact('ERC20Mintable');
-        const f = new ethers.ContractFactory(a.abi, a.bytecode, minter);
-        const c = await f.deploy('Test', 'TST', 10_000_000n);
-        const t = await c.waitForDeployment();
+        const smartWallet = await deploy('Simple7702Account', [ethers.ZeroAddress]);
+        const eoa1 = await fundEOA(smartWallet.address);
+        const eoa2 = await fundEOA(smartWallet.address);
 
-        const m = new ethers.Wallet(minter.privateKey, provider);
-        await c.connect(m).mint(3_000n);
+        await waitFor(erc20.contract.transfer!(eoa1.address, 5_000n));
+        const eoa1Balance = await erc20.contract.balanceOf!(eoa1.address);
+        assert(eoa1Balance === 5_000n, `EOA1 balance should be 5_000 but got ${eoa1Balance}`);
 
-        const erc20Addr = await deploy('ERC20Mintable', ['Test', 'TST', 10_000_000n]);
-        const smartWalletAddr = await deploy('Simple7702Account', [ethers.ZeroAddress]);
+        await waitFor(erc20.contract.transfer!(eoa2.address, 7_000n, { nonce: 3 }));
+        const eoa2Balance = await erc20.contract.balanceOf!(eoa2.address);
+        assert(eoa2Balance === 7_000n, `EOA2 balance should be 7_000 but got ${eoa2Balance}`);
 
-        const eoa1 = await fundEOA(smartWalletAddr);
-        const eoa2 = await fundEOA(smartWalletAddr);
+        const receiver = ethers.Wallet.createRandom().address;
 
-        await (await eoa1.sendTransaction({
+        const eoa1Call = encodeFunctionData('transfer(address to, uint256 value)', [receiver, 1_500n]);
+        await waitFor(eoa1.sendTransaction({
+            chainId: network.chainId,
+            gasPrice: ethers.parseUnits('10', 'gwei'),
+            gasLimit: 1_500_000,
             to: eoa1.address,
-        })).wait();
+            data: encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [erc20.address, 0, eoa1Call]),
+        }));
 
-        await (await eoa2.sendTransaction({
+        const eoa2Call = encodeFunctionData('transfer(address to, uint256 value)', [receiver, 2_300n]);
+        await waitFor(eoa2.sendTransaction({
+            chainId: network.chainId,
+            gasPrice: ethers.parseUnits('10', 'gwei'),
+            gasLimit: 1_500_000,
             to: eoa2.address,
-        })).wait();
+            data: encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [erc20.address, 0, eoa2Call]),
+        }));
+
+        const eoa1BalanceAfter = await erc20.contract.balanceOf!(eoa1.address);
+        expect(eoa1BalanceAfter).to.be.equal(3_500n, `EOA1 balance should be 3_500 but got ${eoa1BalanceAfter}`);
+
+        const eoa2BalanceAfter = await erc20.contract.balanceOf!(eoa2.address);
+        expect(eoa2BalanceAfter).to.be.equal(4_700n, `EOA2 balance should be 4_700 but got ${eoa2BalanceAfter}`);
+
+        const receiverBalance = await erc20.contract.balanceOf!(receiver);
+        expect(receiverBalance).to.be.equal(3_800n, `Receiver balance should be 3_800 but got ${receiverBalance}`);
     });
 
     it.skip('should return delegation designation to `0x167` when an HTS token is created', async function () {

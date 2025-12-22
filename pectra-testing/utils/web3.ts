@@ -28,19 +28,21 @@ export async function fundEOA(delegation?: string, tinyBarBalance: bigint = 100_
     const operator = new ethers.Wallet(operatorEcdsaKey, provider);
     const eoa = ethers.Wallet.createRandom(provider);
 
-    const [gasLimit, authorizationList, verifyDelegation] = delegation === undefined
-        ? [21_000, null, () => undefined]
+    const [type, gasLimit, authorizationList, verifyDelegation] = delegation === undefined
+        ? [2, 21_000, null, () => undefined]
         : [
+            4,
             146_000,
             [await eoa.authorize({ chainId: 0, nonce: 0, address: delegation })],
             async () => {
                 const code = await provider.getCode(eoa.address);
                 log('EOA %s delegated code %s', eoa.address, code);
-                assert(code === designatorFor(delegation.toLowerCase()), 'EOA code does not match delegation address');
+                assert(code === designatorFor(delegation.toLowerCase()), `EOA code does not match delegation address: ${code}`);
             }
         ];
 
     const tx = ethers.Transaction.from({
+        type,
         chainId: network.chainId,
         nonce: await operator.getNonce(),
         maxFeePerGas: ethers.parseUnits('10', 'gwei'),
@@ -50,10 +52,9 @@ export async function fundEOA(delegation?: string, tinyBarBalance: bigint = 100_
         to: eoa.address,
         authorizationList,
     });
-    const rlpEncodedPayload = await operator.signTransaction(tx);
-    const result = await provider.send('eth_sendRawTransaction', [rlpEncodedPayload]);
-    await provider.waitForTransaction(result);
-    log('EOA %s created at transanction %s', eoa.address, result);
+    const response = await operator.sendTransaction(tx);
+    const receipt = await response.wait();
+    log('EOA %s created at transanction %s', eoa.address, response.hash, receipt);
 
     await verifyDelegation();
     return eoa;
@@ -86,7 +87,13 @@ export function getArtifact(contractName: string): {
  * @param deployer 
  * @param gasLimit 
  */
-export async function deploy(contractName: string, args?: unknown[], deployer?: ethers.BaseWallet, gasLimit: number = 5_000_000): Promise<string> {
+export async function deploy(
+    contractName: string, args?: unknown[], deployer?: ethers.BaseWallet, gasLimit: number = 5_000_000
+): Promise<{
+    address: string,
+    deployer: ethers.BaseWallet,
+    contract: ethers.Contract,
+}> {
     if (!deployer) deployer = await fundEOA();
 
     assert(deployer.provider !== null, 'Deployer wallet must be connected to a provider');
@@ -113,7 +120,9 @@ export async function deploy(contractName: string, args?: unknown[], deployer?: 
 
     assert(receipt !== null, 'Transaction receipt is null');
     assert(receipt.contractAddress !== null, 'Contract address is null');
-    return receipt.contractAddress;
+
+    const contract = new ethers.Contract(receipt.contractAddress, abi, deployer);
+    return { address: receipt.contractAddress, deployer, contract };
 }
 
 /**
@@ -128,6 +137,17 @@ export function encodeFunctionData(functionSignature: string, values?: unknown[]
     const calldata = iface.encodeFunctionData(functionName, values);
     log(`Calldata for ${functionName}(${values !== undefined ? values.join(', ') : ''}):`, calldata);
     return calldata;
+}
+
+/**
+ * 
+ * @param tx 
+ * @returns 
+ */
+export async function waitFor(tx: Promise<ethers.TransactionResponse>): Promise<ethers.TransactionReceipt | null> {
+    const response = await tx;
+    const receipt = await response.wait();
+    return receipt;
 }
 
 /**
