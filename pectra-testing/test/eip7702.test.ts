@@ -139,6 +139,35 @@ describe('eip7702', function () {
         expect(receiverBalance).to.be.equal(3_800n, `Receiver balance should be 3_800 but got ${receiverBalance}`);
     });
 
+    it('should create the account when an EOA sponsors it', async function () {
+        const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc';
+        const eoa = await fundEOA();
+        const receiver = ethers.Wallet.createRandom();
+
+        const resp = await eoa.sendTransaction(ethers.Transaction.from({
+            chainId: network.chainId,
+            nonce: 0,
+            gasPrice: ethers.parseUnits('10', 'gwei'),
+            gasLimit: 121_000,
+            value: 10n,
+            to: ethers.Wallet.createRandom().address,
+            authorizationList: [await receiver.authorize({
+                chainId: 0,
+                nonce: 0,
+                address: delegateAddress,
+            })],
+        }));
+        await resp.wait();
+
+        const nonce = await provider.getTransactionCount(receiver.address);
+        expect(nonce).to.be.equal(1);
+
+        const code = await provider.getCode(receiver.address);
+        log('EOA %s code: %s', receiver.address, code);
+
+        expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
+    });
+
     it.skip('should return delegation designation to `0x167` when an HTS token is created', async function () {
         const operatorId = sdk.AccountId.fromString(process.env.OPERATOR_ID!);
         const operatorKey = sdk.PrivateKey.fromStringECDSA(process.env.OPERATOR_KEY!);
