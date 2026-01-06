@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-import * as ethers from 'ethers';
+import { ethers } from 'ethers';
 
 import { operatorEcdsaKey, rpcUrl } from './config.ts';
 import { log } from './log.ts';
@@ -14,6 +14,15 @@ import { log } from './log.ts';
 export function designatorFor(address: string) {
     assert(/^0x[0-9a-fA-F]{40}$/.test(address), `Invalid Ethereum address: ${address}`);
     return `0xef0100${address.slice(2)}`;
+}
+
+/**
+ * 
+ * @param n 
+ * @returns 
+ */
+export function asAddress(n: number | bigint): string {
+    return `0x${n.toString(16).padStart(40, '0')}`;
 }
 
 /**

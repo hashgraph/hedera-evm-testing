@@ -1,12 +1,22 @@
 import { strict as assert } from 'node:assert';
 
 import { expect } from 'chai';
-import * as ethers from 'ethers';
+import { ethers } from 'ethers';
 import * as sdk from '@hiero-ledger/sdk';
 
 import { rpcUrl } from 'pectra-testing/config';
 import { log } from 'pectra-testing/log';
-import { deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor } from 'pectra-testing/web3';
+import { deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress } from 'pectra-testing/web3';
+
+/**
+ * https://www.evm.codes/precompiled?fork=prague
+ */
+const precompiledAddresses = [...Array(0x11).keys()].map(i => asAddress(i + 1));
+
+/**
+ * https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts
+ */
+const systemContractAddresses = [0x167, 0x168, 0x169, 0x16a, 0x16b].map(asAddress);
 
 describe('eip7702', function () {
 
@@ -19,8 +29,8 @@ describe('eip7702', function () {
     });
 
     [
-        ...[...Array(0x11).keys()].map(i => i + 1).map(i => `0x00000000000000000000000000000000000000${i.toString(16).padStart(2, '0')}`),
-        '0x0000000000000000000000000000000000000167',
+        ...precompiledAddresses,
+        ...systemContractAddresses,
         '0x0000000000000000000000000000000000068cDa',
         '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
     ].forEach(address => {
@@ -47,6 +57,34 @@ describe('eip7702', function () {
             log('EOA %s code: %s', eoa.address, code);
 
             expect(code).to.be.equal(designatorFor(address.toLowerCase()));
+        });
+    });
+
+    systemContractAddresses.forEach(address => {
+        [0n, 1_000n].forEach(value => {
+            it(`should run no-op when delegating to ${address} with value ${value}`, async function () {
+                const eoa = await fundEOA();
+                const nonce = await eoa.getNonce();
+                const to = ethers.Wallet.createRandom().address;
+
+                const resp = await eoa.sendTransaction(ethers.Transaction.from({
+                    chainId: network.chainId,
+                    nonce,
+                    gasPrice: ethers.parseUnits('10', 'gwei'),
+                    gasLimit: 121_000,
+                    value,
+                    to,
+                    authorizationList: [await eoa.authorize({
+                        chainId: 0,
+                        nonce: nonce + 1,
+                        address,
+                    })],
+                }));
+                await resp.wait();
+
+                const balance = await provider.getBalance(to);
+                expect(balance).to.be.equal(value);
+            });
         });
     });
 
