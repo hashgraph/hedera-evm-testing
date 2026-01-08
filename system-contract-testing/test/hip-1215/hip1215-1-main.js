@@ -13,7 +13,7 @@ let hip1215, impl1215, signers, mnClient;
 
 async function beforeTests() {
   // provider configs override
-  ethers.provider.estimateGas = async () => 2_000_000;
+  ethers.provider.estimateGas = async () => 2_000_000; //TODO Glib: why do we still have this override?
   signers = await ethers.getSigners();
   // deploy impl contract
   impl1215 = await contractDeployAndFund("HederaScheduleService_HIP1215", 0, 0);
