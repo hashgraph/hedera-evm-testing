@@ -61,29 +61,24 @@ describe('eip7702', function () {
     });
 
     systemContractAddresses.forEach(address => {
-        [0n, 1_000n].forEach(value => {
-            it(`should run no-op when delegating to ${address} with value ${value}`, async function () {
-                const eoa = await fundEOA();
-                const nonce = await eoa.getNonce();
-                const to = ethers.Wallet.createRandom().address;
+        [0n, 10_000n].forEach(value => {
+            it(`should run no-op with value ${value} when delegating to system contract ${address}`, async function () {
+                const sender = await fundEOA();
+                const eoa = await fundEOA(address);
+                const balance = await provider.getBalance(eoa.address);
 
-                const resp = await eoa.sendTransaction(ethers.Transaction.from({
+                const tx = await sender.sendTransaction({
                     chainId: network.chainId,
-                    nonce,
+                    nonce: 0,
                     gasPrice: ethers.parseUnits('10', 'gwei'),
                     gasLimit: 121_000,
                     value,
-                    to,
-                    authorizationList: [await eoa.authorize({
-                        chainId: 0,
-                        nonce: nonce + 1,
-                        address,
-                    })],
-                }));
-                await resp.wait();
+                    to: eoa.address,
+                });
+                const resp = await tx.wait();
+                assert(resp !== null);
 
-                const balance = await provider.getBalance(to);
-                expect(balance).to.be.equal(value);
+                expect(await provider.getBalance(eoa.address, resp.blockNumber)).to.be.equal(balance + value);
             });
         });
     });
