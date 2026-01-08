@@ -57,7 +57,7 @@ async function testScheduleCallEvent(tx, responseCode) {
   } else {
     expect(address).to.equal(ethers.ZeroAddress);
   }
-  expect(rc.status).to.equal(ResponseCodeEnum.INVALID_TRANSACTION.valueOf());
+  expect(rc.status).to.equal(1);
   return address;
 }
 
@@ -65,7 +65,7 @@ async function testResponseCodeEvent(tx, responseCode) {
   const rc = await tx.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ResponseCode);
   expect(log.args[0]).to.equal(responseCode);
-  expect(rc.status).to.equal(ResponseCodeEnum.INVALID_TRANSACTION.valueOf());
+  expect(rc.status).to.equal(1);
 }
 
 async function testHasScheduleCapacityEvent(tx, hasCapacity) {
@@ -267,8 +267,8 @@ async function findNewScheduleAddress(
   if (contractCallLogs != null && contractCallLogs.length > 0) {
     const log = contractCallLogs[0].data;
     // We already now that the execution was successful so we only get the last 20 bytes
-    const nextScheduleAdrress = "0x" + log.slice(-40);
-    return nextScheduleAdrress;
+
+    return "0x" + log.slice(-40);
   }
 
   return null;

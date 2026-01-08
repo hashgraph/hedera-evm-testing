@@ -19,16 +19,10 @@ contract ErcEventsContract {
     }
 
     // ----------------------------- Utils -----------------------------
-    function associateAndTransfer(address token, address sender, address receiver, uint256 amount) external payable returns (int64 responseCode) {
-        // associateToken
+    function associateToken(address account, address token) external returns (int64 responseCode) {
         (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(IHederaTokenService.associateToken.selector,
-                receiver, token));
-        require(success);
-        // transferToken
-        (success, result) = precompileAddress.call(
-            abi.encodeWithSelector(IHederaTokenService.transferToken.selector,
-                token, sender, receiver, amount));
+                account, token));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
         emit ResponseCode(responseCode);
         return responseCode;
