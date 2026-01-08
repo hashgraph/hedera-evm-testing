@@ -7,8 +7,9 @@ import { operatorEcdsaKey, rpcUrl } from './config.ts';
 import { log } from './log.ts';
 
 /**
- * 
- * @param address - Ethereum address
+ * Returns EIP-7702's designator code for a given Ethereum address.
+ *
+ * @param address - An EVM address
  * @returns 
  */
 export function designatorFor(address: string) {
@@ -17,7 +18,10 @@ export function designatorFor(address: string) {
 }
 
 /**
- * 
+ * Returns the provided value `n` as an EVM address representation.
+ * Useful to convert small integers to padded addresses,
+ * such as precompile or system contract addresses.
+ *
  * @param n 
  * @returns 
  */
@@ -26,9 +30,12 @@ export function asAddress(n: number | bigint): string {
 }
 
 /**
- * 
+ * Creates and funds a new Externally Owned Account (EOA) on the connected network.
+ * Optionally, the EOA can be set up to delegate to a given address using EIP-7702.
+ *
+ * @param delegation
  * @param tinyBarBalance 
- * @returns 
+ * @returns The funded EOA wallet
  */
 export async function fundEOA(delegation?: string, tinyBarBalance: bigint = 100_000_000n): Promise<ethers.BaseWallet> {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
@@ -70,7 +77,8 @@ export async function fundEOA(delegation?: string, tinyBarBalance: bigint = 100_
 }
 
 /**
- * 
+ * Retrieves the compiled artifact for a given contract name.
+ *
  * @param contractName 
  */
 export function getArtifact(contractName: string): {
@@ -91,7 +99,8 @@ export function getArtifact(contractName: string): {
 }
 
 /**
- * 
+ * Deploys a contract to the connected network.
+ *
  * @param contractName 
  * @param deployer 
  * @param gasLimit 
@@ -135,6 +144,7 @@ export async function deploy(
 }
 
 /**
+ * Encodes function call data for a given function signature and values.
  * 
  * @param functionSignature 
  * @param values 
@@ -149,7 +159,8 @@ export function encodeFunctionData(functionSignature: string, values?: unknown[]
 }
 
 /**
- * 
+ * Waits for a transaction to be processed and returns its receipt, or null if the transaction failed.
+ *
  * @param tx 
  * @returns 
  */
@@ -160,9 +171,10 @@ export async function waitFor(tx: Promise<ethers.TransactionResponse>): Promise<
 }
 
 /**
+ * Converts a value to a hexadecimal string representing a `uint256`.
  * 
- * @param value 
- * @returns 
+ * @param value The value to convert.
+ * @returns The hexadecimal string representation of the value as a `uint256`.
  */
 export function asHexUint256(value: bigint | number): string {
     return '0x' + value.toString(16).padStart(64, '0');

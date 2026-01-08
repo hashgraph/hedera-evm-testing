@@ -16,7 +16,7 @@ const precompiledAddresses = [...Array(0x11).keys()].map(i => asAddress(i + 1));
 /**
  * https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts
  */
-const systemContractAddresses = [0x167, 0x168, 0x169, 0x16a, 0x16b].map(asAddress);
+const systemContractAddresses = [0x167, 0x168, 0x169, 0x16a, 0x16b, 0x16c].map(asAddress);
 
 describe('eip7702', function () {
 
