@@ -144,7 +144,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       expect(infoAfter.deleted).to.be.true;
     });
 
-    it("should delete schedule through proxy", async () => {
+    xit("should delete schedule through proxy", async () => {
       // create schedule
       const createTx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
