@@ -328,6 +328,21 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
     });
+
+    it("should fail for delegatecall schedule create", async () => {
+      const tx = await hip1215.scheduleCallDelegateCall(
+        await hip1215.getAddress(),
+        getExpirySecond(),
+        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
+        0,
+        addTestCallData("scheduleCall fail gasLimit 0"),
+      );
+      console.log("scheduleCallDelegateCall tx.hash:", tx.hash);
+      await testScheduleCallEvent(
+        tx,
+        ResponseCodeEnum.UNKNOWN.valueOf(),
+      );
+    });
   });
 
   describe("Recursive scheduling test", () => {
