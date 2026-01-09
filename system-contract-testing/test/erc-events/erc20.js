@@ -97,7 +97,7 @@ describe("ERC20 events", () => {
     //  Error executing method: rpcMethodName=eth_estimateGas, error=execution reverted
     ethers.provider.estimateGas = async () => 1_000_000;
     const rc = await (
-      await testContract.transferFtProxy(
+      await testContract.transferFtProxyV2(
         tokenAddress,
         signers[0].address,
         amount,
