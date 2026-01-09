@@ -4,9 +4,9 @@ import { expect } from 'chai';
 import { ethers } from 'ethers';
 import * as sdk from '@hiero-ledger/sdk';
 
-import { rpcUrl } from 'pectra-testing/config';
-import { log } from 'pectra-testing/log';
-import { deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress } from 'pectra-testing/web3';
+import { rpcUrl } from 'evm-functional-testing/config';
+import { log } from 'evm-functional-testing/log';
+import { deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress } from 'evm-functional-testing/web3';
 
 /**
  * https://www.evm.codes/precompiled?fork=prague

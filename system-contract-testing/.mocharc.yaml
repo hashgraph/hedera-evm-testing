@@ -1,0 +1,17 @@
+# This configuration[1] is used when `mocha` is invoked directly
+# from the command line.
+#
+# [1] https://mochajs.org/running/configuring/
+
+# https://github.com/mochajs/mocha/blob/0ed524af347b59200e03b972c2450d36f6818a45/example/config/.mocharc.yml#L45-L46
+spec:
+  - test/**/*.test.mts
+
+# https://mochajs.org/features/global-fixtures/
+# https://github.com/mochajs/mocha/blob/0ed524af347b59200e03b972c2450d36f6818a45/example/config/.mocharc.yml#L41
+require:
+  - test/hip-1340/scripts/build.mts
+
+# https://mochajs.org/running/cli/#--timeout-ms--t-ms
+# https://github.com/mochajs/mocha/blob/0ed524af347b59200e03b972c2450d36f6818a45/example/config/.mocharc.yml#L47
+timeout: 120s

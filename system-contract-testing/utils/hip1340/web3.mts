@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 
 import { ethers } from 'ethers';
 
-import { operatorEcdsaKey, rpcUrl } from './config.ts';
-import { log } from './log.ts';
+import { operatorEcdsaKey, rpcUrl } from './config.mts';
+import { log } from './log.mts';
 
 /**
  * Returns EIP-7702's designator code for a given Ethereum address.
