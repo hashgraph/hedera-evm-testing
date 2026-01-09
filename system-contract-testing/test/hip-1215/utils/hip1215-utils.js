@@ -3,6 +3,7 @@ const { ethers } = require("hardhat");
 const { PrivateKey, AccountId, ScheduleId } = require("@hashgraph/sdk");
 const Utils = require("../../../utils/utils");
 const { Events } = require("../../../utils/constants");
+const { getMirrorNodeUrl } = require("../../../utils/native/utils");
 const { Logger, HederaMirrorNode } = require("@hashgraphonline/standards-sdk");
 const hre = require("hardhat");
 const Async = require("../../../utils/async");
@@ -186,8 +187,10 @@ async function getChildTransactionsByScheduleId(
   );
   if (transactions.length > 0) {
     const txId = transactions[0].transaction_id;
-    const includingChildren = await mnClient.getContractActions(txId);
-    return includingChildren.length;
+    const query = getMirrorNodeUrl(hre.network.name) + "/transactions/" + txId;
+    const response = await fetch(query);
+    const json = await response.json();
+    return json.transactions.length;
   }
 }
 

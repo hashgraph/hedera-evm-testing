@@ -375,8 +375,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
       const transferContract = await contractDeployAndFund(
         "HIP1215TransferContract",
-        0,
-        100
+        55
       );
       console.log("Contract deployed. Trying to schedule.");
       const tx = await transferContract.scheduleCallForTransfer(
@@ -397,7 +396,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       await hip1215.signSchedule(schedule, sigMap);
       console.log("Now sleep to allow the calls to process.");
       // Allow some time for all child transactions
-      await sleep(5000);
       console.log("Try to get the child records.");
       const childrenCount = await getChildTransactionsByScheduleId(
         mnClient,
@@ -407,12 +405,14 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       expect(childrenCount).not.to.be.null;
       expect(childrenCount).not.to.eq(0);
       //Scheduled transaction contract call
+      //-> Eth transaction
+      //   -> Schedule Create
       //   -> call to token create contract
       //      -> call to HTS create fungible
       //   -> call to HTS associate
       //   -> call to HTS transferToken
-      // Expecting 5 transactions
-      expect(childrenCount).to.eq(5);
+      // Expecting 6 transactions
+      expect(childrenCount).to.eq(6);
     });
   });
 });
