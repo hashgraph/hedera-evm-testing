@@ -47,12 +47,22 @@ contract ErcEventsContract {
         return responseCode;
     }
 
-    function transferFtProxy(address token, address recipient, uint256 amount) public {
-        IERC20(token).transfer(recipient, amount);
+    function transferFtProxy(address token, address recipient, uint256 amount) public returns (bool response) {
+        response = IERC20(token).transfer(recipient, amount);
+        if (response) {
+            // fake responseCode 22 for use the same validation in tests
+            emit ResponseCode(22);
+        }
+        return response;
     }
 
-    function transferFromFtProxy(address token, address sender, address recipient, uint256 amount) public {
-        IERC20(token).transferFrom(sender, recipient, amount);
+    function transferFromFtProxy(address token, address sender, address recipient, uint256 amount) public returns (bool response) {
+        response = IERC20(token).transferFrom(sender, recipient, amount);
+        if (response) {
+            // fake responseCode 22 for use the same validation in tests
+            emit ResponseCode(22);
+        }
+        return response;
     }
 
     // ----------------------------- NFT transfers -----------------------------
@@ -75,6 +85,7 @@ contract ErcEventsContract {
     }
 
     function transferFromNftProxy(address token, address sender, address recipient, uint256 amount) public {
+        //TODO fake 22 response code?
         IERC721(token).transferFrom(sender, recipient, amount);
     }
 

@@ -3,12 +3,16 @@ const { createSDKClient } = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
 const Constants = require("../../utils/constants");
 
-let signers, sdkClient, treasury, tokenAddress;
+let signers, sdkClient, htsContract, treasury, tokenAddress;
 
 async function beforeFtTests() {
   signers = await ethers.getSigners();
   sdkClient = await createSDKClient();
-
+  // find HTS account
+  htsContract = await ethers.getContractAt(
+    "IHederaTokenService",
+    Constants.HTS_ADDRESS,
+  );
   // create test token with 'tokenContract' as a 'treasury'
   treasury = await contractDeployAndFund(
     Constants.Contract.TokenCreateContract,
@@ -24,22 +28,38 @@ async function beforeFtTests() {
     .tokenAddress;
   console.log("Create token:%s treasury:%s", tokenAddress, treasury.target);
 
-  return [sdkClient, treasury, tokenAddress];
+  return [signers, sdkClient, htsContract, treasury, tokenAddress];
 }
 
 async function deployTestContract(htsAddress, approveAmount) {
-  const contract = await contractDeployAndFund(
+  const testContract = await contractDeployAndFund(
     Constants.Contract.ErcEventsContract,
     0,
     0,
     htsAddress,
   );
-  await (await contract.associateToken(contract, tokenAddress)).wait();
-  await (await treasury.grantTokenKycPublic(tokenAddress, contract)).wait();
-  await (
-    await treasury.approvePublic(tokenAddress, contract, approveAmount)
-  ).wait();
-  return contract;
+  // associated + KYC for test contract
+  await (await testContract.associateToken(testContract, tokenAddress)).wait();
+  await (await treasury.grantTokenKycPublic(tokenAddress, testContract)).wait();
+  console.log(
+    "Token:%s associated and KYC granted to:%s",
+    tokenAddress,
+    signers[0].address,
+  );
+  if (approveAmount > 0) {
+    await (
+      await treasury.approvePublic(tokenAddress, testContract, approveAmount)
+    ).wait();
+    console.log(
+      "Token:%s approved:%s to:%s",
+      tokenAddress,
+      approveAmount,
+      testContract.target,
+    );
+  } else {
+    console.log("Token:%s approved:0", tokenAddress);
+  }
+  return testContract;
 }
 
 async function afterTests() {

@@ -16,6 +16,7 @@ async function validateResponseCodeEvent(rc, responseCode) {
   const log = rc.logs.find(
     (e) => e.fragment && e.fragment.name === Events.ResponseCode,
   );
+  expect(log).to.not.be.undefined;
   expect(log.args[0]).to.equal(responseCode);
 }
 
@@ -30,6 +31,7 @@ async function validateErc20Event(rc, expectedEvents) {
   const transferEvents = rc.logs.filter(
     (e) => e.topics && e.topics[0] === ERC20_TRANSFER_EVENT_SIGNATURE,
   );
+  expect(transferEvents.length).to.equal(expectedEvents.length);
   expectedEvents.forEach((expectedEvent, index) => {
     const event = transferEvents[index];
     expect(event.topics[1].toLowerCase()).to.equal(
@@ -43,7 +45,7 @@ async function validateErc20Event(rc, expectedEvents) {
 }
 
 function convertAddressToTopic(str) {
-  if (str.length === 42 && str.startsWith('0x')) {
+  if (str.length === 42 && str.startsWith("0x")) {
     // convert address to topic
     return `0x${str.slice(2).padStart(64, "0")}`;
   }

@@ -21,7 +21,7 @@ async function contractDeployAndFund(name, gas = 0, value = 0, ...args) {
   console.log(
     "Deployed %s(%s) contract address:%s balance:%s HBAR",
     name,
-    ...args,
+    args,
     contract.target,
     value,
   );
