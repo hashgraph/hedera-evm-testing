@@ -1,4 +1,3 @@
-const { ethers } = require("hardhat");
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
 const {
   beforeFtTests,
@@ -12,11 +11,10 @@ const {
 } = require("../../utils/events");
 
 describe("ERC20 events", () => {
-  let signers, sdkClient, htsContract, treasury, tokenAddress;
+  let sdkClient, treasury, tokenAddress;
 
   before(async () => {
-    [signers, sdkClient, htsContract, treasury, tokenAddress] =
-      await beforeFtTests();
+    [sdkClient, treasury, tokenAddress] = await beforeFtTests();
   });
 
   after(async () => {
@@ -97,10 +95,6 @@ describe("ERC20 events", () => {
     responseCode,
   ) {
     const amount = 1;
-    // TODO
-    //  Error raised while fetching estimateGas from mirror-node: {"detail":"","data":"0x","statusCode":400}
-    //  Error executing method: rpcMethodName=eth_estimateGas, error=execution reverted
-    ethers.provider.estimateGas = async () => 1_000_000;
     const rc = await (
       await transferContract.transferFtProxy(
         tokenAddress,
@@ -152,111 +146,108 @@ describe("ERC20 events", () => {
     ]);
   }
 
-  describe("HTS 0x167", async () => {
-    describe("Relay: 0x167 positive cases", async () => {
-      let transfer167Contract, receiverContract;
+  // ---------------- Tests setup ----------------
+  async function ercEventsTests(address) {
+    const displayAddress = address.replace(/(0)\1+/g, "");
+
+    describe(`Relay: ${displayAddress} positive cases`, async () => {
+      let transferContract, receiverContract;
 
       before(async () => {
-        [transfer167Contract, receiverContract] = await deployTestContract(
-          HTS_ADDRESS,
+        [transferContract, receiverContract] = await deployTestContract(
+          address,
           1000,
         );
       });
 
-      it("0x167 FT transferToken", async () => {
+      it(`${displayAddress} FT transferToken`, async () => {
         await transferTokenTest(
-          transfer167Contract,
+          transferContract,
           receiverContract,
           ResponseCodeEnum.SUCCESS,
         );
       });
 
-      it("0x167 FT transferFrom", async () => {
+      it(`${displayAddress} FT transferFrom`, async () => {
         await transferFromTest(
-          transfer167Contract,
+          transferContract,
           receiverContract,
           ResponseCodeEnum.SUCCESS,
         );
       });
 
-      it("0x167 FT transfer proxy", async () => {
+      it(`${displayAddress} FT transfer proxy`, async () => {
         // transferFrom treasury->transfer167Contract
         await transferTokenTest(
-          transfer167Contract,
-          transfer167Contract,
+          transferContract,
+          transferContract,
           ResponseCodeEnum.SUCCESS,
         );
         // transfer transfer167Contract->receiverContract
         await transferFtProxyTest(
-          transfer167Contract,
+          transferContract,
           receiverContract,
           ResponseCodeEnum.SUCCESS,
         );
       });
 
-      it("0x167 FT transferFrom proxy", async () => {
+      it(`${displayAddress} FT transferFrom proxy`, async () => {
         // transferFrom treasury->transfer167Contract
         await transferFromFtProxyTest(
-          transfer167Contract,
+          transferContract,
           receiverContract,
           ResponseCodeEnum.SUCCESS,
         );
       });
     });
 
-    describe("Relay: 0x167 negative cases", async () => {
-      let transfer167NotApprovedContract, receiverContract;
+    describe(`Relay: ${displayAddress} negative cases`, async () => {
+      let transferNotApprovedContract, receiverContract;
 
       before(async () => {
-        [transfer167NotApprovedContract, receiverContract] =
-          await deployTestContract(HTS_ADDRESS, 0, false, true);
+        [transferNotApprovedContract, receiverContract] =
+          await deployTestContract(address, 0, false, true);
       });
 
-      it("0x167 FT transferToken SPENDER_DOES_NOT_HAVE_ALLOWANCE", async () => {
+      it(`${displayAddress} FT transferToken SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
         await transferTokenTest(
-          transfer167NotApprovedContract,
+          transferNotApprovedContract,
           receiverContract,
           ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
         );
       });
 
-      it("0x167 FT transferFrom SPENDER_DOES_NOT_HAVE_ALLOWANCE", async () => {
+      it(`${displayAddress} FT transferFrom SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
         await transferFromTest(
-          transfer167NotApprovedContract,
+          transferNotApprovedContract,
           receiverContract,
           ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
         );
       });
 
-      //TODO
-      it("0x167 FT transfer proxy INSUFFICIENT_TOKEN_BALANCE", async () => {
+      it(`${displayAddress} FT transfer proxy SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
         await transferFtProxyTest(
-          transfer167NotApprovedContract,
+          transferNotApprovedContract,
           receiverContract,
-          ResponseCodeEnum.UNKNOWN,
+          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of SPENDER_DOES_NOT_HAVE_ALLOWANCE because we cant get revertReason tri try/catch
         );
       });
 
-      //TODO
-      it("0x167 FT transferFrom proxy //TODO error", async () => {
+      it(`${displayAddress} FT transferFrom proxy SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
         await transferFromFtProxyTest(
-          transfer167NotApprovedContract,
+          transferNotApprovedContract,
           receiverContract,
-          ResponseCodeEnum.UNKNOWN,
+          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of SPENDER_DOES_NOT_HAVE_ALLOWANCE because we cant get revertReason tri try/catch
         );
       });
     });
+  }
 
-    describe("SDK: 0x167 positive cases", async () => {
-      // TODO
-    });
-
-    describe("SDK: 0x167 negative cases", async () => {
-      // TODO
-    });
+  describe("HTS 0x167", async () => {
+    await ercEventsTests(HTS_ADDRESS);
   });
 
   describe("HTS 0x16c", async () => {
-    //TODO
+    await ercEventsTests(HTS_ADDRESS_V2);
   });
 });

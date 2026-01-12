@@ -1,18 +1,11 @@
-const { ethers } = require("hardhat");
 const { createSDKClient } = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
 const Constants = require("../../utils/constants");
 
-let signers, sdkClient, htsContract, treasury, tokenAddress;
+let sdkClient, treasury, tokenAddress;
 
 async function beforeFtTests() {
-  signers = await ethers.getSigners();
   sdkClient = await createSDKClient();
-  // find HTS account //TODO remove HTS contract?
-  htsContract = await ethers.getContractAt(
-    "IHederaTokenService",
-    Constants.HTS_ADDRESS,
-  );
   // create test token with 'tokenContract' as a 'treasury'
   treasury = await contractDeployAndFund(
     Constants.Contract.TokenCreateContract,
@@ -28,7 +21,7 @@ async function beforeFtTests() {
     .tokenAddress;
   console.log("Create token:%s treasury:%s", tokenAddress, treasury.target);
 
-  return [signers, sdkClient, htsContract, treasury, tokenAddress];
+  return [sdkClient, treasury, tokenAddress];
 }
 
 async function deployTestContract(
