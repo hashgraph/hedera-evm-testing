@@ -7,6 +7,14 @@ import { operatorEcdsaKey, rpcUrl } from './config.mts';
 import { log } from './log.mts';
 
 /**
+ * Gas cost constants and functions.
+ */
+export const gas = {
+    base: 21_000,
+    auth: (n: number) => n * 25_000,
+};
+
+/**
  * Returns EIP-7702's designator code for a given Ethereum address.
  *
  * @param address - An EVM address

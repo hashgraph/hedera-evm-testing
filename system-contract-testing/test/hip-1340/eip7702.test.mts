@@ -6,7 +6,7 @@ import * as sdk from '@hiero-ledger/sdk';
 
 import { rpcUrl } from 'evm-functional-testing/config';
 import { log } from 'evm-functional-testing/log';
-import { deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress } from 'evm-functional-testing/web3';
+import { gas, deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress } from 'evm-functional-testing/web3';
 
 /**
  * https://www.evm.codes/precompiled?fork=prague
@@ -41,7 +41,7 @@ describe('eip7702', function () {
             const resp = await eoa.sendTransaction({
                 chainId: network.chainId,
                 nonce,
-                gasLimit: 121_000,
+                gasLimit: gas.base + gas.auth(1),
                 value: 10n,
                 to: ethers.Wallet.createRandom().address,
                 authorizationList: [await eoa.authorize({
@@ -69,7 +69,7 @@ describe('eip7702', function () {
                 const tx = await sender.sendTransaction({
                     chainId: network.chainId,
                     nonce: 0,
-                    gasLimit: 121_000,
+                    gasLimit: gas.base,
                     value,
                     to: eoa.address,
                 });
@@ -175,7 +175,7 @@ describe('eip7702', function () {
         const resp = await eoa.sendTransaction(ethers.Transaction.from({
             chainId: network.chainId,
             nonce: 0,
-            gasLimit: 121_000,
+            gasLimit: gas.base + gas.auth(1),
             value: 10n,
             to: ethers.Wallet.createRandom().address,
             authorizationList: [await receiver.authorize({
@@ -193,6 +193,31 @@ describe('eip7702', function () {
         log('EOA %s code: %s', receiver.address, code);
 
         expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
+    });
+
+    it('should replace existing delegation when a new authorization is sent', async function () {
+        const firstDelegation = ethers.Wallet.createRandom().address;
+        const eoa = await fundEOA(firstDelegation);
+        const nonce = await eoa.getNonce();
+
+        const secondDelegation = ethers.Wallet.createRandom().address;
+        const resp = await eoa.sendTransaction({
+            chainId: network.chainId,
+            nonce,
+            gasLimit: gas.base + gas.auth(1),
+            to: ethers.ZeroAddress,
+            authorizationList: [await eoa.authorize({
+                chainId: 0,
+                nonce: nonce + 1,
+                address: secondDelegation,
+            })],
+        });
+        await resp.wait();
+
+        const code = await provider.getCode(eoa.address);
+        log('EOA %s code: %s', eoa.address, code);
+
+        expect(code).to.be.equal(designatorFor(secondDelegation.toLowerCase()));
     });
 
     it.skip('should return delegation designation to `0x167` when an HTS token is created', async function () {
