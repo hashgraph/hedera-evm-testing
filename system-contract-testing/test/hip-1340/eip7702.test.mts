@@ -38,10 +38,9 @@ describe('eip7702', function () {
             const eoa = await fundEOA();
             const nonce = await eoa.getNonce();
 
-            const resp = await eoa.sendTransaction(ethers.Transaction.from({
+            const resp = await eoa.sendTransaction({
                 chainId: network.chainId,
                 nonce,
-                gasPrice: ethers.parseUnits('10', 'gwei'),
                 gasLimit: 121_000,
                 value: 10n,
                 to: ethers.Wallet.createRandom().address,
@@ -50,7 +49,7 @@ describe('eip7702', function () {
                     nonce: nonce + 1,
                     address,
                 })],
-            }));
+            });
             await resp.wait();
 
             const code = await provider.getCode(eoa.address);
@@ -70,7 +69,6 @@ describe('eip7702', function () {
                 const tx = await sender.sendTransaction({
                     chainId: network.chainId,
                     nonce: 0,
-                    gasPrice: ethers.parseUnits('10', 'gwei'),
                     gasLimit: 121_000,
                     value,
                     to: eoa.address,
@@ -96,7 +94,6 @@ describe('eip7702', function () {
         const tx = await eoa.sendTransaction({
             chainId: network.chainId,
             to: eoa.address,
-            gasPrice: ethers.parseUnits('10', 'gwei'),
             gasLimit: 1_500_000,
             data,
         });
@@ -147,7 +144,6 @@ describe('eip7702', function () {
         const eoa1Call = encodeFunctionData('transfer(address to, uint256 value)', [receiver, 1_500n]);
         await waitFor(eoa1.sendTransaction({
             chainId: network.chainId,
-            gasPrice: ethers.parseUnits('10', 'gwei'),
             gasLimit: 1_500_000,
             to: eoa1.address,
             data: encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [erc20.address, 0, eoa1Call]),
@@ -156,7 +152,6 @@ describe('eip7702', function () {
         const eoa2Call = encodeFunctionData('transfer(address to, uint256 value)', [receiver, 2_300n]);
         await waitFor(eoa2.sendTransaction({
             chainId: network.chainId,
-            gasPrice: ethers.parseUnits('10', 'gwei'),
             gasLimit: 1_500_000,
             to: eoa2.address,
             data: encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [erc20.address, 0, eoa2Call]),
@@ -180,7 +175,6 @@ describe('eip7702', function () {
         const resp = await eoa.sendTransaction(ethers.Transaction.from({
             chainId: network.chainId,
             nonce: 0,
-            gasPrice: ethers.parseUnits('10', 'gwei'),
             gasLimit: 121_000,
             value: 10n,
             to: ethers.Wallet.createRandom().address,
