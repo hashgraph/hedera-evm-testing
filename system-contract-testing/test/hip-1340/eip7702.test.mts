@@ -220,6 +220,40 @@ describe('eip7702', function () {
         expect(code).to.be.equal(designatorFor(secondDelegation.toLowerCase()));
     });
 
+    it('should use the last authorization when multiple authorizations are sent', async function () {
+        const eoa = await fundEOA();
+
+        const resp = await eoa.sendTransaction({
+            chainId: network.chainId,
+            nonce: 0,
+            gasLimit: gas.base + gas.auth(3),
+            to: ethers.ZeroAddress,
+            authorizationList: [
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 1,
+                    address: asAddress(1),
+                }),
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 2,
+                    address: asAddress(2),
+                }),
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 3,
+                    address: asAddress(3),
+                }),
+            ],
+        });
+        await resp.wait();
+
+        const code = await provider.getCode(eoa.address);
+        log('EOA %s code: %s', eoa.address, code);
+
+        expect(code).to.be.equal(designatorFor(asAddress(3)));
+    });
+
     it.skip('should return delegation designation to `0x167` when an HTS token is created', async function () {
         const operatorId = sdk.AccountId.fromString(process.env.OPERATOR_ID!);
         const operatorKey = sdk.PrivateKey.fromStringECDSA(process.env.OPERATOR_KEY!);
