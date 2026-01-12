@@ -58,37 +58,6 @@ contract ErcEventsContract {
         return response;
     }
 
-    function transferFtProxyV2(address token, address recipient, uint256 amount) public returns (bool response) {
-        (bool success, bytes memory result) = token.call(
-            abi.encodeWithSelector(IERC20.transfer.selector,
-                recipient, amount));
-        if (success) {
-            response = abi.decode(result, (bool));
-            if (response) {
-                // fake responseCode 22 for use the same validation in tests
-                emit ResponseCode(22);
-            } else {
-                emit ResponseCode(21);
-            }
-        } else {
-            response = false;
-            string memory _revertMsg = _getRevertMsg(result);
-            emit ResponseMessage(_revertMsg);
-        }
-        return response;
-    }
-
-    function _getRevertMsg(bytes memory _returnData) internal pure returns (string memory) {
-        // If the _res length is less than 68, then the transaction failed silently (without a revert message)
-        if (_returnData.length < 68) return 'Transaction reverted silently';
-
-        assembly {
-            // Slice the sighash.
-            _returnData := add(_returnData, 0x04)
-        }
-        return abi.decode(_returnData, (string)); // All that remains is the revert string
-    }
-
     function transferFromFtProxy(address token, address sender, address recipient, uint256 amount) public returns (bool response) {
         response = IERC20(token).transferFrom(sender, recipient, amount);
         if (response) {

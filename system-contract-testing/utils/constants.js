@@ -52,6 +52,7 @@ const Contract = {
   HIP1215Contract: "HIP1215Contract",
   TokenCreateContract: "TokenCreateContract",
   ErcEventsContract: "ErcEventsContract",
+  ErcEventsReceiverContract: "ErcEventsReceiverContract",
 };
 
 const Cost = {

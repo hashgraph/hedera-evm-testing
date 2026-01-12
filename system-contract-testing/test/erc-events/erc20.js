@@ -37,13 +37,17 @@ describe("ERC20 events", () => {
   }
 
   // ---------------- Test functions ----------------
-  async function transferTokenTest(testContract, responseCode) {
+  async function transferTokenTest(
+    transferContract,
+    receiverContract,
+    responseCode,
+  ) {
     const amount = 1;
     const rc = await (
-      await testContract.transferToken(
+      await transferContract.transferToken(
         tokenAddress,
         treasury,
-        testContract,
+        receiverContract,
         amount,
       )
     ).wait();
@@ -52,21 +56,25 @@ describe("ERC20 events", () => {
       rc.hash,
       tokenAddress,
       treasury.target,
-      testContract.target,
+      receiverContract.target,
       amount,
     );
     await validateRcWithErcEvent(rc, responseCode, [
-      { from: treasury.target, to: testContract.target, amount: amount },
+      { from: treasury.target, to: receiverContract.target, amount: amount },
     ]);
   }
 
-  async function transferFromTest(testContract, responseCode) {
+  async function transferFromTest(
+    transferContract,
+    receiverContract,
+    responseCode,
+  ) {
     const amount = 1;
     const rc = await (
-      await testContract.transferFrom(
+      await transferContract.transferFrom(
         tokenAddress,
         treasury,
-        testContract,
+        receiverContract,
         amount,
       )
     ).wait();
@@ -75,31 +83,28 @@ describe("ERC20 events", () => {
       rc.hash,
       tokenAddress,
       treasury.target,
-      testContract.target,
+      receiverContract.target,
       amount,
     );
     await validateRcWithErcEvent(rc, responseCode, [
-      { from: treasury.target, to: testContract.target, amount: amount },
+      { from: treasury.target, to: receiverContract.target, amount: amount },
     ]);
   }
 
-  async function transferFtProxyTest(testContract, responseCode) {
-    // associated + KYC for signers[0].address
-    await (
-      await htsContract.associateToken(signers[0].address, tokenAddress)
-    ).wait();
-    await (
-      await treasury.grantTokenKycPublic(tokenAddress, signers[0].address)
-    ).wait();
+  async function transferFtProxyTest(
+    transferContract,
+    receiverContract,
+    responseCode,
+  ) {
     const amount = 1;
     // TODO
     //  Error raised while fetching estimateGas from mirror-node: {"detail":"","data":"0x","statusCode":400}
     //  Error executing method: rpcMethodName=eth_estimateGas, error=execution reverted
     ethers.provider.estimateGas = async () => 1_000_000;
     const rc = await (
-      await testContract.transferFtProxyV2(
+      await transferContract.transferFtProxy(
         tokenAddress,
-        signers[0].address,
+        receiverContract.target,
         amount,
       )
     ).wait();
@@ -107,22 +112,30 @@ describe("ERC20 events", () => {
       "%s FT transfer proxy:%s from:%s to:%s amount:%s",
       rc.hash,
       tokenAddress,
-      testContract.target,
-      signers[0].address,
+      transferContract.target,
+      receiverContract.target,
       amount,
     );
     await validateRcWithErcEvent(rc, responseCode, [
-      { from: testContract.target, to: signers[0].address, amount: amount },
+      {
+        from: transferContract.target,
+        to: receiverContract.target,
+        amount: amount,
+      },
     ]);
   }
 
-  async function transferFromFtProxyTest(testContract, responseCode) {
+  async function transferFromFtProxyTest(
+    transferContract,
+    receiverContract,
+    responseCode,
+  ) {
     const amount = 1;
     const rc = await (
-      await testContract.transferFromFtProxy(
+      await transferContract.transferFromFtProxy(
         tokenAddress,
         treasury,
-        testContract,
+        receiverContract,
         amount,
       )
     ).wait();
@@ -131,58 +144,86 @@ describe("ERC20 events", () => {
       rc.hash,
       tokenAddress,
       treasury.target,
-      testContract.target,
+      receiverContract.target,
       amount,
     );
     await validateRcWithErcEvent(rc, responseCode, [
-      { from: treasury.target, to: testContract.target, amount: amount },
+      { from: treasury.target, to: receiverContract.target, amount: amount },
     ]);
   }
 
   describe("HTS 0x167", async () => {
     describe("Relay: 0x167 positive cases", async () => {
-      let events167Contract;
+      let transfer167Contract, receiverContract;
 
       before(async () => {
-        events167Contract = await deployTestContract(HTS_ADDRESS, 1000);
+        [transfer167Contract, receiverContract] = await deployTestContract(
+          HTS_ADDRESS,
+          1000,
+        );
       });
 
       it("0x167 FT transferToken", async () => {
-        await transferTokenTest(events167Contract, ResponseCodeEnum.SUCCESS);
+        await transferTokenTest(
+          transfer167Contract,
+          receiverContract,
+          ResponseCodeEnum.SUCCESS,
+        );
       });
 
       it("0x167 FT transferFrom", async () => {
-        await transferFromTest(events167Contract, ResponseCodeEnum.SUCCESS);
-      });
-
-      it("0x167 FT transferFrom proxy + transfer proxy", async () => {
-        // transferFrom treasury->events167Contract
-        await transferFromFtProxyTest(
-          events167Contract,
+        await transferFromTest(
+          transfer167Contract,
+          receiverContract,
           ResponseCodeEnum.SUCCESS,
         );
-        // transfer events167Contract->signers[0].address
-        await transferFtProxyTest(events167Contract, ResponseCodeEnum.SUCCESS);
+      });
+
+      it("0x167 FT transfer proxy", async () => {
+        // transferFrom treasury->transfer167Contract
+        await transferTokenTest(
+          transfer167Contract,
+          transfer167Contract,
+          ResponseCodeEnum.SUCCESS,
+        );
+        // transfer transfer167Contract->receiverContract
+        await transferFtProxyTest(
+          transfer167Contract,
+          receiverContract,
+          ResponseCodeEnum.SUCCESS,
+        );
+      });
+
+      it("0x167 FT transferFrom proxy", async () => {
+        // transferFrom treasury->transfer167Contract
+        await transferFromFtProxyTest(
+          transfer167Contract,
+          receiverContract,
+          ResponseCodeEnum.SUCCESS,
+        );
       });
     });
 
     describe("Relay: 0x167 negative cases", async () => {
-      let events167NotApprovedContract;
+      let transfer167NotApprovedContract, receiverContract;
 
       before(async () => {
-        events167NotApprovedContract = await deployTestContract(HTS_ADDRESS, 0);
+        [transfer167NotApprovedContract, receiverContract] =
+          await deployTestContract(HTS_ADDRESS, 0, false, true);
       });
 
       it("0x167 FT transferToken SPENDER_DOES_NOT_HAVE_ALLOWANCE", async () => {
         await transferTokenTest(
-          events167NotApprovedContract,
+          transfer167NotApprovedContract,
+          receiverContract,
           ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
         );
       });
 
       it("0x167 FT transferFrom SPENDER_DOES_NOT_HAVE_ALLOWANCE", async () => {
         await transferFromTest(
-          events167NotApprovedContract,
+          transfer167NotApprovedContract,
+          receiverContract,
           ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
         );
       });
@@ -190,16 +231,18 @@ describe("ERC20 events", () => {
       //TODO
       it("0x167 FT transfer proxy INSUFFICIENT_TOKEN_BALANCE", async () => {
         await transferFtProxyTest(
-          events167NotApprovedContract,
-          ResponseCodeEnum.SUCCESS,
+          transfer167NotApprovedContract,
+          receiverContract,
+          ResponseCodeEnum.UNKNOWN,
         );
       });
 
       //TODO
       it("0x167 FT transferFrom proxy //TODO error", async () => {
         await transferFromFtProxyTest(
-          events167NotApprovedContract,
-          ResponseCodeEnum.SUCCESS,
+          transfer167NotApprovedContract,
+          receiverContract,
+          ResponseCodeEnum.UNKNOWN,
         );
       });
     });
