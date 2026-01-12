@@ -35,7 +35,7 @@ npx hardhat test --network local
 - Doc: <https://solo.hiero.org/v0.48.0/docs/step-by-step-guide/>
 - Doc with local consensus node build: <https://solo.hiero.org/v0.48.0/docs/platform-developer/>
 
-### Specific solo version install
+### Specific Solo version install
 
 ```sh
 npm install -g @hashgraph/solo@0.48.0
@@ -164,10 +164,10 @@ npm run test:hip-1340
 You can also run tests with logging enabled.
 This uses Node.js's built-in `debuglog` utility to provide
 conditional debugging output based on the `NODE_DEBUG` environment variable.
-That is, to enable debug output, set `NODE_DEBUG=pectra-testing` when running the tests, for example
+That is, to enable debug output, set `NODE_DEBUG=hip-1340` when running the tests, for example
 
 ```sh
-NODE_DEBUG=pectra-testing npm test
+NODE_DEBUG=hip-1340 npm test
 ```
 
 Note that the output might be considerably large with logging enabled.
@@ -175,8 +175,6 @@ You may want to filter tests to be executed by either using Mocha's `--grep` fla
 For more details see [`util.debuglog(section[, callback])`](https://nodejs.org/api/util.html#utildebuglogsection-callback) in Node.js's documentation.
 
 ### Development
-
-#### Contracts
 
 The tests _only_ use Ethers.js to send Ethereum transactions to the network.
 Thus, to compile the contracts we could use either Foundry, Hardhat, or even `solc` directly.
@@ -189,17 +187,3 @@ In particular, `@account-abstraction/contracts/accounts/Simple7702Account.sol` w
 > [!NOTE]
 > The sole purpose of the `Wrapper` contract is to `import` contracts that are used directly in tests as artifacts.
 > Without `import`ing them, these contracts are not compiled, thus they will not appear as artifacts in the `out/` folder.
-
-#### Avoid Polluting Dependencies
-
-The Hiero JS SDK contains a transitive dependency to `react-native-get-random-values`.
-This in turn, triggers the installation of hundreds of unused packages, which makes the installation slower, increases the surface for supply-chain attacks and pollutes the `node_modules` folder.
-We can prune the tree dependency by avoid installing `react-native-get-random-values` using `overrides` as shown next
-
-```json
-  "overrides": {
-    "react-native-get-random-values": "file:./null"
-  }
-```
-
-This reduces the amount of installed packages from `~400` to `~100`.
