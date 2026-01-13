@@ -1,26 +1,30 @@
-import { strict as assert } from 'node:assert';
-import { readFileSync } from 'node:fs';
+const assert = require('node:assert').strict;
+const { readFileSync } = require('node:fs');
 
-import { ethers } from 'ethers';
+const { ethers } = require('ethers');
 
-import { operatorEcdsaKey, rpcUrl } from './config.mts';
-import { log } from './log.mts';
+const { operatorEcdsaKey, rpcUrl } = require('./config.js');
+const { log } = require('./log.js');
 
 /**
  * Gas cost constants and functions.
  */
-export const gas = {
+const gas = {
     base: 21_000,
-    auth: (n: number) => n * 25_000,
+    /**
+     * @param {number} n 
+     * @returns 
+     */
+    auth: n => n * 25_000,
 };
 
 /**
  * Returns EIP-7702's designator code for a given Ethereum address.
  *
- * @param address - An EVM address
+ * @param {string} address - An EVM address
  * @returns 
  */
-export function designatorFor(address: string) {
+function designatorFor(address) {
     assert(/^0x[0-9a-fA-F]{40}$/.test(address), `Invalid Ethereum address: ${address}`);
     return `0xef0100${address.slice(2)}`;
 }
@@ -30,10 +34,10 @@ export function designatorFor(address: string) {
  * Useful to convert small integers to padded addresses,
  * such as precompile or system contract addresses.
  *
- * @param n 
- * @returns 
+ * @param {number | bigint} n 
+ * @returns {string}
  */
-export function asAddress(n: number | bigint): string {
+function asAddress(n) {
     return `0x${n.toString(16).padStart(40, '0')}`;
 }
 
@@ -41,11 +45,11 @@ export function asAddress(n: number | bigint): string {
  * Creates and funds a new Externally Owned Account (EOA) on the connected network.
  * Optionally, the EOA can be set up to delegate to a given address using EIP-7702.
  *
- * @param delegation
- * @param tinyBarBalance 
- * @returns The funded EOA wallet
+ * @param {string} [delegation]
+ * @param {bigint} [tinyBarBalance=100_000_000n]
+ * @returns {Promise<ethers.BaseWallet>} The funded EOA wallet
  */
-export async function fundEOA(delegation?: string, tinyBarBalance: bigint = 100_000_000n): Promise<ethers.BaseWallet> {
+async function fundEOA(delegation, tinyBarBalance = 100_000_000n) {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const network = await provider.getNetwork();
 
@@ -87,21 +91,10 @@ export async function fundEOA(delegation?: string, tinyBarBalance: bigint = 100_
 /**
  * Retrieves the compiled artifact for a given contract name.
  *
- * @param contractName 
+ * @param {string} contractName 
  */
-export function getArtifact(contractName: string): {
-    abi: ethers.JsonFragment[],
-    bytecode: { object: string },
-    storageLayout: {
-        storage: {
-            label: string,
-            offset: number,
-            slot: string,
-            type: string,
-        }[]
-    },
-} {
-    const file = readFileSync(`./out/${contractName}.sol/${contractName}.json`, 'utf-8');
+function getArtifact(contractName) {
+    const file = readFileSync(`./artifacts/contracts/hip-1340/${contractName}.sol/${contractName}.json`, 'utf-8');
     const { abi, bytecode, storageLayout } = JSON.parse(file);
     return { abi, bytecode, storageLayout };
 }
@@ -109,17 +102,12 @@ export function getArtifact(contractName: string): {
 /**
  * Deploys a contract to the connected network.
  *
- * @param contractName 
- * @param deployer 
- * @param gasLimit 
+ * @param {string} contractName 
+ * @param {ethers.BaseWallet} [deployer]
+ * @param {number} [gasLimit=5000000]
+ * @returns {Promise<{address: string, deployer: ethers.BaseWallet, contract: ethers.Contract}>}
  */
-export async function deploy(
-    contractName: string, args?: unknown[], deployer?: ethers.BaseWallet, gasLimit: number = 5_000_000
-): Promise<{
-    address: string,
-    deployer: ethers.BaseWallet,
-    contract: ethers.Contract,
-}> {
+async function deploy(contractName, args, deployer, gasLimit = 5_000_000){
     if (!deployer) deployer = await fundEOA();
 
     assert(deployer.provider !== null, 'Deployer wallet must be connected to a provider');
@@ -139,7 +127,7 @@ export async function deploy(
         nonce: await deployer.getNonce(),
         gasPrice: ethers.parseUnits('10', 'gwei'),
         gasLimit,
-        data: bytecode.object + consArgs,
+        data: bytecode + consArgs,
     }));
     const receipt = await resp.wait();
     log('Contract `%s` deployed at %s in transanction %s', contractName, receipt?.contractAddress, resp.hash);
@@ -154,13 +142,13 @@ export async function deploy(
 /**
  * Encodes function call data for a given function signature and values.
  * 
- * @param functionSignature 
- * @param values 
- * @returns 
+ * @param {string} functionSignature 
+ * @param {unknown[]} [values]
+ * @returns {string}
  */
-export function encodeFunctionData(functionSignature: string, values?: unknown[]): string {
+function encodeFunctionData(functionSignature, values) {
     const iface = new ethers.Interface([`function ${functionSignature}`]);
-    const functionName = (iface.fragments[0] as ethers.FunctionFragment).name
+    const functionName = iface.fragments[0].name
     const calldata = iface.encodeFunctionData(functionName, values);
     log(`Calldata for ${functionName}(${values !== undefined ? values.join(', ') : ''}):`, calldata);
     return calldata;
@@ -169,10 +157,10 @@ export function encodeFunctionData(functionSignature: string, values?: unknown[]
 /**
  * Waits for a transaction to be processed and returns its receipt, or null if the transaction failed.
  *
- * @param tx 
- * @returns 
+ * @param {Promise<ethers.TransactionResponse>} tx 
+ * @returns {Promise<ethers.TransactionReceipt | null>}
  */
-export async function waitFor(tx: Promise<ethers.TransactionResponse>): Promise<ethers.TransactionReceipt | null> {
+async function waitFor(tx) {
     const response = await tx;
     const receipt = await response.wait();
     return receipt;
@@ -181,9 +169,11 @@ export async function waitFor(tx: Promise<ethers.TransactionResponse>): Promise<
 /**
  * Converts a value to a hexadecimal string representing a `uint256`.
  * 
- * @param value The value to convert.
- * @returns The hexadecimal string representation of the value as a `uint256`.
+ * @param {bigint | number} value The value to convert.
+ * @returns {string} The hexadecimal string representation of the value as a `uint256`.
  */
-export function asHexUint256(value: bigint | number): string {
+function asHexUint256(value) {
     return '0x' + value.toString(16).padStart(64, '0');
 }
+
+module.exports = { gas, deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress };

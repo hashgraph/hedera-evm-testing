@@ -1,4 +1,4 @@
-import { debuglog } from 'node:util';
+const { debuglog } = require('node:util');
 
 /**
  * Logging function to be used throughout the pectra-testing package.
@@ -8,4 +8,6 @@ import { debuglog } from 'node:util';
  *
  * For more details see [`util.debuglog(section[, callback])`](https://nodejs.org/api/util.html#utildebuglogsection-callback) in Node.js's documentation.
  */
-export const log = debuglog('hip-1340');
+const log = debuglog('hip-1340');
+
+module.exports = { log };

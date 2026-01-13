@@ -1,12 +1,12 @@
-import { strict as assert } from 'node:assert';
+const assert = require('node:assert').strict;
 
-import { expect } from 'chai';
-import { ethers } from 'ethers';
-import * as sdk from '@hiero-ledger/sdk';
+const { expect } = require('chai');
+const { ethers } = require('ethers');
+const sdk = require('@hiero-ledger/sdk');
 
-import { rpcUrl } from 'evm-functional-testing/config';
-import { log } from 'evm-functional-testing/log';
-import { gas, deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress } from 'evm-functional-testing/web3';
+const { rpcUrl } = require('evm-functional-testing/config');
+const { log } = require('evm-functional-testing/log');
+const { gas, deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress } = require('evm-functional-testing/web3');
 
 /**
  * https://www.evm.codes/precompiled?fork=prague
@@ -18,10 +18,17 @@ const precompiledAddresses = [...Array(0x11).keys()].map(i => asAddress(i + 1));
  */
 const systemContractAddresses = [0x167, 0x168, 0x169, 0x16a, 0x16b, 0x16c].map(asAddress);
 
-describe('eip7702', function () {
+describe('HIP-1340 - EIP-7702 features', function () {
 
-    let provider: ethers.JsonRpcProvider;
-    let network: ethers.Network;
+    /**
+     * @type {ethers.JsonRpcProvider}
+     */
+    let provider;
+
+    /**
+     * @type {ethers.Network}
+     */
+    let network;
 
     before(async function () {
         provider = new ethers.JsonRpcProvider(rpcUrl);
@@ -81,11 +88,11 @@ describe('eip7702', function () {
         });
     });
 
-    it('should get store and logs when EOA sends a transaction to itself', async function () {
+    it.only('should get store and logs when EOA sends a transaction to itself', async function () {
         const value = 42;
 
         const storeAndEmit = await deploy('StoreAndEmit');
-        const smartWallet = await deploy('Simple7702Account', [ethers.ZeroAddress]);
+        const smartWallet = await deploy('Simple7702Account');
         const eoa = await fundEOA(smartWallet.address);
 
         const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
@@ -120,23 +127,23 @@ describe('eip7702', function () {
         expect(storedValue).to.be.equal(asHexUint256(value));
     });
 
-    it('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
+    it.only('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
         const erc20 = await deploy('ERC20Mintable', ['Test', 'TST', 10_000_000n]);
-        await erc20.contract.mint!(50_000n);
-        const minterBalance = await erc20.contract.balanceOf!(erc20.deployer.address);
+        await erc20.contract.mint(50_000n);
+        const minterBalance = await erc20.contract.balanceOf(erc20.deployer.address);
         log('Minter balance:', minterBalance);
         assert(minterBalance === 50_000n + 10_000_000n, `Minter balance should be \`initialSupply+mint amount\` but got ${minterBalance}`);
 
-        const smartWallet = await deploy('Simple7702Account', [ethers.ZeroAddress]);
+        const smartWallet = await deploy('Simple7702Account');
         const eoa1 = await fundEOA(smartWallet.address);
         const eoa2 = await fundEOA(smartWallet.address);
 
-        await waitFor(erc20.contract.transfer!(eoa1.address, 5_000n));
-        const eoa1Balance = await erc20.contract.balanceOf!(eoa1.address);
+        await waitFor(erc20.contract.transfer(eoa1.address, 5_000n));
+        const eoa1Balance = await erc20.contract.balanceOf(eoa1.address);
         assert(eoa1Balance === 5_000n, `EOA1 balance should be 5_000 but got ${eoa1Balance}`);
 
-        await waitFor(erc20.contract.transfer!(eoa2.address, 7_000n, { nonce: 3 }));
-        const eoa2Balance = await erc20.contract.balanceOf!(eoa2.address);
+        await waitFor(erc20.contract.transfer(eoa2.address, 7_000n, { nonce: 3 }));
+        const eoa2Balance = await erc20.contract.balanceOf(eoa2.address);
         assert(eoa2Balance === 7_000n, `EOA2 balance should be 7_000 but got ${eoa2Balance}`);
 
         const receiver = ethers.Wallet.createRandom().address;
@@ -157,13 +164,13 @@ describe('eip7702', function () {
             data: encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [erc20.address, 0, eoa2Call]),
         }));
 
-        const eoa1BalanceAfter = await erc20.contract.balanceOf!(eoa1.address);
+        const eoa1BalanceAfter = await erc20.contract.balanceOf(eoa1.address);
         expect(eoa1BalanceAfter).to.be.equal(3_500n, `EOA1 balance should be 3_500 but got ${eoa1BalanceAfter}`);
 
-        const eoa2BalanceAfter = await erc20.contract.balanceOf!(eoa2.address);
+        const eoa2BalanceAfter = await erc20.contract.balanceOf(eoa2.address);
         expect(eoa2BalanceAfter).to.be.equal(4_700n, `EOA2 balance should be 4_700 but got ${eoa2BalanceAfter}`);
 
-        const receiverBalance = await erc20.contract.balanceOf!(receiver);
+        const receiverBalance = await erc20.contract.balanceOf(receiver);
         expect(receiverBalance).to.be.equal(3_800n, `Receiver balance should be 3_800 but got ${receiverBalance}`);
     });
 
@@ -255,8 +262,8 @@ describe('eip7702', function () {
     });
 
     it.skip('should return delegation designation to `0x167` when an HTS token is created', async function () {
-        const operatorId = sdk.AccountId.fromString(process.env.OPERATOR_ID!);
-        const operatorKey = sdk.PrivateKey.fromStringECDSA(process.env.OPERATOR_KEY!);
+        const operatorId = sdk.AccountId.fromString(process.env.OPERATOR_ID);
+        const operatorKey = sdk.PrivateKey.fromStringECDSA(process.env.OPERATOR_KEY);
         const client = sdk.Client.forNetwork({ '127.0.0.1:50211': '0.0.3' });
         client.setOperator(operatorId, operatorKey);
 

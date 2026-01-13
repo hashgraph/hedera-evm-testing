@@ -5,13 +5,13 @@
   "private": true,
   "type": "commonjs",
   "exports": {
-    "./config": "./utils/hip1340/config.mts",
-    "./log": "./utils/hip1340/log.mts",
-    "./web3": "./utils/hip1340/web3.mts"
+    "./config": "./utils/hip1340/config.js",
+    "./log": "./utils/hip1340/log.js",
+    "./web3": "./utils/hip1340/web3.js"
   },
   "scripts": {
     "tsc": "tsc",
-    "test": "npx hardhat test",
+    "test": "hardhat test",
     "test:hip-1340": "mocha"
   },
   "keywords": [],
@@ -31,7 +31,7 @@
     "solidity-coverage": "0.8.16"
   },
   "devDependencies": {
-    "@account-abstraction/contracts": "^0.9.0-rc.1",
+    "@account-abstraction/contracts": "^0.8.0",
     "@hashgraph/hedera-local": "2.37.1",
     "@hashgraph/sdk": "2.72.0",
     "@hiero-ledger/sdk": "^2.79.0",
