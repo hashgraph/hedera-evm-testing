@@ -2,7 +2,7 @@ const assert = require('node:assert').strict;
 
 const { expect } = require('chai');
 const { ethers } = require('ethers');
-const sdk = require('@hiero-ledger/sdk');
+const sdk = require('@hashgraph/sdk');
 
 const { rpcUrl } = require('evm-functional-testing/config');
 const { log } = require('evm-functional-testing/log');

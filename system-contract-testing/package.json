@@ -10,9 +10,7 @@
     "./web3": "./utils/hip1340/web3.js"
   },
   "scripts": {
-    "tsc": "tsc",
-    "test": "hardhat test",
-    "test:hip-1340": "mocha"
+    "test": "hardhat test"
   },
   "keywords": [],
   "author": "Hashgraph Smart Contracts Team",
@@ -34,22 +32,17 @@
     "@account-abstraction/contracts": "^0.8.0",
     "@hashgraph/hedera-local": "2.37.1",
     "@hashgraph/sdk": "2.72.0",
-    "@hiero-ledger/sdk": "^2.79.0",
     "@nomicfoundation/hardhat-chai-matchers": "2.1.0",
     "@nomicfoundation/hardhat-ethers": "3.1.0",
     "@openzeppelin/contracts": "5.4.0",
     "@openzeppelin/contracts-upgradeable": "5.4.0",
     "@openzeppelin/hardhat-upgrades": "3.9.1",
-    "@types/chai": "^5.2.3",
-    "@types/mocha": "^10.0.10",
     "hardhat": "2.26.3",
     "hardhat-abi-exporter": "2.11.0",
     "husky": "9.1.7",
-    "mocha": "^11.7.5",
     "mocha-junit-reporter": "2.2.1",
     "mocha-multi-reporters": "1.5.1",
-    "prettier": "3.6.2",
-    "typescript": "^5.9.3"
+    "prettier": "3.6.2"
   },
   "directories": {
     "test": "test"
