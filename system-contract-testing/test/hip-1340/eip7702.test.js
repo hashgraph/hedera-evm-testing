@@ -118,11 +118,8 @@ describe('HIP-1340 - EIP-7702 features', function () {
             ],
         });
 
-        const { storageLayout: { storage } } = getArtifact('contracts/hip-1340/StoreAndEmit');
-        const slot = storage.find(slot => slot.label === '_value');
-        assert(slot !== undefined, 'Storage slot for `_value` not found in `StoreAndEmit` contract artifact');
-
-        const storedValue = await provider.getStorage(storeAndEmit.address, slot.slot);
+        const valueSlot = 0;
+        const storedValue = await provider.getStorage(storeAndEmit.address, valueSlot);
         log('Storage', storedValue);
         expect(storedValue).to.be.equal(asHexUint256(value));
     });
