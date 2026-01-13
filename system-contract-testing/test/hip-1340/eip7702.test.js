@@ -88,11 +88,11 @@ describe('HIP-1340 - EIP-7702 features', function () {
         });
     });
 
-    it.only('should get store and logs when EOA sends a transaction to itself', async function () {
+    it('should get store and logs when EOA sends a transaction to itself', async function () {
         const value = 42;
 
-        const storeAndEmit = await deploy('StoreAndEmit');
-        const smartWallet = await deploy('Simple7702Account');
+        const storeAndEmit = await deploy('contracts/hip-1340/StoreAndEmit');
+        const smartWallet = await deploy('@account-abstraction/contracts/accounts/Simple7702Account');
         const eoa = await fundEOA(smartWallet.address);
 
         const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
@@ -118,7 +118,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
             ],
         });
 
-        const { storageLayout: { storage } } = getArtifact('StoreAndEmit');
+        const { storageLayout: { storage } } = getArtifact('contracts/hip-1340/StoreAndEmit');
         const slot = storage.find(slot => slot.label === '_value');
         assert(slot !== undefined, 'Storage slot for `_value` not found in `StoreAndEmit` contract artifact');
 
@@ -127,14 +127,14 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(storedValue).to.be.equal(asHexUint256(value));
     });
 
-    it.only('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
-        const erc20 = await deploy('ERC20Mintable', ['Test', 'TST', 10_000_000n]);
+    it('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
+        const erc20 = await deploy('contracts/hip-1340/ERC20Mintable', ['Test', 'TST', 10_000_000n]);
         await erc20.contract.mint(50_000n);
         const minterBalance = await erc20.contract.balanceOf(erc20.deployer.address);
         log('Minter balance:', minterBalance);
         assert(minterBalance === 50_000n + 10_000_000n, `Minter balance should be \`initialSupply+mint amount\` but got ${minterBalance}`);
 
-        const smartWallet = await deploy('Simple7702Account');
+        const smartWallet = await deploy('@account-abstraction/contracts/accounts/Simple7702Account');
         const eoa1 = await fundEOA(smartWallet.address);
         const eoa2 = await fundEOA(smartWallet.address);
 

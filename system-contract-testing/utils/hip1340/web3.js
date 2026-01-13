@@ -91,10 +91,11 @@ async function fundEOA(delegation, tinyBarBalance = 100_000_000n) {
 /**
  * Retrieves the compiled artifact for a given contract name.
  *
- * @param {string} contractName 
+ * @param {string} contractPath 
  */
-function getArtifact(contractName) {
-    const file = readFileSync(`./artifacts/contracts/hip-1340/${contractName}.sol/${contractName}.json`, 'utf-8');
+function getArtifact(contractPath) {
+    const contractName = contractPath.split('/').pop();
+    const file = readFileSync(`./artifacts/${contractPath}.sol/${contractName}.json`, 'utf-8');
     const { abi, bytecode, storageLayout } = JSON.parse(file);
     return { abi, bytecode, storageLayout };
 }
