@@ -6,13 +6,11 @@ test-results.*
 # Npm dependencies
 /node_modules/
 
-# Foundry artifacts
-/out/
-
 # Compiler files
 /cache/
 /artifacts/
 /test-results.*
+/abi/
 
 # Dotenv file
 /.env
