@@ -41,7 +41,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         '0x0000000000000000000000000000000000068cDa',
         '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
     ].forEach(address => {
-        it(`should self-authorize address ${address}`, async function () {
+        it(`should create a new EAO delegation to ${address}, via a type4 transaction`, async function () {
             const eoa = await fundEOA();
             const nonce = await eoa.getNonce();
 
@@ -176,7 +176,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const eoa = await fundEOA();
         const receiver = ethers.Wallet.createRandom();
 
-        const resp = await eoa.sendTransaction(ethers.Transaction.from({
+        const resp = await eoa.sendTransaction({
             chainId: network.chainId,
             nonce: 0,
             gasLimit: gas.base + gas.auth(1),
@@ -187,7 +187,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 nonce: 0,
                 address: delegateAddress,
             })],
-        }));
+        });
         await resp.wait();
 
         const nonce = await provider.getTransactionCount(receiver.address);
