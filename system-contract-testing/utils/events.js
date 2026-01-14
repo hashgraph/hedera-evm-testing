@@ -35,6 +35,9 @@ async function validateErcEvent(rc, expectedEvents) {
   expect(transferEvents.length).to.equal(expectedEvents.length);
   expectedEvents.forEach((expectedEvent, index) => {
     const event = transferEvents[index];
+    expect(event.address.toLowerCase()).to.equal(
+      expectedEvent.address.toLowerCase(),
+    );
     expect(event.topics[1].toLowerCase()).to.equal(
       convertAddressToTopic(expectedEvent.from).toLowerCase(),
     );

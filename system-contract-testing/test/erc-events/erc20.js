@@ -44,7 +44,7 @@ async function transferTokenTest(
       amount,
   );
   await validateRcWithErcEvent(rc, responseCode, [
-    { from: treasury.target, to: receiverContract.target, amount: amount },
+    { address: tokenAddress, from: treasury.target, to: receiverContract.target, amount: amount },
   ]);
 }
 
@@ -73,7 +73,12 @@ async function transferFromTest(
       amount,
   );
   await validateRcWithErcEvent(rc, responseCode, [
-    { from: treasury.target, to: receiverContract.target, amount: amount },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: receiverContract.target,
+      amount: amount,
+    },
   ]);
 }
 
@@ -102,6 +107,7 @@ async function transferFtProxyTest(
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
+      address: tokenAddress,
       from: transferContract.target,
       to: receiverContract.target,
       amount: amount,
@@ -134,7 +140,12 @@ async function transferFromFtProxyTest(
       amount,
   );
   await validateRcWithErcEvent(rc, responseCode, [
-    { from: treasury.target, to: receiverContract.target, amount: amount },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: receiverContract.target,
+      amount: amount,
+    },
   ]);
 }
 
@@ -158,8 +169,18 @@ async function transferTokensTest(
       amounts,
   );
   await validateRcWithErcEvent(rc, responseCode, [
-    { from: treasury.target, to: transferContract.target, amount: 1 },
-    { from: treasury.target, to: receiverContract.target, amount: 2 },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: transferContract.target,
+      amount: 1,
+    },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: receiverContract.target,
+      amount: 2,
+    },
   ]);
 }
 
@@ -190,8 +211,18 @@ async function cryptoTransferV1Test(
     tokenTransferList,
   );
   await validateRcWithErcEvent(rc, responseCode, [
-    { from: treasury.target, to: transferContract.target, amount: 1 },
-    { from: treasury.target, to: receiverContract.target, amount: 2 },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: transferContract.target,
+      amount: 1,
+    },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: receiverContract.target,
+      amount: 2,
+    },
   ]);
 }
 
@@ -226,8 +257,18 @@ async function cryptoTransferV2Test(
     tokenTransferList,
   );
   await validateRcWithErcEvent(rc, responseCode, [
-    { from: treasury.target, to: transferContract.target, amount: 1 },
-    { from: treasury.target, to: receiverContract.target, amount: 2 },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: transferContract.target,
+      amount: 1,
+    },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: receiverContract.target,
+      amount: 2,
+    },
   ]);
 }
 

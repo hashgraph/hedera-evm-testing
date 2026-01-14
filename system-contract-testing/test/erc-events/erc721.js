@@ -50,6 +50,7 @@ async function transferNFTTest(
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
+      address: tokenAddress,
       from: treasury.target,
       to: receiverContract.target,
       serial: serialNumber,
@@ -83,6 +84,7 @@ async function transferFromNFTTest(
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
+      address: tokenAddress,
       from: treasury.target,
       to: receiverContract.target,
       serial: serialNumber,
@@ -116,6 +118,7 @@ async function transferFromNftProxyTest(
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
+      address: tokenAddress,
       from: treasury.target,
       to: receiverContract.target,
       serial: serialNumber,
@@ -153,11 +156,13 @@ async function transferNFTsTest(
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
+      address: tokenAddress,
       from: treasury.target,
       to: transferContract.target,
       serial: serialNumber1,
     },
     {
+      address: tokenAddress,
       from: treasury.target,
       to: receiverContract.target,
       serial: serialNumber2,
@@ -202,11 +207,13 @@ async function cryptoTransferV1Test(
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
+      address: tokenAddress,
       from: treasury.target,
       to: transferContract.target,
       serial: serialNumber1,
     },
     {
+      address: tokenAddress,
       from: treasury.target,
       to: receiverContract.target,
       serial: serialNumber2,
@@ -257,11 +264,13 @@ async function cryptoTransferV2Test(
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
+      address: tokenAddress,
       from: treasury.target,
       to: transferContract.target,
       serial: serialNumber1,
     },
     {
+      address: tokenAddress,
       from: treasury.target,
       to: receiverContract.target,
       serial: serialNumber2,
