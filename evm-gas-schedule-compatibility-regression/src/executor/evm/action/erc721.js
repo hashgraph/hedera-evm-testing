@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 const { ethers: { ContractFactory, Wallet, Contract } } = require('ethers');
 const { loadArtifact } = require('../../../utils/artifact');
 const { options, DEFAULT_GAS_LIMIT } = require('../options');

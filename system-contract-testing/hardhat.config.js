@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 /** @type import('hardhat/config').HardhatUserConfig */
 
 require("hardhat-abi-exporter");

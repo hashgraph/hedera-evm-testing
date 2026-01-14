@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 class Async {
   static wait(milliseconds) {
     return new Promise((resolve) => {

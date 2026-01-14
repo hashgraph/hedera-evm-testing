@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 const { ethers } = require("hardhat");
 const { ONE_HBAR } = require("./constants");
 

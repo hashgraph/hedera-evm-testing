@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 const { GAS_LIMIT_1_000_000 } = require("../../utils/constants");
 const { randomAddress } = require("../../utils/address");
 const {
