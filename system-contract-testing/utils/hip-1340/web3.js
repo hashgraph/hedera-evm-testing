@@ -49,7 +49,7 @@ function asAddress(n) {
  * @param {bigint} [tinyBarBalance=100_000_000n]
  * @returns {Promise<ethers.BaseWallet>} The funded EOA wallet
  */
-async function fundEOA(delegation, tinyBarBalance = 100_000_000n) {
+async function createAndFundEOA(delegation, tinyBarBalance = 100_000_000n) {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const network = await provider.getNetwork();
 
@@ -109,7 +109,7 @@ function getArtifact(contractPath) {
  * @returns {Promise<{address: string, deployer: ethers.BaseWallet, contract: ethers.Contract}>}
  */
 async function deploy(contractName, args, deployer, gasLimit = 5_000_000){
-    if (!deployer) deployer = await fundEOA();
+    if (!deployer) deployer = await createAndFundEOA();
 
     assert(deployer.provider !== null, 'Deployer wallet must be connected to a provider');
     const network = await deployer.provider.getNetwork();
@@ -177,4 +177,4 @@ function asHexUint256(value) {
     return '0x' + value.toString(16).padStart(64, '0');
 }
 
-module.exports = { gas, deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress };
+module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress };

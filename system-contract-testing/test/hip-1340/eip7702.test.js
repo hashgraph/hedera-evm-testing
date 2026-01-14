@@ -6,7 +6,7 @@ const sdk = require('@hashgraph/sdk');
 
 const { rpcUrl } = require('evm-functional-testing/config');
 const { log } = require('evm-functional-testing/log');
-const { gas, deploy, designatorFor, fundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress } = require('evm-functional-testing/web3');
+const { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('evm-functional-testing/web3');
 
 /**
  * https://www.evm.codes/precompiled?fork=prague
@@ -42,7 +42,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
     ].forEach(address => {
         it(`should create a new EAO delegation to ${address}, via a type4 transaction`, async function () {
-            const eoa = await fundEOA();
+            const eoa = await createAndFundEOA();
             const nonce = await eoa.getNonce();
 
             const resp = await eoa.sendTransaction({
@@ -69,8 +69,8 @@ describe('HIP-1340 - EIP-7702 features', function () {
     systemContractAddresses.forEach(address => {
         [0n, 10_000n].forEach(value => {
             it(`should run no-op with value ${value} when delegating to system contract ${address}`, async function () {
-                const sender = await fundEOA();
-                const eoa = await fundEOA(address);
+                const sender = await createAndFundEOA();
+                const eoa = await createAndFundEOA(address);
                 const balance = await provider.getBalance(eoa.address);
 
                 const tx = await sender.sendTransaction({
@@ -93,7 +93,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
 
         const storeAndEmit = await deploy('contracts/hip-1340/StoreAndEmit');
         const smartWallet = await deploy('@account-abstraction/contracts/accounts/Simple7702Account');
-        const eoa = await fundEOA(smartWallet.address);
+        const eoa = await createAndFundEOA(smartWallet.address);
 
         const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
         const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmit.address, 0, storeAndEmitCall]);
@@ -132,8 +132,8 @@ describe('HIP-1340 - EIP-7702 features', function () {
         assert(minterBalance === 50_000n + 10_000_000n, `Minter balance should be \`initialSupply+mint amount\` but got ${minterBalance}`);
 
         const smartWallet = await deploy('@account-abstraction/contracts/accounts/Simple7702Account');
-        const eoa1 = await fundEOA(smartWallet.address);
-        const eoa2 = await fundEOA(smartWallet.address);
+        const eoa1 = await createAndFundEOA(smartWallet.address);
+        const eoa2 = await createAndFundEOA(smartWallet.address);
 
         await waitFor(erc20.contract.transfer(eoa1.address, 5_000n));
         const eoa1Balance = await erc20.contract.balanceOf(eoa1.address);
@@ -173,7 +173,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
 
     it('should create the account when an EOA sponsors it', async function () {
         const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc';
-        const eoa = await fundEOA();
+        const eoa = await createAndFundEOA();
         const receiver = ethers.Wallet.createRandom();
 
         const resp = await eoa.sendTransaction({
@@ -201,7 +201,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
 
     it('should replace existing delegation when a new authorization is sent', async function () {
         const firstDelegation = ethers.Wallet.createRandom().address;
-        const eoa = await fundEOA(firstDelegation);
+        const eoa = await createAndFundEOA(firstDelegation);
         const nonce = await eoa.getNonce();
 
         const secondDelegation = ethers.Wallet.createRandom().address;
@@ -225,7 +225,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
     });
 
     it('should use the last authorization when multiple authorizations are sent', async function () {
-        const eoa = await fundEOA();
+        const eoa = await createAndFundEOA();
 
         const resp = await eoa.sendTransaction({
             chainId: network.chainId,
