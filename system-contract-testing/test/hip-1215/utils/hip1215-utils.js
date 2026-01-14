@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { PrivateKey, AccountId, ScheduleId } = require("@hashgraph/sdk");

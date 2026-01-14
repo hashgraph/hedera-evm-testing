@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 const get = function (parameter) {
     const valueArg = process.argv.find(arg => arg.startsWith(`--${parameter}=`)) || '';
     let value = valueArg.replace(`--${parameter}=`, '').split(',').filter(Boolean);
