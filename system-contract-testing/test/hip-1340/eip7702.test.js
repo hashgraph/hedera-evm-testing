@@ -191,6 +191,8 @@ describe('HIP-1340 - EIP-7702 features', function () {
         });
         await resp.wait();
 
+        expect(await provider.getBalance(to.address)).to.be.equal(10n);
+
         const nonce = await provider.getTransactionCount(receiver.address);
         expect(nonce).to.be.equal(1);
 
