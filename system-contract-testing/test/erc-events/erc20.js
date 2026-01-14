@@ -320,7 +320,7 @@ describe("ERC20 events", () => {
 
       before(async () => {
         [transferNotApprovedContract, receiverContract] =
-          await deployTestContract(address, treasury, tokenAddress, 0, false, true);
+          await deployTestContract(address, treasury, tokenAddress, 0);
       });
 
       it(`${displayAddress} FT transferToken SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
@@ -355,27 +355,27 @@ describe("ERC20 events", () => {
         );
       });
 
-      it(`${displayAddress} FT transferTokens proxy`, async () => {
+      it(`${displayAddress} FT transferTokens proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
         await transferTokensTest(
           transferNotApprovedContract,
           receiverContract,
-          ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
+          ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
         );
       });
 
-      it(`${displayAddress} FT cryptoTransferV1 proxy`, async () => {
+      it(`${displayAddress} FT cryptoTransferV1 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
         await cryptoTransferV1Test(
           transferNotApprovedContract,
           receiverContract,
-          ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
+          ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
         );
       });
 
-      it(`${displayAddress} FT cryptoTransferV2 proxy`, async () => {
+      it(`${displayAddress} FT cryptoTransferV2 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
         await cryptoTransferV2Test(
           transferNotApprovedContract,
           receiverContract,
-          ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
+          ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
         );
       });
     });

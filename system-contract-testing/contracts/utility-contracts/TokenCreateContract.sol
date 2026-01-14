@@ -293,4 +293,13 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
             revert ();
         }
     }
+
+    function approveNftPublic(address token, address spender, uint256 serialNumber) public returns (int responseCode) {
+        responseCode = HederaTokenService.approveNFT(token, spender, serialNumber);
+        emit ResponseCode(responseCode);
+
+        if (responseCode != HederaResponseCodes.SUCCESS) {
+            revert ();
+        }
+    }
 }

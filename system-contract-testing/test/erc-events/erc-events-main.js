@@ -2,10 +2,9 @@ const { createSDKClient } = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
 const Constants = require("../../utils/constants");
 
-// ------------------------- FT -------------------------
 async function beforeFtTests() {
   const sdkClient = await createSDKClient();
-  // create test token with 'tokenContract' as a 'treasury'
+  // create test FT token with 'tokenContract' as a 'treasury'
   const treasury = await contractDeployAndFund(
     Constants.Contract.TokenCreateContract,
   );
@@ -13,7 +12,6 @@ async function beforeFtTests() {
     await (
       await treasury.createFungibleTokenWithoutKYCPublic(treasury, {
         value: Constants.Cost.CREATE_TOKEN_COST,
-        gasLimit: 1_000_000,
       })
     ).wait()
   ).logs.find((e) => e.fragment.name === Constants.Events.CreatedToken).args
@@ -74,10 +72,10 @@ async function deployTestContract(
   return [transferContract, receiverContract];
 }
 
-// ------------------------- NFT -------------------------
-async function beforeNftTests() {
+async function beforeNftTests(mintAmount) {
   const sdkClient = await createSDKClient();
-  // create test token with 'tokenContract' as a 'treasury'
+
+  // create test NFT token with 'tokenContract' as a 'treasury'
   const treasury = await contractDeployAndFund(
     Constants.Contract.TokenCreateContract,
   );
@@ -85,19 +83,32 @@ async function beforeNftTests() {
     await (
       await treasury.createNonFungibleTokenWithoutKYCPublic(treasury, {
         value: Constants.Cost.CREATE_TOKEN_COST,
-        gasLimit: 1_000_000,
       })
     ).wait()
   ).logs.find((e) => e.fragment.name === Constants.Events.CreatedToken).args
     .tokenAddress;
-  const serialNumbers = (
-    await (
-      await treasury.mintTokenPublic(tokenAddress, 100, [], {
-        gasLimit: 1_000_000,
-      })
-    ).wait()
-  ).logs.find((e) => e.fragment.name === Constants.Events.MintedToken).args
-    .serialNumbers;
+
+  // mint NFTs
+  let serialNumbers = [];
+  const metadata = Array.from(
+    Array(mintAmount)
+      .keys()
+      .map((e) => `0x${e.toString(16).padStart(2, "0")}`),
+  );
+  const singleMintSize = 10;
+  for (let i = 0; i < metadata.length; i += singleMintSize) {
+    const requestMetadata = metadata.slice(i, i + singleMintSize);
+    const serialNumbersObject = (
+      await (
+        await treasury.mintTokenPublic(tokenAddress, 0, requestMetadata)
+      ).wait()
+    ).logs.find((e) => e.fragment.name === Constants.Events.MintedToken).args
+      .serialNumbers;
+    serialNumbers = serialNumbers.concat(
+      Array.from(serialNumbersObject.values()),
+    );
+  }
+
   console.log(
     "Create token:%s treasury:%s serialNumbers:%s",
     tokenAddress,
