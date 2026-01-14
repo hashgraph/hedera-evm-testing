@@ -174,9 +174,9 @@ async function cryptoTransferV1Test(
     {
       token: tokenAddress,
       transfers: [
-        { accountID: treasury.target, amount: -3 },
-        { accountID: transferContract.target, amount: 1 },
-        { accountID: receiverContract.target, amount: 2 },
+        { accountID: treasury, amount: -3 },
+        { accountID: transferContract, amount: 1 },
+        { accountID: receiverContract, amount: 2 },
       ],
       nftTransfers: [],
     },
@@ -185,10 +185,9 @@ async function cryptoTransferV1Test(
       await transferContract.cryptoTransferV1(tokenTransferList)
   ).wait();
   console.log(
-      "%s FT cryptoTransferV1:%s tokenTransferList:",
-      rc.hash,
-      tokenAddress,
-      tokenTransferList,
+    "%s FT cryptoTransferV1 tokenTransferList:%s",
+    rc.hash,
+    tokenTransferList,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     { from: treasury.target, to: transferContract.target, amount: 1 },
@@ -210,9 +209,9 @@ async function cryptoTransferV2Test(
     {
       token: tokenAddress,
       transfers: [
-        { accountID: treasury.target, amount: -3, isApproval: false },
-        { accountID: transferContract.target, amount: 1, isApproval: false },
-        { accountID: receiverContract.target, amount: 2, isApproval: false },
+        { accountID: treasury, amount: -3, isApproval: false },
+        { accountID: transferContract, amount: 1, isApproval: false },
+        { accountID: receiverContract, amount: 2, isApproval: false },
       ],
       nftTransfers: [],
     },
@@ -221,11 +220,10 @@ async function cryptoTransferV2Test(
       await transferContract.cryptoTransferV2(transferList, tokenTransferList)
   ).wait();
   console.log(
-      "%s FT cryptoTransferV2:%s TransferList:%s tokenTransferList:",
-      rc.hash,
-      tokenAddress,
-      transferList,
-      tokenTransferList,
+    "%s FT cryptoTransferV2 TransferList:%s tokenTransferList:%s",
+    rc.hash,
+    transferList,
+    tokenTransferList,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     { from: treasury.target, to: transferContract.target, amount: 1 },
@@ -242,6 +240,7 @@ async function erc20EventsTests(htsAddress, context) {
 
     before(async () => {
       [transferContract, receiverContract] = await deployTestContract(
+          null,
         htsAddress,
         context.treasury,
         context.ftTokenAddress,
@@ -336,6 +335,7 @@ async function erc20EventsTests(htsAddress, context) {
     before(async () => {
       [transferNotApprovedContract, receiverContract] =
         await deployTestContract(
+          null,
           htsAddress,
           context.treasury,
           context.ftTokenAddress,
@@ -416,5 +416,6 @@ async function erc20EventsTests(htsAddress, context) {
 }
 
 module.exports = {
+  validateRcWithErcEvent,
   erc20EventsTests,
 };

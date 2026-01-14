@@ -69,17 +69,23 @@ async function beforeNftTests(sdkClient, treasury, mintAmount) {
 }
 
 async function deployTestContract(
+  existedTransferContract,
   htsAddress,
   treasury,
   tokenAddress,
   approveAmount,
 ) {
-  const transferContract = await contractDeployAndFund(
-    Constants.Contract.ErcEventsContract,
-    0,
-    0,
-    htsAddress,
-  );
+  let transferContract;
+  if (existedTransferContract) {
+    transferContract = existedTransferContract;
+  } else {
+    transferContract = await contractDeployAndFund(
+      Constants.Contract.ErcEventsContract,
+      0,
+      0,
+      htsAddress,
+    );
+  }
   // create receiver contract
   const receiverContract = await contractDeployAndFund(
     Constants.Contract.ErcEventsReceiverContract,
