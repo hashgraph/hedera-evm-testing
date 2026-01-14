@@ -18,6 +18,11 @@ const precompiledAddresses = [...Array(0x11).keys()].map(i => asAddress(i + 1));
  */
 const systemContractAddresses = [0x167, 0x168, 0x169, 0x16a, 0x16b, 0x16c].map(asAddress);
 
+/**
+ * A delegate address used in multiple tests.
+ */
+const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc';
+
 describe('HIP-1340 - EIP-7702 features', function () {
 
     /**
@@ -172,7 +177,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
     });
 
     it('should create the account when an EOA sponsors it', async function () {
-        const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc';
         const eoa = await createAndFundEOA();
         const to = await createAndFundEOA();
         const receiver = ethers.Wallet.createRandom();
@@ -191,7 +195,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         });
         await resp.wait();
 
-        expect(await provider.getBalance(to.address)).to.be.equal(10n);
+        expect(await provider.getBalance(to.address)).to.be.equal(1000000000000000000n + 10n);
 
         const nonce = await provider.getTransactionCount(receiver.address);
         expect(nonce).to.be.equal(1);
@@ -259,6 +263,45 @@ describe('HIP-1340 - EIP-7702 features', function () {
         log('EOA %s code: %s', eoa.address, code);
 
         expect(code).to.be.equal(designatorFor(asAddress(3)));
+    });
+
+    it('should authorize delegation of an existing account when exact gas is sent', async function () {
+        const eoa = await createAndFundEOA();
+
+        const resp = await eoa.sendTransaction({
+            chainId: network.chainId,
+            nonce: 0,
+            gasLimit: gas.base + gas.auth(1),
+            to: ethers.Wallet.createRandom().address,
+            authorizationList: [await eoa.authorize({
+                chainId: 0,
+                nonce: 1,
+                address: delegateAddress,
+            })],
+        });
+        await resp.wait();
+
+        const code = await provider.getCode(eoa.address);
+        log('EOA %s code: %s', eoa.address, code);
+
+        expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
+    });
+
+    it('should revert type 4 transaction when not enough gas is sent', async function () {
+        const eoa = await createAndFundEOA();
+
+        const resp = eoa.sendTransaction({
+            chainId: network.chainId,
+            nonce: 0,
+            gasLimit: gas.base + gas.auth(1) - 1,
+            to: ethers.Wallet.createRandom().address,
+            authorizationList: [await eoa.authorize({
+                chainId: 0,
+                nonce: 1,
+                address: delegateAddress,
+            })],
+        });
+        await expect(resp).to.be.rejectedWith(/intrinsic gas too low/);
     });
 
     it.skip('should return delegation designation to `0x167` when an HTS token is created', async function () {
