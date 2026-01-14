@@ -1,26 +1,13 @@
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
-const {
-  beforeNftTests,
-  deployTestContract,
-  afterTests,
-} = require("./erc-events-main");
-const { HTS_ADDRESS, HTS_ADDRESS_V2 } = require("../../utils/constants");
+const { deployTestContract } = require("./erc-events-main");
 const {
   validateResponseCodeEvent,
   validateErcEvent,
 } = require("../../utils/events");
 
-describe("ERC721 events", () => {
-  let sdkClient, treasury, tokenAddress, serialNumbers;
-
-  before(async () => {
-    [sdkClient, treasury, tokenAddress, serialNumbers] =
-      await beforeNftTests(20);
-  });
-
-  after(async () => {
-    await afterTests(sdkClient);
-  });
+// ---------------- Tests setup ----------------
+async function erc721EventsTests(htsAddress, context) {
+  const displayAddress = htsAddress.replace(/(0)\1+/g, "");
 
   // ---------------- Test util functions ----------------
   async function validateRcWithErcEvent(rc, responseCode, expectedEvents) {
@@ -35,17 +22,31 @@ describe("ERC721 events", () => {
     }
   }
 
-  async function approveNft(transferContract) {
+  async function approveNft(
+    treasury,
+    tokenAddress,
+    transferContract,
+    serialNumbers,
+  ) {
     const serial = serialNumbers.shift();
-    await (
+    const rc = await (
       await treasury.approveNftPublic(tokenAddress, transferContract, serial)
     ).wait();
+    console.log(
+      "%s approveNft:%s spender:%s serialNumber:%s",
+      rc.hash,
+      tokenAddress,
+      transferContract.target,
+      serial,
+    );
     return serial;
   }
 
   // ---------------- Test functions ----------------
   async function transferNFTTest(
     transferContract,
+    tokenAddress,
+    treasury,
     receiverContract,
     responseCode,
     serialNumber,
@@ -77,6 +78,8 @@ describe("ERC721 events", () => {
 
   async function transferFromNFTTest(
     transferContract,
+    tokenAddress,
+    treasury,
     receiverContract,
     responseCode,
     serialNumber,
@@ -108,6 +111,8 @@ describe("ERC721 events", () => {
 
   async function transferFromNftProxyTest(
     transferContract,
+    tokenAddress,
+    treasury,
     receiverContract,
     responseCode,
     serialNumber,
@@ -139,6 +144,8 @@ describe("ERC721 events", () => {
 
   async function transferNFTsTest(
     transferContract,
+    tokenAddress,
+    treasury,
     receiverContract,
     responseCode,
     serialNumber1,
@@ -179,6 +186,8 @@ describe("ERC721 events", () => {
 
   async function cryptoTransferV1Test(
     transferContract,
+    tokenAddress,
+    treasury,
     receiverContract,
     responseCode,
     serialNumber1,
@@ -227,6 +236,8 @@ describe("ERC721 events", () => {
 
   async function cryptoTransferV2Test(
     transferContract,
+    tokenAddress,
+    treasury,
     receiverContract,
     responseCode,
     serialNumber1,
@@ -280,153 +291,215 @@ describe("ERC721 events", () => {
   }
 
   // ---------------- Tests setup ----------------
-  async function ercEventsTests(address) {
-    const displayAddress = address.replace(/(0)\1+/g, "");
-    let transferContract, receiverContract;
+  let transferContract, receiverContract;
 
-    before(async () => {
-      [transferContract, receiverContract] = await deployTestContract(
-        address,
-        treasury,
-        tokenAddress,
-        0, // 0 approve because NFT will require separate approve for each token instance
+  before(async () => {
+    [transferContract, receiverContract] = await deployTestContract(
+      htsAddress,
+      context.treasury,
+      context.nftTokenAddress,
+      0, // 0 approve because NFT will require separate approve for each token instance
+    );
+  });
+
+  describe(`Relay: ${displayAddress} positive cases`, async () => {
+    it(`${displayAddress} NFT transferNFT`, async () => {
+      const serial = await approveNft(
+        context.treasury,
+        context.nftTokenAddress,
+        transferContract,
+        context.serialNumbers,
+      );
+      await transferNFTTest(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SUCCESS,
+        serial,
       );
     });
 
-    describe(`Relay: ${displayAddress} positive cases`, async () => {
-      it(`${displayAddress} NFT transferNFT`, async () => {
-        const serial = await approveNft(transferContract);
-        await transferNFTTest(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SUCCESS,
-          serial,
-        );
-      });
-
-      it(`${displayAddress} NFT transferFromNFT`, async () => {
-        const serial = await approveNft(transferContract);
-        await transferFromNFTTest(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SUCCESS,
-          serial,
-        );
-      });
-
-      it(`${displayAddress} NFT transferFromNft proxy`, async () => {
-        const serial = await approveNft(transferContract);
-        // transferFrom treasury->transfer167Contract
-        await transferFromNftProxyTest(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SUCCESS,
-          serial,
-        );
-      });
-
-      it(`${displayAddress} NFT transferNFTsTest`, async () => {
-        const serial1 = await approveNft(transferContract);
-        const serial2 = await approveNft(transferContract);
-        await transferNFTsTest(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SUCCESS,
-          serial1,
-          serial2,
-        );
-      });
-
-      it(`${displayAddress} NFT cryptoTransferV1`, async () => {
-        const serial1 = await approveNft(transferContract);
-        const serial2 = await approveNft(transferContract);
-        await cryptoTransferV1Test(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SUCCESS,
-          serial1,
-          serial2,
-        );
-      });
-
-      it(`${displayAddress} NFT cryptoTransferV2`, async () => {
-        const serial1 = await approveNft(transferContract);
-        const serial2 = await approveNft(transferContract);
-        await cryptoTransferV2Test(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SUCCESS,
-          serial1,
-          serial2,
-        );
-      });
+    it(`${displayAddress} NFT transferFromNFT`, async () => {
+      const serial = await approveNft(
+        context.treasury,
+        context.nftTokenAddress,
+        transferContract,
+        context.serialNumbers,
+      );
+      await transferFromNFTTest(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SUCCESS,
+        serial,
+      );
     });
 
-    describe(`Relay: ${displayAddress} negative cases`, async () => {
-      it(`${displayAddress} NFT transferNFT SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
-        await transferNFTTest(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
-          serialNumbers.shift(),
-        );
-      });
-
-      it(`${displayAddress} NFT transferFromNFT SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
-        await transferFromNFTTest(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
-          serialNumbers.shift(),
-        );
-      });
-
-      it(`${displayAddress} NFT transferFromNft proxy SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
-        await transferFromNftProxyTest(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of SPENDER_DOES_NOT_HAVE_ALLOWANCE because we cant get revertReason tri try/catch
-          serialNumbers.shift(),
-        );
-      });
-
-      it(`${displayAddress} FT transferTokens proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-        await transferNFTsTest(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
-          serialNumbers.shift(),
-          serialNumbers.shift(),
-        );
-      });
-
-      it(`${displayAddress} FT cryptoTransferV1 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-        await cryptoTransferV1Test(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
-          serialNumbers.shift(),
-          serialNumbers.shift(),
-        );
-      });
-
-      it(`${displayAddress} FT cryptoTransferV2 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-        await cryptoTransferV2Test(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
-          serialNumbers.shift(),
-          serialNumbers.shift(),
-        );
-      });
+    it(`${displayAddress} NFT transferFromNft proxy`, async () => {
+      const serial = await approveNft(
+        context.treasury,
+        context.nftTokenAddress,
+        transferContract,
+        context.serialNumbers,
+      );
+      // transferFrom treasury->transfer167Contract
+      await transferFromNftProxyTest(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SUCCESS,
+        serial,
+      );
     });
-  }
 
-  describe("HTS 0x167", async () => {
-    await ercEventsTests(HTS_ADDRESS);
+    it(`${displayAddress} NFT transferNFTsTest`, async () => {
+      const serial1 = await approveNft(
+        context.treasury,
+        context.nftTokenAddress,
+        transferContract,
+        context.serialNumbers,
+      );
+      const serial2 = await approveNft(
+        context.treasury,
+        context.nftTokenAddress,
+        transferContract,
+        context.serialNumbers,
+      );
+      await transferNFTsTest(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SUCCESS,
+        serial1,
+        serial2,
+      );
+    });
+
+    it(`${displayAddress} NFT cryptoTransferV1`, async () => {
+      const serial1 = await approveNft(
+        context.treasury,
+        context.nftTokenAddress,
+        transferContract,
+        context.serialNumbers,
+      );
+      const serial2 = await approveNft(
+        context.treasury,
+        context.nftTokenAddress,
+        transferContract,
+        context.serialNumbers,
+      );
+      await cryptoTransferV1Test(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SUCCESS,
+        serial1,
+        serial2,
+      );
+    });
+
+    it(`${displayAddress} NFT cryptoTransferV2`, async () => {
+      const serial1 = await approveNft(
+        context.treasury,
+        context.nftTokenAddress,
+        transferContract,
+        context.serialNumbers,
+      );
+      const serial2 = await approveNft(
+        context.treasury,
+        context.nftTokenAddress,
+        transferContract,
+        context.serialNumbers,
+      );
+      await cryptoTransferV2Test(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SUCCESS,
+        serial1,
+        serial2,
+      );
+    });
   });
 
-  describe("HTS 0x16c", async () => {
-    await ercEventsTests(HTS_ADDRESS_V2);
+  describe(`Relay: ${displayAddress} negative cases`, async () => {
+    it(`${displayAddress} NFT transferNFT SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
+      await transferNFTTest(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
+        context.serialNumbers.shift(),
+      );
+    });
+
+    it(`${displayAddress} NFT transferFromNFT SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
+      await transferFromNFTTest(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
+        context.serialNumbers.shift(),
+      );
+    });
+
+    it(`${displayAddress} NFT transferFromNft proxy SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
+      await transferFromNftProxyTest(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of SPENDER_DOES_NOT_HAVE_ALLOWANCE because we cant get revertReason tri try/catch
+        context.serialNumbers.shift(),
+      );
+    });
+
+    it(`${displayAddress} FT transferTokens proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+      await transferNFTsTest(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
+        context.serialNumbers.shift(),
+        context.serialNumbers.shift(),
+      );
+    });
+
+    it(`${displayAddress} FT cryptoTransferV1 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+      await cryptoTransferV1Test(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
+        context.serialNumbers.shift(),
+        context.serialNumbers.shift(),
+      );
+    });
+
+    it(`${displayAddress} FT cryptoTransferV2 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+      await cryptoTransferV2Test(
+        transferContract,
+        context.nftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
+        context.serialNumbers.shift(),
+        context.serialNumbers.shift(),
+      );
+    });
   });
-});
+}
+
+module.exports = {
+  erc721EventsTests,
+};

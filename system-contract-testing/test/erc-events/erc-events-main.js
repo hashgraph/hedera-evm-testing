@@ -2,12 +2,17 @@ const { createSDKClient } = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
 const Constants = require("../../utils/constants");
 
-async function beforeFtTests() {
+async function beforeTests() {
   const sdkClient = await createSDKClient();
-  // create test FT token with 'tokenContract' as a 'treasury'
+  // create 'tokenContract' for creating test tokens
   const treasury = await contractDeployAndFund(
     Constants.Contract.TokenCreateContract,
   );
+  return [sdkClient, treasury];
+}
+
+async function beforeFtTests(sdkClient, treasury) {
+  // create test FT token with 'tokenContract' as a 'treasury'
   const tokenAddress = (
     await (
       await treasury.createFungibleTokenWithoutKYCPublic(treasury, {
@@ -18,67 +23,11 @@ async function beforeFtTests() {
     .tokenAddress;
   console.log("Create token:%s treasury:%s", tokenAddress, treasury.target);
 
-  return [sdkClient, treasury, tokenAddress];
+  return tokenAddress;
 }
 
-async function deployTestContract(
-  htsAddress,
-  treasury,
-  tokenAddress,
-  approveAmount,
-  associateTransfer = true,
-  associateReceiver = true,
-) {
-  const transferContract = await contractDeployAndFund(
-    Constants.Contract.ErcEventsContract,
-    0,
-    0,
-    htsAddress,
-  );
-  // create receiver contract
-  const receiverContract = await contractDeployAndFund(
-    Constants.Contract.ErcEventsReceiverContract,
-  );
-  // associated for transferContract
-  if (associateTransfer) {
-    await (
-      await transferContract.associateToken(transferContract, tokenAddress)
-    ).wait();
-  }
-  // associated for receiverContract
-  if (associateReceiver) {
-    await (
-      await receiverContract.associateToken(receiverContract, tokenAddress)
-    ).wait();
-  }
-  if (approveAmount > 0) {
-    // approve for transferContract
-    await (
-      await treasury.approvePublic(
-        tokenAddress,
-        transferContract,
-        approveAmount,
-      )
-    ).wait();
-    console.log(
-      "Token:%s approved:%s to:%s",
-      tokenAddress,
-      approveAmount,
-      transferContract.target,
-    );
-  } else {
-    console.log("Token:%s approved:0", tokenAddress);
-  }
-  return [transferContract, receiverContract];
-}
-
-async function beforeNftTests(mintAmount) {
-  const sdkClient = await createSDKClient();
-
+async function beforeNftTests(sdkClient, treasury, mintAmount) {
   // create test NFT token with 'tokenContract' as a 'treasury'
-  const treasury = await contractDeployAndFund(
-    Constants.Contract.TokenCreateContract,
-  );
   const tokenAddress = (
     await (
       await treasury.createNonFungibleTokenWithoutKYCPublic(treasury, {
@@ -116,7 +65,52 @@ async function beforeNftTests(mintAmount) {
     serialNumbers,
   );
 
-  return [sdkClient, treasury, tokenAddress, serialNumbers];
+  return [tokenAddress, serialNumbers];
+}
+
+async function deployTestContract(
+  htsAddress,
+  treasury,
+  tokenAddress,
+  approveAmount,
+) {
+  const transferContract = await contractDeployAndFund(
+    Constants.Contract.ErcEventsContract,
+    0,
+    0,
+    htsAddress,
+  );
+  // create receiver contract
+  const receiverContract = await contractDeployAndFund(
+    Constants.Contract.ErcEventsReceiverContract,
+  );
+  // associated for transferContract
+  await (
+    await transferContract.associateToken(transferContract, tokenAddress)
+  ).wait();
+  // associated for receiverContract
+  await (
+    await receiverContract.associateToken(receiverContract, tokenAddress)
+  ).wait();
+  if (approveAmount > 0) {
+    // approve for transferContract
+    await (
+      await treasury.approvePublic(
+        tokenAddress,
+        transferContract,
+        approveAmount,
+      )
+    ).wait();
+    console.log(
+      "Token:%s approved:%s to:%s",
+      tokenAddress,
+      approveAmount,
+      transferContract.target,
+    );
+  } else {
+    console.log("Token:%s approved:0", tokenAddress);
+  }
+  return [transferContract, receiverContract];
 }
 
 async function afterTests(sdkClient) {
@@ -127,8 +121,9 @@ async function afterTests(sdkClient) {
 }
 
 module.exports = {
+  beforeTests,
   beforeFtTests,
-  deployTestContract,
   beforeNftTests,
+  deployTestContract,
   afterTests,
 };
