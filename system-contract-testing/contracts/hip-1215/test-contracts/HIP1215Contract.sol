@@ -19,7 +19,7 @@ contract HIP1215Contract {
 
     string[] public tests;
 
-    constructor(IHederaScheduleService_HIP1215 _scheduleServiceAddress) {
+    constructor(IHederaScheduleService_HIP1215 _scheduleServiceAddress) payable {
         scheduleService = _scheduleServiceAddress;
     }
 

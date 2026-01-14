@@ -256,7 +256,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
 
   describe("negative cases", () => {
     it("should fail with payer as zero address", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         ethers.ZeroAddress,
         getExpirySecond(),
@@ -264,11 +264,11 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         0,
         addTestCallData("executeCallOnPayerSignature fail payer zero address")
       );
-      await testScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
+      await testScheduleCallEvent(receipt, ResponseCodeEnum.UNKNOWN.valueOf());
     });
 
     it("should fail with gasLimit 0", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         getExpirySecond(),
@@ -277,13 +277,13 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         addTestCallData("executeCallOnPayerSignature fail gasLimit 0")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
     });
 
     it("should fail with gasLimit 1000", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         getExpirySecond(),
@@ -292,13 +292,13 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         addTestCallData("executeCallOnPayerSignature fail gasLimit 1000")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
     });
 
     it("should fail with gasLimit uint.maxvalue", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         getExpirySecond(),
@@ -307,13 +307,13 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         addTestCallData("executeCallOnPayerSignature fail uint.maxvalue")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf()
       );
     });
 
     it("should fail with 0 expiry", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         0,
@@ -322,13 +322,13 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         addTestCallData("executeCallOnPayerSignature fail expiry 0")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
     });
 
     it("should fail with expiry at current time", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         new Date().getUTCSeconds(),
@@ -337,13 +337,13 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         addTestCallData("executeCallOnPayerSignature fail expiry current")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
     });
 
     it("should fail with expiry at max expiry + 1", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         // adding +100 to exclude consensus time shift
@@ -353,13 +353,13 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         addTestCallData("executeCallOnPayerSignature fail expiry + 1")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_TOO_FAR_IN_FUTURE.valueOf()
       );
     });
 
     it("should fail with zero 'to' address and invalid contract deploy", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         ethers.ZeroAddress,
         signers[1].address,
         getExpirySecond(),
@@ -368,7 +368,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         "0xabc123"
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
     });
@@ -377,7 +377,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       const deployContract = await ethers.getContractFactory(
         "HIP1215DeployContract"
       );
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         ethers.ZeroAddress,
         signers[1].address,
         getExpirySecond(),
@@ -386,7 +386,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         deployContract.bytecode
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
     });

@@ -214,7 +214,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
   describe("negative cases", () => {
     it("should fail with gasLimit 0", async () => {
-      const tx = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         getExpirySecond(),
         0,
@@ -222,13 +222,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         addTestCallData("scheduleCall fail gasLimit 0")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
     });
 
     it("should fail with gasLimit 1000", async () => {
-      const tx = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         getExpirySecond(),
         GAS_LIMIT_1_000.gasLimit,
@@ -236,13 +236,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         addTestCallData("scheduleCall fail gasLimit 1000")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
     });
 
     it("should fail with gasLimit uint.maxvalue", async () => {
-      const tx = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         getExpirySecond(),
         ethers.MaxUint256,
@@ -250,13 +250,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         addTestCallData("scheduleCall fail uint.maxvalue")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf()
       );
     });
 
     it("should fail with 0 expiry", async () => {
-      const tx = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         0,
         GAS_LIMIT_1_000_000.gasLimit,
@@ -264,13 +264,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         addTestCallData("scheduleCall fail expiry 0")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
     });
 
     it("should fail with expiry at current time", async () => {
-      const tx = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         new Date().getUTCSeconds(),
         GAS_LIMIT_1_000_000.gasLimit,
@@ -278,13 +278,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         addTestCallData("scheduleCall fail expiry current")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
     });
 
     it("should fail with expiry at max expiry + 1", async () => {
-      const tx = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         // adding +100 to exclude consensus time shift
         Math.floor(Date.now() / 1000) + MAX_EXPIRY + 100 + 1,
@@ -293,13 +293,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         addTestCallData("scheduleCall fail expiry + 1")
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_TOO_FAR_IN_FUTURE.valueOf()
       );
     });
 
     it("should fail with zero 'to' address and invalid contract deploy", async () => {
-      const tx = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCall(
         ethers.ZeroAddress,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
@@ -307,7 +307,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         "0xabc123"
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
     });
@@ -316,7 +316,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       const deployContract = await ethers.getContractFactory(
         "HIP1215DeployContract"
       );
-      const tx = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCall(
         ethers.ZeroAddress,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
@@ -324,7 +324,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         deployContract.bytecode
       );
       await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
     });
@@ -349,7 +349,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       const expectedHasCapacityFee = 2_000_000n * 71n; // max fee for schedule create operation, calculated based on schedule gasLimit
       const expectedCalls =
         (contractBalance - expectedHasCapacityFee) / expectedFee + 1n;
-      const tx = await hip1215.recursiveScheduleCall(
+      const receipt = await hip1215.recursiveScheduleCall(
         contractAddress,
         expirySecond,
         GAS_LIMIT_2_000_000.gasLimit,
@@ -357,7 +357,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
 
       const scheduleAddress = await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SUCCESS.valueOf()
       );
       // Validate execution and recursive behaviour
@@ -378,7 +378,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         55
       );
       console.log("Contract deployed. Trying to schedule.");
-      const tx = await transferContract.scheduleCallForTransfer(
+      const receipt = await transferContract.scheduleCallForTransfer(
         getExpirySecond(5),
         GAS_LIMIT_5_000_000.gasLimit,
         3_500_000_000n, // 35 HBAR in TINYBARS
@@ -387,7 +387,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       );
       console.log("Schedule created. Trying to get schedule logs");
       const schedule = await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SUCCESS.valueOf()
       );
       console.log("Prepare signature map for signing");

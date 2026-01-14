@@ -48,8 +48,8 @@ function payableCallData() {
 // ---------------------------------------------------------------------------
 
 // Test checker functions --------------------------------------------------
-async function testScheduleCallEvent(tx, responseCode) {
-  const rc = await tx.wait();
+async function testScheduleCallEvent(receipt, responseCode) {
+  const rc = await receipt.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
   expect(log.args[0]).to.equal(responseCode);
   const address = log.args[1];
@@ -62,15 +62,15 @@ async function testScheduleCallEvent(tx, responseCode) {
   return address;
 }
 
-async function testResponseCodeEvent(tx, responseCode) {
-  const rc = await tx.wait();
+async function testResponseCodeEvent(receipt, responseCode) {
+  const rc = await receipt.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ResponseCode);
   expect(log.args[0]).to.equal(responseCode);
   expect(rc.status).to.equal(ResponseCodeEnum.INVALID_TRANSACTION.valueOf());
 }
 
-async function testHasScheduleCapacityEvent(tx, hasCapacity) {
-  const rc = await tx.wait();
+async function testHasScheduleCapacityEvent(receipt, hasCapacity) {
+  const rc = await receipt.wait();
   const log = rc.logs.find(
     (e) => e.fragment.name === Events.HasScheduleCapacity
   );

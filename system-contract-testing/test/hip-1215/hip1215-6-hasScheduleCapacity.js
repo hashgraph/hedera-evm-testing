@@ -21,103 +21,103 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
 
   describe("positive cases", () => {
     it("should have enough capacity", async () => {
-      const tx = await hip1215.hasScheduleCapacity(
+      const receipt = await hip1215.hasScheduleCapacity(
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit
       );
-      await testHasScheduleCapacityEvent(tx, true);
+      await testHasScheduleCapacityEvent(receipt, true);
     });
 
     it("should have enough capacity with view context", async () => {
-      const tx = await hip1215.hasScheduleCapacityView(
+      const receipt = await hip1215.hasScheduleCapacityView(
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit
       );
-      expect(tx).to.be.true;
+      expect(receipt).to.be.true;
     });
 
     it("should return true for valid expiry and max gas limit - 1", async () => {
-      const tx = await hip1215.hasScheduleCapacity(
+      const receipt = await hip1215.hasScheduleCapacity(
         getExpirySecond(),
         GAS_LIMIT_15M.gasLimit - 1
       );
-      await testHasScheduleCapacityEvent(tx, true);
+      await testHasScheduleCapacityEvent(receipt, true);
     });
 
     it("should return true for valid expiry and max gas limit - 1 with view context", async () => {
-      const tx = await hip1215.hasScheduleCapacityView(
+      const receipt = await hip1215.hasScheduleCapacityView(
         getExpirySecond(),
         GAS_LIMIT_15M.gasLimit - 1
       );
-      expect(tx).to.be.true;
+      expect(receipt).to.be.true;
     });
   });
 
   describe("negative cases", () => {
     it("should return false for expiry in the past", async () => {
-      const tx = await hip1215.hasScheduleCapacity(
+      const receipt = await hip1215.hasScheduleCapacity(
         1716666666,
         GAS_LIMIT_1_000_000.gasLimit
       );
-      await testHasScheduleCapacityEvent(tx, false);
+      await testHasScheduleCapacityEvent(receipt, false);
     });
 
     it("should return false for expiry in the past with view context", async () => {
-      const tx = await hip1215.hasScheduleCapacityView(
+      const receipt = await hip1215.hasScheduleCapacityView(
         1716666666,
         GAS_LIMIT_1_000_000.gasLimit
       );
-      expect(tx).to.be.false;
+      expect(receipt).to.be.false;
     });
 
     it("should return false for 0 expiry", async () => {
-      const tx = await hip1215.hasScheduleCapacity(
+      const receipt = await hip1215.hasScheduleCapacity(
         0,
         GAS_LIMIT_1_000_000.gasLimit
       );
-      await testHasScheduleCapacityEvent(tx, false);
+      await testHasScheduleCapacityEvent(receipt, false);
     });
 
     it("should return false for 0 expiry with view context", async () => {
-      const tx = await hip1215.hasScheduleCapacityView(
+      const receipt = await hip1215.hasScheduleCapacityView(
         0,
         GAS_LIMIT_1_000_000.gasLimit
       );
-      expect(tx).to.be.false;
+      expect(receipt).to.be.false;
     });
 
     it("should return false for valid expiry and max gas limit + 1", async () => {
-      const tx = await hip1215.hasScheduleCapacity(
+      const receipt = await hip1215.hasScheduleCapacity(
         getExpirySecond(),
         GAS_LIMIT_15M.gasLimit + 1
       );
-      await testHasScheduleCapacityEvent(tx, false);
+      await testHasScheduleCapacityEvent(receipt, false);
     });
 
     // Skip until we deliver the optimizations
     it.skip("should return false for valid expiry and max gas limit + 1 with view context", async () => {
-      const tx = await hip1215.hasScheduleCapacityView(
+      const receipt = await hip1215.hasScheduleCapacityView(
         getExpirySecond(),
         GAS_LIMIT_15M.gasLimit + 1
       );
-      expect(tx).to.be.false;
+      expect(receipt).to.be.false;
     });
 
     it("should return false for valid expiry and max long + 1 gas limit", async () => {
-      const tx = await hip1215.hasScheduleCapacity(
+      const receipt = await hip1215.hasScheduleCapacity(
         getExpirySecond(),
         BigInt("9223372036854775808")
       );
-      await testHasScheduleCapacityEvent(tx, false);
+      await testHasScheduleCapacityEvent(receipt, false);
     });
 
     // Skip until we deliver the optimizations
     it.skip("should return false for valid expiry and max long + 1 gas limit with view context", async () => {
-      const tx = await hip1215.hasScheduleCapacityView(
+      const receipt = await hip1215.hasScheduleCapacityView(
         getExpirySecond(),
         BigInt("9223372036854775808")
       );
-      expect(tx).to.be.false;
+      expect(receipt).to.be.false;
     });
   });
 });

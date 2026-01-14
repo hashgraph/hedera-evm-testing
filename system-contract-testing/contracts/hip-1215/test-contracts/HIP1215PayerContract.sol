@@ -9,6 +9,7 @@ contract HIP1215PayerContract {
     address internal constant HSS = address(0x16b);
 
     receive() external payable {}
+    constructor() payable {}
 
     event ResponseCode(int64 responseCode);
 

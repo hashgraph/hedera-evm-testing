@@ -165,13 +165,13 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
 
   describe("negative cases", () => {
     it("should fail with random address for to", async () => {
-      const tx = await hip1215.deleteSchedule(randomAddress());
-      await testResponseCodeEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
+      const receipt = await hip1215.deleteSchedule(randomAddress());
+      await testResponseCodeEvent(receipt, ResponseCodeEnum.UNKNOWN.valueOf());
     });
 
     it("should fail with expired address for to", async () => {
       // create schedule
-      const tx = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         Math.floor(Date.now() / 1000) + 2, // just enough to execute transaction
         GAS_LIMIT_1_000_000.gasLimit,
@@ -179,7 +179,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         addTestCallData("deleteSchedule fail expired")
       );
       const scheduleAddress = await testScheduleCallEvent(
-        tx,
+        receipt,
         ResponseCodeEnum.SUCCESS.valueOf()
       );
       await Async.wait(2000);
