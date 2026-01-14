@@ -186,7 +186,13 @@
       }
     ],
     "name": "createFungibleTokenWithCustomFeesPublic",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "payable",
     "type": "function"
   },
@@ -269,8 +275,33 @@
         "type": "address"
       }
     ],
+    "name": "createFungibleTokenWithoutKYCPublic",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "treasury",
+        "type": "address"
+      }
+    ],
     "name": "createNonFungibleTokenPublic",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "payable",
     "type": "function"
   },
@@ -288,7 +319,13 @@
       }
     ],
     "name": "createNonFungibleTokenWithCustomFeesPublic",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "payable",
     "type": "function"
   },
@@ -306,7 +343,13 @@
       }
     ],
     "name": "createNonFungibleTokenWithSECP256K1AdminKeyPublic",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "payable",
     "type": "function"
   },
@@ -324,7 +367,32 @@
       }
     ],
     "name": "createNonFungibleTokenWithSECP256K1AdminKeyWithoutKYCPublic",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "treasury",
+        "type": "address"
+      }
+    ],
+    "name": "createNonFungibleTokenWithoutKYCPublic",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "payable",
     "type": "function"
   },

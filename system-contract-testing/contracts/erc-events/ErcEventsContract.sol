@@ -96,8 +96,8 @@ contract ErcEventsContract {
         return responseCode;
     }
 
-    function transferFromNftProxy(address token, address sender, address recipient, uint256 amount) public {
-        try IERC721(token).transferFrom(sender, recipient, amount) {
+    function transferFromNftProxy(address token, address sender, address recipient, uint256 serialNumber) public {
+        try IERC721(token).transferFrom(sender, recipient, serialNumber) {
             // fake responseCode 22 for use the same validation in tests
             emit ResponseCode(22);
         } catch (bytes memory reason) {
@@ -117,17 +117,50 @@ contract ErcEventsContract {
     }
 
     // ----------------------------- bucket NFT transfers -----------------------------
-    function transferNFTs(address token, address[] memory sender, address[] memory receiver, int64[] memory serialNumber) external returns (int64 responseCode) {
+    function transferNFTs(address token, address[] memory senders, address[] memory receivers, int64[] memory serialNumbers) external returns (int64 responseCode) {
         (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(IHederaTokenService.transferNFTs.selector,
-                token, sender, receiver, serialNumber));
+                token, senders, receivers, serialNumbers));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
         emit ResponseCode(responseCode);
         return responseCode;
     }
 
     // ----------------------------- bucket transfers -----------------------------
-    function cryptoTransferV1(IHederaTokenService.TokenTransferList[] calldata tokenTransfers) public returns (int64 responseCode) {
+    struct TokenTransferListV1 {
+        // The ID of the token as a solidity address
+        address token;
+
+        // Applicable to tokens of type FUNGIBLE_COMMON. Multiple list of AccountAmounts, each of which
+        // has an account and amount.
+        AccountAmountV1[] transfers;
+
+        // Applicable to tokens of type NON_FUNGIBLE_UNIQUE. Multiple list of NftTransfers, each of
+        // which has a sender and receiver account, including the serial number of the NFT
+        NftTransferV1[] nftTransfers;
+    }
+
+    struct AccountAmountV1 {
+        // The Account ID, as a solidity address, that sends/receives cryptocurrency or tokens
+        address accountID;
+
+        // The amount of  the lowest denomination of the given token that
+        // the account sends(negative) or receives(positive)
+        int64 amount;
+    }
+
+    struct NftTransferV1 {
+        // The solidity address of the sender
+        address senderAccountID;
+
+        // The solidity address of the receiver
+        address receiverAccountID;
+
+        // The serial number of the NFT
+        int64 serialNumber;
+    }
+
+    function cryptoTransferV1(TokenTransferListV1[] calldata tokenTransfers) public returns (int64 responseCode) {
         (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSignature("cryptoTransfer((address,(address,int64)[],(address,address,int64)[])[])", tokenTransfers));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;

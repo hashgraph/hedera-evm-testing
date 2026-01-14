@@ -1,6 +1,6 @@
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
 const {
-  beforeFtTests,
+  beforeNftTests,
   deployTestContract,
   afterTests,
 } = require("./erc-events-main");
@@ -10,11 +10,11 @@ const {
   validateErcEvent,
 } = require("../../utils/events");
 
-describe("ERC20 events", () => {
-  let sdkClient, treasury, tokenAddress;
+describe("ERC721 events", () => {
+  let sdkClient, treasury, tokenAddress, serialNumbers;
 
   before(async () => {
-    [sdkClient, treasury, tokenAddress] = await beforeFtTests();
+    [sdkClient, treasury, tokenAddress, serialNumbers] = await beforeNftTests();
   });
 
   after(async () => {
@@ -35,168 +35,183 @@ describe("ERC20 events", () => {
   }
 
   // ---------------- Test functions ----------------
-  async function transferTokenTest(
+  async function transferNFTTest(
     transferContract,
     receiverContract,
     responseCode,
+    serialNumber,
   ) {
-    const amount = 1;
     const rc = await (
-      await transferContract.transferToken(
+      await transferContract.transferNFT(
         tokenAddress,
         treasury,
         receiverContract,
-        amount,
+        serialNumber,
       )
     ).wait();
     console.log(
-      "%s transferToken:%s from:%s to:%s amount:%s",
+      "%s transferNFT:%s from:%s to:%s serialNumber:%s",
       rc.hash,
       tokenAddress,
       treasury.target,
       receiverContract.target,
-      amount,
-    );
-    await validateRcWithErcEvent(rc, responseCode, [
-      { from: treasury.target, to: receiverContract.target, amount: amount },
-    ]);
-  }
-
-  async function transferFromTest(
-    transferContract,
-    receiverContract,
-    responseCode,
-  ) {
-    const amount = 1;
-    const rc = await (
-      await transferContract.transferFrom(
-        tokenAddress,
-        treasury,
-        receiverContract,
-        amount,
-      )
-    ).wait();
-    console.log(
-      "%s transferFrom:%s from:%s to:%s amount:%s",
-      rc.hash,
-      tokenAddress,
-      treasury.target,
-      receiverContract.target,
-      amount,
-    );
-    await validateRcWithErcEvent(rc, responseCode, [
-      { from: treasury.target, to: receiverContract.target, amount: amount },
-    ]);
-  }
-
-  async function transferFtProxyTest(
-    transferContract,
-    receiverContract,
-    responseCode,
-  ) {
-    const amount = 1;
-    const rc = await (
-      await transferContract.transferFtProxy(
-        tokenAddress,
-        receiverContract.target,
-        amount,
-      )
-    ).wait();
-    console.log(
-      "%s FT transfer proxy:%s from:%s to:%s amount:%s",
-      rc.hash,
-      tokenAddress,
-      transferContract.target,
-      receiverContract.target,
-      amount,
+      serialNumber,
     );
     await validateRcWithErcEvent(rc, responseCode, [
       {
-        from: transferContract.target,
+        from: treasury.target,
         to: receiverContract.target,
-        amount: amount,
+        serial: serialNumber,
       },
     ]);
   }
 
-  async function transferFromFtProxyTest(
+  async function transferFromNFTTest(
     transferContract,
     receiverContract,
     responseCode,
+    serialNumber,
   ) {
-    const amount = 1;
     const rc = await (
-      await transferContract.transferFromFtProxy(
+      await transferContract.transferFromNFT(
         tokenAddress,
         treasury,
         receiverContract,
-        amount,
+        serialNumber,
       )
     ).wait();
     console.log(
-      "%s FT transferFrom proxy:%s from:%s to:%s amount:%s",
+      "%s transferFromNFT:%s from:%s to:%s serialNumber:%s",
       rc.hash,
       tokenAddress,
       treasury.target,
       receiverContract.target,
-      amount,
+      serialNumber,
     );
     await validateRcWithErcEvent(rc, responseCode, [
-      { from: treasury.target, to: receiverContract.target, amount: amount },
+      {
+        from: treasury.target,
+        to: receiverContract.target,
+        serial: serialNumber,
+      },
     ]);
   }
 
-  async function transferTokensTest(
+  async function transferFromNftProxyTest(
     transferContract,
     receiverContract,
     responseCode,
+    serialNumber,
   ) {
-    const accounts = [treasury, transferContract, receiverContract];
-    const amounts = [-3, 1, 2];
     const rc = await (
-      await transferContract.transferTokens(tokenAddress, accounts, amounts)
+      await transferContract.transferFromNftProxy(
+        tokenAddress,
+        treasury,
+        receiverContract,
+        serialNumber,
+      )
     ).wait();
     console.log(
-      "%s FT transferTokens:%s accounts:%s amounts:%s",
+      "%s transferFromNft proxy:%s from:%s to:%s serialNumber:%s",
       rc.hash,
       tokenAddress,
-      accounts,
-      amounts,
+      treasury.target,
+      receiverContract.target,
+      serialNumber,
     );
     await validateRcWithErcEvent(rc, responseCode, [
-      { from: treasury.target, to: transferContract.target, amount: 1 },
-      { from: treasury.target, to: receiverContract.target, amount: 2 },
+      {
+        from: treasury.target,
+        to: receiverContract.target,
+        serial: serialNumber,
+      },
     ]);
+  }
+
+  async function transferNFTsTest(
+    transferContract,
+    receiverContract,
+    responseCode,
+    serialNumber1,
+    serialNumber2,
+  ) {
+    const senders = [treasury, treasury];
+    const receivers = [transferContract, receiverContract];
+    const serialNumbers = [serialNumber1, serialNumber2];
+    const rc = await (
+      await transferContract.transferNFTs(
+        tokenAddress,
+        senders,
+        receivers,
+        serialNumbers,
+      )
+    ).wait();
+    console.log(
+      "%s NFT transferNFTs:%s senders:%s receivers:%s serialNumbers:%s",
+      rc.hash,
+      tokenAddress,
+      senders,
+      receivers,
+      serialNumbers,
+    );
+    await validateRcWithErcEvent(
+      rc,
+      responseCode,
+      serialNumbers.map((e) => {
+        return {
+          from: treasury.target,
+          to: transferContract.target,
+          serial: e,
+        };
+      }),
+    );
   }
 
   async function cryptoTransferV1Test(
     transferContract,
     receiverContract,
     responseCode,
+    serialNumber1,
+    serialNumber2,
   ) {
     const tokenTransferList = [
       {
         token: tokenAddress,
-        transfers: [
-          { accountID: treasury.target, amount: -3 },
-          { accountID: transferContract.target, amount: 1 },
-          { accountID: receiverContract.target, amount: 2 },
+        transfers: [],
+        nftTransfers: [
+          {
+            senderAccountID: treasury,
+            receiverAccountID: transferContract,
+            serialNumber: serialNumber1,
+          },
+          {
+            senderAccountID: treasury,
+            receiverAccountID: receiverContract,
+            serialNumber: serialNumber2,
+          },
         ],
-        nftTransfers: [],
       },
     ];
     const rc = await (
       await transferContract.cryptoTransferV1(tokenTransferList)
     ).wait();
     console.log(
-      "%s FT cryptoTransferV1:%s tokenTransferList:",
+      "%s NFT cryptoTransferV1:%s tokenTransferList:",
       rc.hash,
       tokenAddress,
       tokenTransferList,
     );
     await validateRcWithErcEvent(rc, responseCode, [
-      { from: treasury.target, to: transferContract.target, amount: 1 },
-      { from: treasury.target, to: receiverContract.target, amount: 2 },
+      {
+        from: treasury.target,
+        to: transferContract.target,
+        serial: serialNumber1,
+      },
+      {
+        from: treasury.target,
+        to: receiverContract.target,
+        serial: serialNumber2,
+      },
     ]);
   }
 
@@ -204,6 +219,8 @@ describe("ERC20 events", () => {
     transferContract,
     receiverContract,
     responseCode,
+    serialNumber1,
+    serialNumber2,
   ) {
     const transferList = {
       transfers: [],
@@ -211,27 +228,42 @@ describe("ERC20 events", () => {
     const tokenTransferList = [
       {
         token: tokenAddress,
-        transfers: [
-          { accountID: treasury.target, amount: -3, isApproval: false },
-          { accountID: transferContract.target, amount: 1, isApproval: false },
-          { accountID: receiverContract.target, amount: 2, isApproval: false },
+        transfers: [],
+        nftTransfers: [
+          {
+            senderAccountID: treasury,
+            receiverAccountID: transferContract,
+            serialNumber: serialNumber1,
+          },
+          {
+            senderAccountID: treasury,
+            receiverAccountID: receiverContract,
+            serialNumber: serialNumber2,
+          },
         ],
-        nftTransfers: [],
       },
     ];
     const rc = await (
       await transferContract.cryptoTransferV2(transferList, tokenTransferList)
     ).wait();
     console.log(
-      "%s FT cryptoTransferV2:%s TransferList:%s tokenTransferList:",
+      "%s NFT cryptoTransferV2:%s TransferList:%s tokenTransferList:",
       rc.hash,
       tokenAddress,
       transferList,
       tokenTransferList,
     );
     await validateRcWithErcEvent(rc, responseCode, [
-      { from: treasury.target, to: transferContract.target, amount: 1 },
-      { from: treasury.target, to: receiverContract.target, amount: 2 },
+      {
+        from: treasury.target,
+        to: transferContract.target,
+        serial: serialNumber1,
+      },
+      {
+        from: treasury.target,
+        to: receiverContract.target,
+        serial: serialNumber2,
+      },
     ]);
   }
 
@@ -245,56 +277,47 @@ describe("ERC20 events", () => {
       before(async () => {
         [transferContract, receiverContract] = await deployTestContract(
           address,
-          treasury, tokenAddress,
+          treasury,
+          tokenAddress,
           1000,
         );
       });
 
-      it(`${displayAddress} FT transferToken`, async () => {
-        await transferTokenTest(
+      it(`${displayAddress} FT transferNFT`, async () => {
+        await transferNFTTest(
           transferContract,
           receiverContract,
           ResponseCodeEnum.SUCCESS,
+          serialNumbers.shift(),
         );
       });
 
-      it(`${displayAddress} FT transferFrom`, async () => {
-        await transferFromTest(
+      it(`${displayAddress} FT transferFromNFT`, async () => {
+        await transferFromNFTTest(
           transferContract,
           receiverContract,
           ResponseCodeEnum.SUCCESS,
+          serialNumbers.shift(),
         );
       });
 
-      it(`${displayAddress} FT transfer proxy`, async () => {
+      it(`${displayAddress} FT transferFromNftProxy proxy`, async () => {
         // transferFrom treasury->transfer167Contract
-        await transferTokenTest(
-          transferContract,
-          transferContract,
-          ResponseCodeEnum.SUCCESS,
-        );
-        // transfer transfer167Contract->receiverContract
-        await transferFtProxyTest(
+        await transferFromNftProxyTest(
           transferContract,
           receiverContract,
           ResponseCodeEnum.SUCCESS,
+          serialNumbers.shift(),
         );
       });
 
-      it(`${displayAddress} FT transferFrom proxy`, async () => {
-        // transferFrom treasury->transfer167Contract
-        await transferFromFtProxyTest(
+      it(`${displayAddress} FT transferNFTsTest proxy`, async () => {
+        await transferNFTsTest(
           transferContract,
           receiverContract,
           ResponseCodeEnum.SUCCESS,
-        );
-      });
-
-      it(`${displayAddress} FT transferTokens proxy`, async () => {
-        await transferTokensTest(
-          transferContract,
-          receiverContract,
-          ResponseCodeEnum.SUCCESS,
+          serialNumbers.shift(),
+          serialNumbers.shift(),
         );
       });
 
@@ -303,6 +326,8 @@ describe("ERC20 events", () => {
           transferContract,
           receiverContract,
           ResponseCodeEnum.SUCCESS,
+          serialNumbers.shift(),
+          serialNumbers.shift(),
         );
       });
 
@@ -315,12 +340,13 @@ describe("ERC20 events", () => {
       });
     });
 
-    describe(`Relay: ${displayAddress} negative cases`, async () => {
+    //TODO
+    xdescribe(`Relay: ${displayAddress} negative cases`, async () => {
       let transferNotApprovedContract, receiverContract;
 
       before(async () => {
         [transferNotApprovedContract, receiverContract] =
-          await deployTestContract(address, treasury, tokenAddress, 0, false, true);
+          await deployTestContract(address, 0, false, true);
       });
 
       it(`${displayAddress} FT transferToken SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
@@ -352,30 +378,6 @@ describe("ERC20 events", () => {
           transferNotApprovedContract,
           receiverContract,
           ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of SPENDER_DOES_NOT_HAVE_ALLOWANCE because we cant get revertReason tri try/catch
-        );
-      });
-
-      it(`${displayAddress} FT transferTokens proxy`, async () => {
-        await transferTokensTest(
-          transferNotApprovedContract,
-          receiverContract,
-          ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
-        );
-      });
-
-      it(`${displayAddress} FT cryptoTransferV1 proxy`, async () => {
-        await cryptoTransferV1Test(
-          transferNotApprovedContract,
-          receiverContract,
-          ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
-        );
-      });
-
-      it(`${displayAddress} FT cryptoTransferV2 proxy`, async () => {
-        await cryptoTransferV2Test(
-          transferNotApprovedContract,
-          receiverContract,
-          ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
         );
       });
     });

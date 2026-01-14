@@ -21,13 +21,13 @@ async function validateResponseCodeEvent(rc, responseCode) {
 }
 
 /**
- * Validate if all ERC20 transfer events are present in transaction receipt
+ * Validate if all ERC20/ERC721 transfer events are present in transaction receipt
  *
  * @param rc ContractTransactionReceipt
  * @param expectedEvents array of expected transfer events. Structure {from: "", to: "", amount: 0}
  * @returns {Promise<void>}
  */
-async function validateErc20Event(rc, expectedEvents) {
+async function validateErcEvent(rc, expectedEvents) {
   const transferEvents = rc.logs.filter(
     (e) => e.topics && e.topics[0] === ERC20_TRANSFER_EVENT_SIGNATURE,
   );
@@ -40,7 +40,16 @@ async function validateErc20Event(rc, expectedEvents) {
     expect(event.topics[2].toLowerCase()).to.equal(
       convertAddressToTopic(expectedEvent.to).toLowerCase(),
     );
-    expect(event.data).to.equal(convertNumberToData(expectedEvent.amount));
+    if (expectedEvent.amount) {
+      // check for FT
+      expect(event.data).to.equal(convertNumberToData(expectedEvent.amount));
+    } else if (expectedEvent.serial) {
+      // check for NFT
+      expect(event.topics[3]).to.equal(
+        convertNumberToData(expectedEvent.serial),
+      );
+    }
+
   });
 }
 
@@ -58,5 +67,5 @@ function convertNumberToData(num) {
 
 module.exports = {
   validateResponseCodeEvent,
-  validateErc20Event,
+  validateErcEvent,
 };
