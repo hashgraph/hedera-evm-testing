@@ -174,6 +174,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
     it('should create the account when an EOA sponsors it', async function () {
         const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc';
         const eoa = await createAndFundEOA();
+        const to = await createAndFundEOA();
         const receiver = ethers.Wallet.createRandom();
 
         const resp = await eoa.sendTransaction({
@@ -181,7 +182,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
             nonce: 0,
             gasLimit: gas.base + gas.auth(1),
             value: 10n,
-            to: ethers.Wallet.createRandom().address,
+            to,
             authorizationList: [await receiver.authorize({
                 chainId: 0,
                 nonce: 0,
