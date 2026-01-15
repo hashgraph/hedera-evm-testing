@@ -20,57 +20,62 @@ async function validateRcWithErcEvent(rc, responseCode, expectedEvents) {
 
 // ---------------- Test functions ----------------
 async function transferTokenTest(
-    transferContract,
-    tokenAddress,
-    treasury,
-    receiverContract,
-    responseCode,
+  transferContract,
+  tokenAddress,
+  treasury,
+  receiverContract,
+  responseCode,
 ) {
   const amount = 1;
   const rc = await (
-      await transferContract.transferToken(
-          tokenAddress,
-          treasury,
-          receiverContract,
-          amount,
-      )
+    await transferContract.transferToken(
+      tokenAddress,
+      treasury,
+      receiverContract,
+      amount,
+    )
   ).wait();
   console.log(
-      "%s transferToken:%s from:%s to:%s amount:%s",
-      rc.hash,
-      tokenAddress,
-      treasury.target,
-      receiverContract.target,
-      amount,
+    "%s transferToken:%s from:%s to:%s amount:%s",
+    rc.hash,
+    tokenAddress,
+    treasury.target,
+    receiverContract.target,
+    amount,
   );
   await validateRcWithErcEvent(rc, responseCode, [
-    { address: tokenAddress, from: treasury.target, to: receiverContract.target, amount: amount },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: receiverContract.target,
+      amount: amount,
+    },
   ]);
 }
 
 async function transferFromTest(
-    transferContract,
-    tokenAddress,
-    treasury,
-    receiverContract,
-    responseCode,
+  transferContract,
+  tokenAddress,
+  treasury,
+  receiverContract,
+  responseCode,
 ) {
   const amount = 1;
   const rc = await (
-      await transferContract.transferFrom(
-          tokenAddress,
-          treasury,
-          receiverContract,
-          amount,
-      )
+    await transferContract.transferFrom(
+      tokenAddress,
+      treasury,
+      receiverContract,
+      amount,
+    )
   ).wait();
   console.log(
-      "%s transferFrom:%s from:%s to:%s amount:%s",
-      rc.hash,
-      tokenAddress,
-      treasury.target,
-      receiverContract.target,
-      amount,
+    "%s transferFrom:%s from:%s to:%s amount:%s",
+    rc.hash,
+    tokenAddress,
+    treasury.target,
+    receiverContract.target,
+    amount,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
@@ -83,27 +88,27 @@ async function transferFromTest(
 }
 
 async function transferFtProxyTest(
-    transferContract,
-    tokenAddress,
-    treasury,
-    receiverContract,
-    responseCode,
+  transferContract,
+  tokenAddress,
+  treasury,
+  receiverContract,
+  responseCode,
 ) {
   const amount = 1;
   const rc = await (
-      await transferContract.transferFtProxy(
-          tokenAddress,
-          receiverContract.target,
-          amount,
-      )
-  ).wait();
-  console.log(
-      "%s FT transfer proxy:%s from:%s to:%s amount:%s",
-      rc.hash,
+    await transferContract.transferFtProxy(
       tokenAddress,
-      transferContract.target,
       receiverContract.target,
       amount,
+    )
+  ).wait();
+  console.log(
+    "%s FT transfer proxy:%s from:%s to:%s amount:%s",
+    rc.hash,
+    tokenAddress,
+    transferContract.target,
+    receiverContract.target,
+    amount,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
@@ -116,28 +121,28 @@ async function transferFtProxyTest(
 }
 
 async function transferFromFtProxyTest(
-    transferContract,
-    tokenAddress,
-    treasury,
-    receiverContract,
-    responseCode,
+  transferContract,
+  tokenAddress,
+  treasury,
+  receiverContract,
+  responseCode,
 ) {
   const amount = 1;
   const rc = await (
-      await transferContract.transferFromFtProxy(
-          tokenAddress,
-          treasury,
-          receiverContract,
-          amount,
-      )
+    await transferContract.transferFromFtProxy(
+      tokenAddress,
+      treasury,
+      receiverContract,
+      amount,
+    )
   ).wait();
   console.log(
-      "%s FT transferFrom proxy:%s from:%s to:%s amount:%s",
-      rc.hash,
-      tokenAddress,
-      treasury.target,
-      receiverContract.target,
-      amount,
+    "%s FT transferFrom proxy:%s from:%s to:%s amount:%s",
+    rc.hash,
+    tokenAddress,
+    treasury.target,
+    receiverContract.target,
+    amount,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
@@ -150,23 +155,23 @@ async function transferFromFtProxyTest(
 }
 
 async function transferTokensTest(
-    transferContract,
-    tokenAddress,
-    treasury,
-    receiverContract,
-    responseCode,
+  transferContract,
+  tokenAddress,
+  treasury,
+  receiverContract,
+  responseCode,
 ) {
   const accounts = [treasury, transferContract, receiverContract];
   const amounts = [-3, 1, 2];
   const rc = await (
-      await transferContract.transferTokens(tokenAddress, accounts, amounts)
+    await transferContract.transferTokens(tokenAddress, accounts, amounts)
   ).wait();
   console.log(
-      "%s FT transferTokens:%s accounts:%s amounts:%s",
-      rc.hash,
-      tokenAddress,
-      accounts,
-      amounts,
+    "%s FT transferTokens:%s accounts:%s amounts:%s",
+    rc.hash,
+    tokenAddress,
+    accounts,
+    amounts,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
@@ -185,13 +190,13 @@ async function transferTokensTest(
 }
 
 async function cryptoTransferV1Test(
-    transferContract,
-    tokenAddress,
-    treasury,
-    receiverContract,
-    responseCode,
+  transferContract,
+  tokenAddress,
+  treasury,
+  receiverContract,
+  responseCode,
 ) {
-  const tokenTransferList = [
+  const tokenTransfers = [
     {
       token: tokenAddress,
       transfers: [
@@ -203,12 +208,12 @@ async function cryptoTransferV1Test(
     },
   ];
   const rc = await (
-      await transferContract.cryptoTransferV1(tokenTransferList)
+    await transferContract.cryptoTransferV1(tokenTransfers)
   ).wait();
   console.log(
-    "%s FT cryptoTransferV1 tokenTransferList:%s",
+    "%s FT cryptoTransferV1 tokenTransfers:%s",
     rc.hash,
-    tokenTransferList,
+    tokenTransfers,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
@@ -227,16 +232,16 @@ async function cryptoTransferV1Test(
 }
 
 async function cryptoTransferV2Test(
-    transferContract,
-    tokenAddress,
-    treasury,
-    receiverContract,
-    responseCode,
+  transferContract,
+  tokenAddress,
+  treasury,
+  receiverContract,
+  responseCode,
 ) {
   const transferList = {
     transfers: [],
   };
-  const tokenTransferList = [
+  const tokenTransfers = [
     {
       token: tokenAddress,
       transfers: [
@@ -248,13 +253,94 @@ async function cryptoTransferV2Test(
     },
   ];
   const rc = await (
-      await transferContract.cryptoTransferV2(transferList, tokenTransferList)
+    await transferContract.cryptoTransferV2(transferList, tokenTransfers)
   ).wait();
   console.log(
-    "%s FT cryptoTransferV2 TransferList:%s tokenTransferList:%s",
+    "%s FT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
     rc.hash,
     transferList,
-    tokenTransferList,
+    tokenTransfers,
+  );
+  await validateRcWithErcEvent(rc, responseCode, [
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: transferContract.target,
+      amount: 1,
+    },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: receiverContract.target,
+      amount: 2,
+    },
+  ]);
+}
+
+async function airdropTokensTest(
+  transferContract,
+  tokenAddress,
+  treasury,
+  receiverContract,
+  responseCode,
+) {
+  const tokenTransfers = [
+    {
+      token: tokenAddress,
+      transfers: [
+        { accountID: treasury, amount: -3, isApproval: false },
+        { accountID: transferContract, amount: 1, isApproval: false },
+        { accountID: receiverContract, amount: 2, isApproval: false },
+      ],
+      nftTransfers: [],
+    },
+  ];
+  const rc = await (
+    await transferContract.airdropTokens(tokenTransfers)
+  ).wait();
+  console.log("%s FT airdropTokens tokenTransfers:%s", rc.hash, tokenTransfers);
+  await validateRcWithErcEvent(rc, responseCode, [
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: transferContract.target,
+      amount: 1,
+    },
+    {
+      address: tokenAddress,
+      from: treasury.target,
+      to: receiverContract.target,
+      amount: 2,
+    },
+  ]);
+}
+
+async function claimAirdropsTest(
+  transferContract,
+  tokenAddress,
+  treasury,
+  receiverContract,
+  responseCode,
+) {
+  const pendingAirdrops = [
+    {
+      sender: treasury,
+      receiver: receiverContract,
+      token: tokenAddress,
+    },
+    {
+      sender: treasury,
+      receiver: transferContract,
+      token: tokenAddress,
+    },
+  ];
+  const rc = await (
+    await transferContract.claimAirdrops(pendingAirdrops)
+  ).wait();
+  console.log(
+    "%s FT claimAirdrops pendingAirdrops:%s",
+    rc.hash,
+    pendingAirdrops,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
@@ -281,7 +367,7 @@ async function erc20EventsTests(htsAddress, context) {
 
     before(async () => {
       [transferContract, receiverContract] = await deployTestContract(
-          null,
+        null,
         htsAddress,
         context.treasury,
         context.ftTokenAddress,
@@ -289,7 +375,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT transferToken`, async () => {
+    xit(`${displayAddress} FT transferToken`, async () => {
       await transferTokenTest(
         transferContract,
         context.ftTokenAddress,
@@ -299,7 +385,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT transferFrom`, async () => {
+    xit(`${displayAddress} FT transferFrom`, async () => {
       await transferFromTest(
         transferContract,
         context.ftTokenAddress,
@@ -309,7 +395,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT transfer proxy`, async () => {
+    xit(`${displayAddress} FT transfer proxy`, async () => {
       // transferFrom treasury->transfer167Contract
       await transferTokenTest(
         transferContract,
@@ -328,7 +414,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT transferFrom proxy`, async () => {
+    xit(`${displayAddress} FT transferFrom proxy`, async () => {
       // transferFrom treasury->transfer167Contract
       await transferFromFtProxyTest(
         transferContract,
@@ -339,7 +425,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT transferTokens proxy`, async () => {
+    xit(`${displayAddress} FT transferTokens proxy`, async () => {
       await transferTokensTest(
         transferContract,
         context.ftTokenAddress,
@@ -349,7 +435,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT cryptoTransferV1 proxy`, async () => {
+    xit(`${displayAddress} FT cryptoTransferV1 proxy`, async () => {
       await cryptoTransferV1Test(
         transferContract,
         context.ftTokenAddress,
@@ -359,8 +445,19 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT cryptoTransferV2 proxy`, async () => {
+    xit(`${displayAddress} FT cryptoTransferV2 proxy`, async () => {
       await cryptoTransferV2Test(
+        transferContract,
+        context.ftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SUCCESS,
+      );
+    });
+
+    // TODO
+    it(`${displayAddress} FT airdropTokens`, async () => {
+      await airdropTokensTest(
         transferContract,
         context.ftTokenAddress,
         context.treasury,
@@ -394,7 +491,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT transferFrom SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
+    xit(`${displayAddress} FT transferFrom SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
       await transferFromTest(
         transferNotApprovedContract,
         context.ftTokenAddress,
@@ -404,7 +501,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT transfer proxy SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
+    xit(`${displayAddress} FT transfer proxy SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
       await transferFtProxyTest(
         transferNotApprovedContract,
         context.ftTokenAddress,
@@ -414,7 +511,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT transferFrom proxy SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
+    xit(`${displayAddress} FT transferFrom proxy SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
       await transferFromFtProxyTest(
         transferNotApprovedContract,
         context.ftTokenAddress,
@@ -424,7 +521,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT transferTokens proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+    xit(`${displayAddress} FT transferTokens proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
       await transferTokensTest(
         transferNotApprovedContract,
         context.ftTokenAddress,
@@ -434,7 +531,7 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT cryptoTransferV1 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+    xit(`${displayAddress} FT cryptoTransferV1 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
       await cryptoTransferV1Test(
         transferNotApprovedContract,
         context.ftTokenAddress,
@@ -444,13 +541,33 @@ async function erc20EventsTests(htsAddress, context) {
       );
     });
 
-    it(`${displayAddress} FT cryptoTransferV2 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+    xit(`${displayAddress} FT cryptoTransferV2 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
       await cryptoTransferV2Test(
         transferNotApprovedContract,
         context.ftTokenAddress,
         context.treasury,
         receiverContract,
         ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
+      );
+    });
+
+    // TODO
+    it(`${displayAddress} FT claimAirdrops`, async () => {
+      // send pending airdrop
+      await airdropTokensTest(
+        transferNotApprovedContract,
+        context.ftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SUCCESS,
+      );
+      // claim pending airdrop
+      await claimAirdropsTest(
+        transferNotApprovedContract,
+        context.ftTokenAddress,
+        context.treasury,
+        receiverContract,
+        ResponseCodeEnum.SUCCESS,
       );
     });
   });

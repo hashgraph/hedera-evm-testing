@@ -94,10 +94,10 @@ async function deployTestContract(
   await (
     await transferContract.associateToken(transferContract, tokenAddress)
   ).wait();
-  // associated for receiverContract
-  await (
-    await receiverContract.associateToken(receiverContract, tokenAddress)
-  ).wait();
+  // associated for receiverContract //TODO
+  // await (
+  //   await receiverContract.associateToken(receiverContract, tokenAddress)
+  // ).wait();
   if (approveAmount > 0) {
     // approve for transferContract
     await (

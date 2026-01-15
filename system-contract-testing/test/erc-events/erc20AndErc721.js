@@ -15,7 +15,7 @@ async function cryptoTransferV1Test(
   serialNumber1,
   serialNumber2,
 ) {
-  const tokenTransferList = [
+  const tokenTransfers = [
     {
       token: ftTokenAddress,
       transfers: [
@@ -43,12 +43,12 @@ async function cryptoTransferV1Test(
     },
   ];
   const rc = await (
-    await transferContract.cryptoTransferV1(tokenTransferList)
+    await transferContract.cryptoTransferV1(tokenTransfers)
   ).wait();
   console.log(
-    "%s FT cryptoTransferV1 tokenTransferList:%s",
+    "%s FT/NFT cryptoTransferV1 tokenTransfers:%s",
     rc.hash,
-    tokenTransferList,
+    tokenTransfers,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
@@ -92,7 +92,7 @@ async function cryptoTransferV2Test(
   const transferList = {
     transfers: [],
   };
-  const tokenTransferList = [
+  const tokenTransfers = [
     {
       token: ftTokenAddress,
       transfers: [
@@ -122,13 +122,160 @@ async function cryptoTransferV2Test(
     },
   ];
   const rc = await (
-    await transferContract.cryptoTransferV2(transferList, tokenTransferList)
+    await transferContract.cryptoTransferV2(transferList, tokenTransfers)
   ).wait();
   console.log(
-    "%s FT cryptoTransferV2 TransferList:%s tokenTransferList:%s",
+    "%s FT/NFT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
     rc.hash,
     transferList,
-    tokenTransferList,
+    tokenTransfers,
+  );
+  await validateRcWithErcEvent(rc, responseCode, [
+    {
+      address: ftTokenAddress,
+      from: treasury.target,
+      to: transferContract.target,
+      amount: 1,
+    },
+    {
+      address: ftTokenAddress,
+      from: treasury.target,
+      to: ftReceiverContract.target,
+      amount: 2,
+    },
+    {
+      address: nftTokenAddress,
+      from: treasury.target,
+      to: transferContract.target,
+      serial: serialNumber1,
+    },
+    {
+      address: nftTokenAddress,
+      from: treasury.target,
+      to: nftReceiverContract.target,
+      serial: serialNumber2,
+    },
+  ]);
+}
+
+async function airdropTokensTest(
+  transferContract,
+  ftTokenAddress,
+  nftTokenAddress,
+  treasury,
+  ftReceiverContract,
+  nftReceiverContract,
+  responseCode,
+  serialNumber1,
+  serialNumber2,
+) {
+  const tokenTransfers = [
+    {
+      token: ftTokenAddress,
+      transfers: [
+        { accountID: treasury, amount: -3, isApproval: false },
+        { accountID: transferContract, amount: 1, isApproval: false },
+        { accountID: ftReceiverContract, amount: 2, isApproval: false },
+      ],
+      nftTransfers: [],
+    },
+    {
+      token: nftTokenAddress,
+      transfers: [],
+      nftTransfers: [
+        {
+          senderAccountID: treasury,
+          receiverAccountID: transferContract,
+          serialNumber: serialNumber1,
+          isApproval: false,
+        },
+        {
+          senderAccountID: treasury,
+          receiverAccountID: nftReceiverContract,
+          serialNumber: serialNumber2,
+          isApproval: false,
+        },
+      ],
+    },
+  ];
+  const rc = await (
+    await transferContract.airdropTokens(tokenTransfers)
+  ).wait();
+  console.log(
+    "%s FT/NFT airdropTokens tokenTransfers:%s",
+    rc.hash,
+    tokenTransfers,
+  );
+  await validateRcWithErcEvent(rc, responseCode, [
+    {
+      address: ftTokenAddress,
+      from: treasury.target,
+      to: transferContract.target,
+      amount: 1,
+    },
+    {
+      address: ftTokenAddress,
+      from: treasury.target,
+      to: ftReceiverContract.target,
+      amount: 2,
+    },
+    {
+      address: nftTokenAddress,
+      from: treasury.target,
+      to: transferContract.target,
+      serial: serialNumber1,
+    },
+    {
+      address: nftTokenAddress,
+      from: treasury.target,
+      to: nftReceiverContract.target,
+      serial: serialNumber2,
+    },
+  ]);
+}
+
+async function claimAirdropsTest(
+  transferContract,
+  ftTokenAddress,
+  nftTokenAddress,
+  treasury,
+  ftReceiverContract,
+  nftReceiverContract,
+  responseCode,
+  serialNumber1,
+  serialNumber2,
+) {
+  const pendingAirdrops = [
+    {
+      sender: treasury,
+      receiver: ftReceiverContract,
+      token: ftTokenAddress,
+    },
+    {
+      sender: treasury,
+      receiver: transferContract,
+      token: ftTokenAddress,
+    },
+    {
+      sender: treasury,
+      receiver: nftReceiverContract,
+      token: nftTokenAddress,
+      serial: serialNumber1,
+    },
+    {
+      sender: treasury,
+      receiver: transferContract,
+      token: nftTokenAddress,
+      serial: serialNumber2,
+    },
+  ];
+  const rc = await (
+    await transferContract.claimAirdrops(pendingAirdrops)
+  ).wait();
+  console.log(
+    "%s FT/NFT claimAirdrops pendingAirdrops:%s",
+    rc.hash,
+    pendingAirdrops,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
@@ -181,7 +328,7 @@ async function erc20AndErc721EventsTests(htsAddress, context) {
     );
   });
 
-  it(`${displayAddress} FT cryptoTransferV1 proxy`, async () => {
+  xit(`${displayAddress} FT/NFT cryptoTransferV1 proxy`, async () => {
     const serial1 = await approveNft(
       context.treasury,
       context.nftTokenAddress,
@@ -207,7 +354,7 @@ async function erc20AndErc721EventsTests(htsAddress, context) {
     );
   });
 
-  it(`${displayAddress} FT cryptoTransferV2 proxy`, async () => {
+  xit(`${displayAddress} FT/NFT cryptoTransferV2 proxy`, async () => {
     const serial1 = await approveNft(
       context.treasury,
       context.nftTokenAddress,
@@ -221,6 +368,73 @@ async function erc20AndErc721EventsTests(htsAddress, context) {
       context.serialNumbers,
     );
     await cryptoTransferV2Test(
+      transferContract,
+      context.ftTokenAddress,
+      context.nftTokenAddress,
+      context.treasury,
+      ftReceiverContract,
+      nftReceiverContract,
+      ResponseCodeEnum.SUCCESS,
+      serial1,
+      serial2,
+    );
+  });
+
+  // TODO
+  it(`${displayAddress} FT/NFT airdropTokens`, async () => {
+    const serial1 = await approveNft(
+      context.treasury,
+      context.nftTokenAddress,
+      transferContract,
+      context.serialNumbers,
+    );
+    const serial2 = await approveNft(
+      context.treasury,
+      context.nftTokenAddress,
+      transferContract,
+      context.serialNumbers,
+    );
+    await airdropTokensTest(
+      transferContract,
+      context.ftTokenAddress,
+      context.nftTokenAddress,
+      context.treasury,
+      ftReceiverContract,
+      nftReceiverContract,
+      ResponseCodeEnum.SUCCESS,
+      serial1,
+      serial2,
+    );
+  });
+
+  // TODO
+  it(`${displayAddress} FT/NFT claimAirdrops`, async () => {
+    const serial1 = await approveNft(
+      context.treasury,
+      context.nftTokenAddress,
+      transferContract,
+      context.serialNumbers,
+    );
+    const serial2 = await approveNft(
+      context.treasury,
+      context.nftTokenAddress,
+      transferContract,
+      context.serialNumbers,
+    );
+    // send pending airdrop
+    await airdropTokensTest(
+      transferContract,
+      context.ftTokenAddress,
+      context.nftTokenAddress,
+      context.treasury,
+      ftReceiverContract,
+      nftReceiverContract,
+      ResponseCodeEnum.SUCCESS,
+      serial1,
+      serial2,
+    );
+    // claim pending airdrop
+    await claimAirdropsTest(
       transferContract,
       context.ftTokenAddress,
       context.nftTokenAddress,

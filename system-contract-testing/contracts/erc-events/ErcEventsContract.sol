@@ -177,5 +177,19 @@ contract ErcEventsContract {
     }
 
     // ----------------------------- Airdrop -----------------------------
-    //TODO
+    function airdropTokens(IHederaTokenService.TokenTransferList[] calldata tokenTransfers) public payable returns (int64 responseCode) {
+        (bool success, bytes memory result) = precompileAddress.call(
+            abi.encodeWithSelector(IHederaTokenService.airdropTokens.selector, tokenTransfers));
+        responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
+        emit ResponseCode(responseCode);
+        return responseCode;
+    }
+
+    function claimAirdrops(IHederaTokenService.PendingAirdrop[] memory pendingAirdrops) public returns (int64 responseCode) {
+        (bool success, bytes memory result) = precompileAddress.call(
+            abi.encodeWithSelector(IHederaTokenService.claimAirdrops.selector, pendingAirdrops));
+        responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
+        emit ResponseCode(responseCode);
+        return responseCode;
+    }
 }   
