@@ -37,7 +37,7 @@ describe("ERC Transfer events", async () => {
     [context.nftTokenAddress, context.serialNumbers] = await beforeNftTests(
       context.treasury,
       context.transferContract,
-      50,
+      40,
       context.receiverContract1,
       context.receiverContract2,
     );

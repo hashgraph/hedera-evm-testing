@@ -475,7 +475,7 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
         context.transferContract,
         context.nftTokenAddress,
         context.receiverNotAssociated,
-        context.serialNumbers.shift(),
+        context.serialNumbers[0],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
@@ -487,7 +487,7 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
         context.nftTokenAddress,
         context.transferContract,
         context.receiverContract1,
-        context.serialNumbers.shift(),
+        context.serialNumbers[0],
         ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
       );
     });
@@ -497,7 +497,7 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
         context.transferContract,
         context.nftTokenAddress,
         context.receiverNotAssociated,
-        context.serialNumbers.shift(),
+        context.serialNumbers[0],
         ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
       );
     });
@@ -509,8 +509,8 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
         context.nftTokenAddress,
         context.receiverContract1,
         context.receiverNotAssociated,
-        context.serialNumbers.shift(),
-        context.serialNumbers.shift(),
+        context.serialNumbers[0],
+        context.serialNumbers[1],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
@@ -522,8 +522,8 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
         context.nftTokenAddress,
         context.receiverContract1,
         context.receiverNotAssociated,
-        context.serialNumbers.shift(),
-        context.serialNumbers.shift(),
+        context.serialNumbers[0],
+        context.serialNumbers[1],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
@@ -535,8 +535,8 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
         context.nftTokenAddress,
         context.receiverContract1,
         context.receiverNotAssociated,
-        context.serialNumbers.shift(),
-        context.serialNumbers.shift(),
+        context.serialNumbers[0],
+        context.serialNumbers[1],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
