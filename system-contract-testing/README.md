@@ -15,18 +15,18 @@
 ## Run solo
 
 ### Requirements
-- Software https://solo.hiero.org/v0.48.0/docs/step-by-step-guide/#required-software
-- Solo https://solo.hiero.org/v0.48.0/docs/step-by-step-guide/#1-installing-solo
+- Software https://solo.hiero.org/v0.52.0/docs/step-by-step-guide/#required-software
+- Solo https://solo.hiero.org/v0.52.0/docs/step-by-step-guide/#1-installing-solo
 
 ### Documentation
-- Doc: https://solo.hiero.org/v0.48.0/docs/step-by-step-guide/
-- Doc with local consensus node build: https://solo.hiero.org/v0.48.0/docs/platform-developer/
+- Doc: https://solo.hiero.org/v0.52.0/docs/step-by-step-guide/
+- Doc with local consensus node build: https://solo.hiero.org/v0.52.0/docs/platform-developer/
 
 ### Specific solo version install
-`npm install -g @hashgraph/solo@0.48.0`
+`npm install -g @hashgraph/solo@0.52.0`
 
 ### Deploy manual 
-With 'local build' consensus node From https://solo.hiero.org/v0.48.0/docs/platform-developer/)
+With 'local build' consensus node From https://solo.hiero.org/v0.52.0/docs/platform-developer/)
 
 `./test.sh solo start`
 
@@ -50,12 +50,12 @@ kubectl exec -it -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadat
 
 #### Relay Logs
 ```
-kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/relay-node1
+kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/relay-1
 ```
 
 #### Relay WS Logs
 ```
-kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/relay-node1-ws
+kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/relay-1-ws
 ```
 ### Destroy
 `./test.sh solo stop`

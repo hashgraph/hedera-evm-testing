@@ -61,6 +61,7 @@ class Utils {
     const factory = await ethers.getContractFactory(contractPath);
     const contract = await factory.deploy(gasLimit);
 
+    console.log("Deployed '%s' contract", contractPath, contract.target);
     return await ethers.getContractAt(
       contractPath,
       await contract.getAddress()

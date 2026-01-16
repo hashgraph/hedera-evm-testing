@@ -270,8 +270,7 @@ async function findNewScheduleAddress(
   if (contractCallLogs != null && contractCallLogs.length > 0) {
     const log = contractCallLogs[0].data;
     // We already now that the execution was successful so we only get the last 20 bytes
-    const nextScheduleAddress = "0x" + log.slice(-40);
-    return nextScheduleAddress;
+    return "0x" + log.slice(-40);
   }
 
   return null;

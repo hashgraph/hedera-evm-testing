@@ -51,10 +51,17 @@ const Path = {};
 const Contract = {
   HIP1215Contract: "HIP1215Contract",
   TokenCreateContract: "TokenCreateContract",
+  ErcEventsContract: "ErcEventsContract",
+  ErcEventsReceiverContract: "ErcEventsReceiverContract",
+};
+
+const Cost = {
+  CREATE_TOKEN_COST: "35000000000000000000",
 };
 
 const TINYBAR_TO_WEIBAR_COEF = 10_000_000_000n;
 const HTS_ADDRESS = "0x0000000000000000000000000000000000000167";
+const HTS_ADDRESS_V2 = "0x000000000000000000000000000000000000016c";
 const HSS_ADDRESS = "0x000000000000000000000000000000000000016b";
 const CALL_EXCEPTION = "CALL_EXCEPTION";
 const CONTRACT_REVERT_EXECUTED_CODE = 3;
@@ -85,8 +92,10 @@ module.exports = {
   Events,
   Path,
   Contract,
+  Cost,
   TINYBAR_TO_WEIBAR_COEF,
   HTS_ADDRESS,
+  HTS_ADDRESS_V2,
   HSS_ADDRESS,
   CALL_EXCEPTION,
   CONTRACT_REVERT_EXECUTED_CODE,
