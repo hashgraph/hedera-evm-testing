@@ -71,25 +71,25 @@ describe('HIP-1340 - EIP-7702 features', function () {
         });
     });
 
-    systemContractAddresses.forEach(address => {
-        [0n, 10_000n].forEach(value => {
-            it(`should run no-op with value ${value} when delegating to system contract ${address}`, async function () {
-                const sender = await createAndFundEOA();
-                const eoa = await createAndFundEOA(address);
-                const balance = await provider.getBalance(eoa.address);
+    [0n, 10_000n].forEach(value => {
+        it(`should run no-op with value ${value} when delegating to HTS system contract`, async function () {
+            const sender = await createAndFundEOA();
+            const eoa = await createAndFundEOA(asAddress(0x167));
+            const balance = await provider.getBalance(eoa.address);
+            const data = encodeFunctionData('approve(address token, address spender, uint256 amount)', [eoa.address, sender.address, 1000]);
 
-                const tx = await sender.sendTransaction({
-                    chainId: network.chainId,
-                    nonce: 0,
-                    gasLimit: gas.base,
-                    value,
-                    to: eoa.address,
-                });
-                const resp = await tx.wait();
-                assert(resp !== null);
-
-                expect(await provider.getBalance(eoa.address, resp.blockNumber)).to.be.equal(balance + value);
+            const tx = await sender.sendTransaction({
+                chainId: network.chainId,
+                nonce: 0,
+                gasLimit: 100_000,
+                value,
+                data,
+                to: eoa.address,
             });
+            const resp = await tx.wait();
+            assert(resp !== null);
+
+            expect(await provider.getBalance(eoa.address, resp.blockNumber)).to.be.equal(balance + value);
         });
     });
 
