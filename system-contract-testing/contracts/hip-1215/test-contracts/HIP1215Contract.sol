@@ -19,8 +19,16 @@ contract HIP1215Contract {
 
     string[] public tests;
 
-    constructor(IHederaScheduleService_HIP1215 _scheduleServiceAddress) {
+    constructor(IHederaScheduleService_HIP1215 _scheduleServiceAddress) payable {
         scheduleService = _scheduleServiceAddress;
+    }
+
+    function scheduleCallDelegateCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
+    external payable returns (int64 responseCode, address scheduleAddress) {
+        (bool success, bytes memory result) = HSS.delegatecall(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCall.selector, to, expirySecond, gasLimit, value, callData));
+        (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
+        emit ScheduleCall(responseCode, scheduleAddress);
+        return (responseCode, scheduleAddress);
     }
 
     function scheduleCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes memory callData)
@@ -50,6 +58,11 @@ contract HIP1215Contract {
     function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) external returns (bool hasCapacity) {
         hasCapacity = scheduleService.hasScheduleCapacity(expirySecond, gasLimit);
         emit HasScheduleCapacity(hasCapacity);
+        return hasCapacity;
+    }
+
+    function hasScheduleCapacityView(uint256 expirySecond, uint256 gasLimit) external view returns (bool hasCapacity) {
+        hasCapacity = scheduleService.hasScheduleCapacity(expirySecond, gasLimit);
         return hasCapacity;
     }
 

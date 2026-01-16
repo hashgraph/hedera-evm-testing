@@ -3,6 +3,7 @@ const { ethers } = require("hardhat");
 const { PrivateKey, AccountId, ScheduleId } = require("@hashgraph/sdk");
 const Utils = require("../../../utils/utils");
 const { Events } = require("../../../utils/constants");
+const { getMirrorNodeUrl } = require("../../../utils/native/utils");
 const { Logger, HederaMirrorNode } = require("@hashgraphonline/standards-sdk");
 const hre = require("hardhat");
 const Async = require("../../../utils/async");
@@ -47,8 +48,8 @@ function payableCallData() {
 // ---------------------------------------------------------------------------
 
 // Test checker functions --------------------------------------------------
-async function testScheduleCallEvent(tx, responseCode) {
-  const rc = await tx.wait();
+async function testScheduleCallEvent(receipt, responseCode) {
+  const rc = await receipt.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
   expect(log.args[0]).to.equal(responseCode);
   const address = log.args[1];
@@ -57,19 +58,19 @@ async function testScheduleCallEvent(tx, responseCode) {
   } else {
     expect(address).to.equal(ethers.ZeroAddress);
   }
-  expect(rc.status).to.equal(1);
+  expect(rc.status).to.equal(ResponseCodeEnum.INVALID_TRANSACTION.valueOf());
   return address;
 }
 
-async function testResponseCodeEvent(tx, responseCode) {
-  const rc = await tx.wait();
+async function testResponseCodeEvent(receipt, responseCode) {
+  const rc = await receipt.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ResponseCode);
   expect(log.args[0]).to.equal(responseCode);
-  expect(rc.status).to.equal(1);
+  expect(rc.status).to.equal(ResponseCodeEnum.INVALID_TRANSACTION.valueOf());
 }
 
-async function testHasScheduleCapacityEvent(tx, hasCapacity) {
-  const rc = await tx.wait();
+async function testHasScheduleCapacityEvent(receipt, hasCapacity) {
+  const rc = await receipt.wait();
   const log = rc.logs.find(
     (e) => e.fragment.name === Events.HasScheduleCapacity
   );
@@ -186,8 +187,10 @@ async function getChildTransactionsByScheduleId(
   );
   if (transactions.length > 0) {
     const txId = transactions[0].transaction_id;
-    const includingChildren = await mnClient.getContractActions(txId);
-    return includingChildren.length;
+    const query = getMirrorNodeUrl(hre.network.name) + "/transactions/" + txId;
+    const response = await fetch(query);
+    const json = await response.json();
+    return json.transactions.length;
   }
 }
 
@@ -267,7 +270,6 @@ async function findNewScheduleAddress(
   if (contractCallLogs != null && contractCallLogs.length > 0) {
     const log = contractCallLogs[0].data;
     // We already now that the execution was successful so we only get the last 20 bytes
-
     return "0x" + log.slice(-40);
   }
 
