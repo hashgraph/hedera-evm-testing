@@ -11,6 +11,7 @@ contract HIP1215TransferContract {
     address internal constant HTS = address(0x167);
     event ScheduleCall(int64 responseCode, address scheduleAddress);
 
+    constructor() payable {}
     receive() external payable {}
 
     function scheduleCallForTransfer(uint256 expirySecond, uint256 gasLimit, uint64 value, address tokenContract, address receiver) external payable returns (int64 responseCode, address scheduleAddress) {

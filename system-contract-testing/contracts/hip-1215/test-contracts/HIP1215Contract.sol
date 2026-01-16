@@ -19,7 +19,7 @@ contract HIP1215Contract {
 
     string[] public tests;
 
-    constructor(IHederaScheduleService_HIP1215 _scheduleServiceAddress) {
+    constructor(IHederaScheduleService_HIP1215 _scheduleServiceAddress) payable {
         scheduleService = _scheduleServiceAddress;
     }
 
@@ -50,6 +50,11 @@ contract HIP1215Contract {
     function hasScheduleCapacity(uint256 expirySecond, uint256 gasLimit) external returns (bool hasCapacity) {
         hasCapacity = scheduleService.hasScheduleCapacity(expirySecond, gasLimit);
         emit HasScheduleCapacity(hasCapacity);
+        return hasCapacity;
+    }
+
+    function hasScheduleCapacityView(uint256 expirySecond, uint256 gasLimit) external view returns (bool hasCapacity) {
+        hasCapacity = scheduleService.hasScheduleCapacity(expirySecond, gasLimit);
         return hasCapacity;
     }
 
