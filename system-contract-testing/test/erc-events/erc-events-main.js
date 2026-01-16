@@ -11,7 +11,7 @@ async function beforeTests(receivers) {
   // create test 'transferContract'
   const transferContract = await contractDeployAndFund(
     Constants.Contract.ErcEventsContract,
-    // 10, //TODO fix deploy with value
+    10,
   );
   const retval = [sdkClient, tokenContract, transferContract];
   // create receiverContracts
