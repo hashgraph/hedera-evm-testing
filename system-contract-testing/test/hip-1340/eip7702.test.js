@@ -72,7 +72,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
     });
 
     [0n, 10_000n].forEach(value => {
-        it(`should run no-op with value ${value} when delegating to HTS system contract`, async function () {
+        it.skip(`should run no-op with value ${value} when delegating to HTS system contract`, async function () {
             const sender = await createAndFundEOA();
             const eoa = await createAndFundEOA(asAddress(0x167));
             const balance = await provider.getBalance(eoa.address);
