@@ -1,38 +1,65 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.10;
 
-import "../system-contract-references/IHederaTokenService.sol";
 import "../system-contract-references/HederaResponseCodes.sol";
+import "../system-contract-references/IHederaTokenService.sol";
+import "../utility-contracts/TokenCreateContract.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract ErcEventsContract {
 
-    address public precompileAddress;
+    address constant HTS = address(0x167);
+    TokenCreateContract public createContract = new TokenCreateContract();
 
     receive() external payable {}
 
     event ResponseCode(int64 responseCode);
 
+    event CreatedToken(address tokenAddress);
+
+    event MintedToken(int64 newTotalSupply, int64[] serialNumbers);
+
     event RevertReason(bytes message);
 
-    constructor(address htsAddress) {
-        precompileAddress = htsAddress;
+    // ----------------------------- Tokens -----------------------------
+    function createFungibleTokenWithoutKYCPublic() public payable returns (address tokenAddress) {
+        tokenAddress = createContract.createFungibleTokenWithoutKYCPublic{value: msg.value}(address(createContract));
+        IHederaTokenService(HTS).associateToken(address(this), tokenAddress);
+        createContract.transferTokenPublic(tokenAddress, address(this), 1000);
+        emit CreatedToken(tokenAddress);
+        return tokenAddress;
     }
 
-    // ----------------------------- Utils -----------------------------
-    function associateToken(address account, address token) external returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
-            abi.encodeWithSelector(IHederaTokenService.associateToken.selector,
-                account, token));
-        responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
+    function createNonFungibleTokenWithoutKYCPublic() public payable returns (address tokenAddress) {
+        tokenAddress = createContract.createNonFungibleTokenWithoutKYCPublic{value: msg.value}(address(createContract));
+        IHederaTokenService(HTS).associateToken(address(this), tokenAddress);
+        emit CreatedToken(tokenAddress);
+        return tokenAddress;
+    }
+
+    function mintTokenPublic(address token, int64 amount, bytes[] memory metadata)
+    public returns (int responseCode, int64 newTotalSupply, int64[] memory serialNumbers) {
+        (responseCode, newTotalSupply, serialNumbers)
+            = createContract.mintTokenToAddressPublic(token, amount, metadata, address(this));
+        emit MintedToken(newTotalSupply, serialNumbers);
+    }
+
+    function approve(address token, uint256 amount) public returns (int64 responseCode) {
+        responseCode = IHederaTokenService(HTS).approve(token, address(this), amount);
+        emit ResponseCode(responseCode);
+        return responseCode;
+    }
+
+    function approveNFT(address token, uint256 serialNumber) public returns (int64 responseCode) {
+        responseCode = IHederaTokenService(HTS).approveNFT(token, address(this), serialNumber);
         emit ResponseCode(responseCode);
         return responseCode;
     }
 
     // ----------------------------- FT transfers -----------------------------
-    function transferToken(address token, address sender, address receiver, int64 amount) public returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
+    function transferToken(address htsAddress, address token, address sender, address receiver, int64 amount) public returns (int64 responseCode) {
+        (bool success, bytes memory result) = htsAddress.call(
             abi.encodeWithSelector(IHederaTokenService.transferToken.selector,
                 token, sender, receiver, amount));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
@@ -40,8 +67,8 @@ contract ErcEventsContract {
         return responseCode;
     }
 
-    function transferFrom(address token, address from, address to, uint256 amount) public returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
+    function transferFrom(address htsAddress, address token, address from, address to, uint256 amount) public returns (int64 responseCode) {
+        (bool success, bytes memory result) = htsAddress.call(
             abi.encodeWithSelector(IHederaTokenService.transferFrom.selector,
                 token, from, to, amount));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
@@ -78,8 +105,8 @@ contract ErcEventsContract {
     }
 
     // ----------------------------- NFT transfers -----------------------------
-    function transferNFT(address token, address sender, address receiver, int64 serialNumber) public returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
+    function transferNFT(address htsAddress, address token, address sender, address receiver, int64 serialNumber) public returns (int64 responseCode) {
+        (bool success, bytes memory result) = htsAddress.call(
             abi.encodeWithSelector(IHederaTokenService.transferNFT.selector,
                 token, sender, receiver, serialNumber));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
@@ -87,8 +114,8 @@ contract ErcEventsContract {
         return responseCode;
     }
 
-    function transferFromNFT(address token, address from, address to, uint256 serialNumber) public returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
+    function transferFromNFT(address htsAddress, address token, address from, address to, uint256 serialNumber) public returns (int64 responseCode) {
+        (bool success, bytes memory result) = htsAddress.call(
             abi.encodeWithSelector(IHederaTokenService.transferFromNFT.selector,
                 token, from, to, serialNumber));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
@@ -107,8 +134,8 @@ contract ErcEventsContract {
     }
 
     // ----------------------------- bucket FT transfers -----------------------------
-    function transferTokens(address token, address[] memory accountIds, int64[] memory amounts) external returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
+    function transferTokens(address htsAddress, address token, address[] memory accountIds, int64[] memory amounts) external returns (int64 responseCode) {
+        (bool success, bytes memory result) = htsAddress.call(
             abi.encodeWithSelector(IHederaTokenService.transferTokens.selector,
                 token, accountIds, amounts));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
@@ -117,8 +144,8 @@ contract ErcEventsContract {
     }
 
     // ----------------------------- bucket NFT transfers -----------------------------
-    function transferNFTs(address token, address[] memory senders, address[] memory receivers, int64[] memory serialNumbers) external returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
+    function transferNFTs(address htsAddress, address token, address[] memory senders, address[] memory receivers, int64[] memory serialNumbers) external returns (int64 responseCode) {
+        (bool success, bytes memory result) = htsAddress.call(
             abi.encodeWithSelector(IHederaTokenService.transferNFTs.selector,
                 token, senders, receivers, serialNumbers));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
@@ -160,16 +187,16 @@ contract ErcEventsContract {
         int64 serialNumber;
     }
 
-    function cryptoTransferV1(TokenTransferListV1[] calldata tokenTransfers) public returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
+    function cryptoTransferV1(address htsAddress, TokenTransferListV1[] calldata tokenTransfers) public returns (int64 responseCode) {
+        (bool success, bytes memory result) = htsAddress.call(
             abi.encodeWithSignature("cryptoTransfer((address,(address,int64)[],(address,address,int64)[])[])", tokenTransfers));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
         emit ResponseCode(responseCode);
         return responseCode;
     }
 
-    function cryptoTransferV2(IHederaTokenService.TransferList calldata transferList, IHederaTokenService.TokenTransferList[] calldata tokenTransfers) public returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
+    function cryptoTransferV2(address htsAddress, IHederaTokenService.TransferList calldata transferList, IHederaTokenService.TokenTransferList[] calldata tokenTransfers) public returns (int64 responseCode) {
+        (bool success, bytes memory result) = htsAddress.call(
             abi.encodeWithSelector(IHederaTokenService.cryptoTransfer.selector, transferList, tokenTransfers));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
         emit ResponseCode(responseCode);
@@ -177,17 +204,9 @@ contract ErcEventsContract {
     }
 
     // ----------------------------- Airdrop -----------------------------
-    function airdropTokens(IHederaTokenService.TokenTransferList[] calldata tokenTransfers) public payable returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
+    function airdropTokens(address htsAddress, IHederaTokenService.TokenTransferList[] calldata tokenTransfers) public payable returns (int64 responseCode) {
+        (bool success, bytes memory result) = htsAddress.call(
             abi.encodeWithSelector(IHederaTokenService.airdropTokens.selector, tokenTransfers));
-        responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
-        emit ResponseCode(responseCode);
-        return responseCode;
-    }
-
-    function claimAirdrops(IHederaTokenService.PendingAirdrop[] memory pendingAirdrops) public returns (int64 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.call(
-            abi.encodeWithSelector(IHederaTokenService.claimAirdrops.selector, pendingAirdrops));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
         emit ResponseCode(responseCode);
         return responseCode;

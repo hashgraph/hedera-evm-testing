@@ -14,10 +14,18 @@ contract ErcEventsReceiverContract {
 
     event ResponseCode(int64 responseCode);
 
-    function associateToken(address account, address token) external returns (int64 responseCode) {
+    function associateToken(address token) external returns (int64 responseCode) {
         (bool success, bytes memory result) = HTS.call(
             abi.encodeWithSelector(IHederaTokenService.associateToken.selector,
-                account, token));
+                address(this), token));
+        responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
+        emit ResponseCode(responseCode);
+        return responseCode;
+    }
+
+    function claimAirdrops(address htsAddress, IHederaTokenService.PendingAirdrop[] memory pendingAirdrops) public returns (int64 responseCode) {
+        (bool success, bytes memory result) = htsAddress.call(
+            abi.encodeWithSelector(IHederaTokenService.claimAirdrops.selector, pendingAirdrops));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
         emit ResponseCode(responseCode);
         return responseCode;

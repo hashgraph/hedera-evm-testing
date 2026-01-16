@@ -10,18 +10,33 @@ const { erc20AndErc721EventsTests } = require("./erc20AndErc721");
 const { HTS_ADDRESS, HTS_ADDRESS_V2 } = require("../../utils/constants");
 
 describe("ERC Transfer events", async () => {
-  const context = {}; // using this object to pass 'before' results to tests in other files
+  const context = {
+    transferContract: "",
+    ftTokenAddress: "",
+    nftTokenAddress: "",
+    receiverContract1: "",
+    receiverContract2: "",
+    receiverNotAssociated: "",
+  }; // using this object to pass 'before' results to tests in other files
 
   before(async () => {
-    [context.sdkClient, context.treasury] = await beforeTests();
-    context.ftTokenAddress = await beforeFtTests(
+    [
       context.sdkClient,
-      context.treasury,
+      context.transferContract,
+      context.receiverContract1,
+      context.receiverContract2,
+      context.receiverNotAssociated,
+    ] = await beforeTests(3);
+    context.ftTokenAddress = await beforeFtTests(
+      context.transferContract,
+      context.receiverContract1,
+      context.receiverContract2,
     );
     [context.nftTokenAddress, context.serialNumbers] = await beforeNftTests(
-      context.sdkClient,
-      context.treasury,
+      context.transferContract,
       50,
+      context.receiverContract1,
+      context.receiverContract2,
     );
   });
 
@@ -31,31 +46,32 @@ describe("ERC Transfer events", async () => {
 
   describe("ERC20 events", async () => {
     describe("HTS 0x167", async () => {
-      await erc20EventsTests(HTS_ADDRESS, context);
+      await erc20EventsTests(HTS_ADDRESS, true, context);
     });
 
     describe("HTS 0x16c", async () => {
-      await erc20EventsTests(HTS_ADDRESS_V2, context);
+      await erc20EventsTests(HTS_ADDRESS_V2, false, context);
     });
   });
 
   describe("ERC721 events", async () => {
     describe("HTS 0x167", async () => {
-      await erc721EventsTests(HTS_ADDRESS, context);
+      await erc721EventsTests(HTS_ADDRESS, true, context);
     });
 
     describe("HTS 0x16c", async () => {
-      await erc721EventsTests(HTS_ADDRESS_V2, context);
+      await erc721EventsTests(HTS_ADDRESS_V2, false, context);
     });
   });
 
+  //TODO finish
   describe("ERC20/ERC721 events", async () => {
     describe("HTS 0x167", async () => {
-      await erc20AndErc721EventsTests(HTS_ADDRESS, context);
+      await erc20AndErc721EventsTests(HTS_ADDRESS,  context);
     });
 
     describe("HTS 0x16c", async () => {
-      await erc20AndErc721EventsTests(HTS_ADDRESS_V2, context);
+      await erc20AndErc721EventsTests(HTS_ADDRESS_V2,  context);
     });
   });
 });
