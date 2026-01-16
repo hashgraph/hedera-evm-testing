@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-const { Signature, Wallet } = require('ethers');
+const { Signature, Wallet } = require("ethers");
 const {
   PrivateKey,
   AccountCreateTransaction,
@@ -8,11 +8,11 @@ const {
   ContractCallQuery,
   ContractFunctionParameters,
   AccountUpdateTransaction,
-} = require('@hashgraph/sdk');
-const hre = require('hardhat');
+} = require("@hashgraph/sdk");
+const hre = require("hardhat");
 const { ethers } = hre;
-const htsUtils = require('../utils');
-const { arrayify } = require('@ethersproject/bytes');
+const htsUtils = require("../utils");
+const { arrayify } = require("@ethersproject/bytes");
 
 class Utils {
   static sign = async (message, privateKey) => {
@@ -25,16 +25,16 @@ class Utils {
   static async createAccount(operator, keyType, withAlias) {
     let newPrivateKey;
     switch (keyType) {
-      case 'ED25519': {
+      case "ED25519": {
         newPrivateKey = PrivateKey.generateED25519();
         break;
       }
-      case 'ECDSA': {
+      case "ECDSA": {
         newPrivateKey = PrivateKey.generateECDSA();
         break;
       }
       default: {
-        throw new Error('Unsupported key type');
+        throw new Error("Unsupported key type");
       }
     }
     const newPublicKey = newPrivateKey.publicKey;
@@ -57,14 +57,14 @@ class Utils {
   }
 
   static async deploy() {
-    const EcrecoverCheck = await ethers.getContractFactory('EcrecoverCheck');
+    const EcrecoverCheck = await ethers.getContractFactory("EcrecoverCheck");
     try {
       const network = hre.network.name;
       const ecrecoverCheck = await EcrecoverCheck.deploy();
       await ecrecoverCheck.waitForDeployment();
       const address = await ecrecoverCheck.getAddress();
       const contractQuery =
-        Utils.getMirrorNodeUrl(network) + '/contracts/' + address;
+        Utils.getMirrorNodeUrl(network) + "/contracts/" + address;
       let result;
       let cnt = 0;
       while (cnt < 20 && (!result || result.status === 404)) {
@@ -92,7 +92,7 @@ class Utils {
       .setContractId(contractId)
       .setGas(Utils.QUERY_GAS)
       .setFunction(
-        'verifySignature',
+        "verifySignature",
         new ContractFunctionParameters()
           .addString(message)
           .addUint8(signature.v)
@@ -110,14 +110,14 @@ class Utils {
 
       .setContractId(contractId)
       .setGas(Utils.QUERY_GAS)
-      .setFunction('getSender')
+      .setFunction("getSender")
       .setQueryPayment(new Hbar(Utils.QUERY_HBAR_PAYMENT));
     const getSenderTransaction = await getSenderQuery.execute(client);
     return getSenderTransaction.getAddress();
   };
 
   static async getMsgSenderAndEcRecover(contractId, client, privateKey) {
-    const message = 'Test message';
+    const message = "Test message";
     const addressRecoveredFromEcRecover =
       await Utils.getAddressRecoveredFromEcRecover(
         contractId,
@@ -137,16 +137,16 @@ class Utils {
   static async changeAccountKeyType(account, keyType) {
     let newPrivateKey;
     switch (keyType) {
-      case 'ED25519': {
+      case "ED25519": {
         newPrivateKey = PrivateKey.generateED25519();
         break;
       }
-      case 'ECDSA': {
+      case "ECDSA": {
         newPrivateKey = PrivateKey.generateECDSA();
         break;
       }
       default: {
-        throw new Error('Unsupported key type');
+        throw new Error("Unsupported key type");
       }
     }
     return await this.changeAccountKey(account, newPrivateKey);
@@ -156,7 +156,7 @@ class Utils {
     const network = htsUtils.getCurrentNetwork();
     const operatorId = hre.config.networks[network].sdkClient.operatorId;
     const operatorKey = PrivateKey.fromStringDer(
-      hre.config.networks[network].sdkClient.operatorKey.replace('0x', '')
+      hre.config.networks[network].sdkClient.operatorKey.replace("0x", "")
     );
     const client = await htsUtils.createSDKClient(operatorId, operatorKey);
     const newPublicKey = newPrivateKey.publicKey;
@@ -175,16 +175,16 @@ class Utils {
 
   static getMirrorNodeUrl(network) {
     switch (network) {
-      case 'mainnet':
-        return 'https://mainnet.mirrornode.hedera.com/api/v1';
-      case 'testnet':
-        return 'https://testnet.mirrornode.hedera.com/api/v1';
-      case 'previewnet':
-        return 'https://previewnet.mirrornode.hedera.com/api/v1';
-      case 'local':
-        return 'http://127.0.0.1:5551/api/v1';
+      case "mainnet":
+        return "https://mainnet.mirrornode.hedera.com/api/v1";
+      case "testnet":
+        return "https://testnet.mirrornode.hedera.com/api/v1";
+      case "previewnet":
+        return "https://previewnet.mirrornode.hedera.com/api/v1";
+      case "local":
+        return "http://127.0.0.1:8081/api/v1";
       default:
-        throw new Error('Unknown network');
+        throw new Error("Unknown network");
     }
   }
 }
