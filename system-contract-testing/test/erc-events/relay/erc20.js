@@ -1,169 +1,209 @@
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
-const { validateRcWithErcEvent } = require("./erc20");
-const { contractDeployAndFund } = require("../../utils/contract");
-const Constants = require("../../utils/constants");
+const {
+  validateResponseCodeEvent,
+  validateErcEvent,
+} = require("../../../utils/events");
+const { contractDeployAndFund } = require("../../../utils/contract");
+const Constants = require("../../../utils/constants");
+const {
+  ContractFunctionParameters,
+  ContractExecuteTransaction,
+  ContractId,
+} = require("@hashgraph/sdk");
 
 // ---------------- Test util functions ----------------
-async function approveNft(treasury, tokenAddress, sender, serialNumber) {
+async function validateRcWithErcEvent(rc, responseCode, expectedEvents) {
+  // check ContractTransactionReceipt has event with correct ResponseCode
+  await validateResponseCodeEvent(rc, responseCode.valueOf());
+  if (responseCode === ResponseCodeEnum.SUCCESS) {
+    // check ERC event
+    return validateErcEvent(rc, expectedEvents);
+  } else {
+    // check there is no ERC events
+    return validateErcEvent(rc, []);
+  }
+}
+
+async function approveFt(transferContract, tokenAddress, amount) {
   const rc = await (
-    await treasury.approveNftPublic(tokenAddress, sender, serialNumber)
+    await transferContract.approve(tokenAddress, amount)
   ).wait();
-  console.log(
-    "%s approveNftPublic:%s sender:%s serialNumber:%s",
-    rc.hash,
-    tokenAddress,
-    sender,
-    serialNumber,
-  );
+  console.log("%s approve:%s amount:%s", rc.hash, tokenAddress, amount);
 }
 
 // ---------------- Test functions ----------------
-async function transferNFTTest(
+async function transferTokenTest(
   htsAddress,
   transferContract,
   tokenAddress,
   receiverContract,
-  serialNumber,
   responseCode,
 ) {
+  const amount = 1;
   const rc = await (
-    await transferContract.transferNFT(
+    await transferContract.transferToken(
       htsAddress,
       tokenAddress,
       transferContract,
       receiverContract,
-      serialNumber,
+      amount,
     )
   ).wait();
   console.log(
-    "%s transferNFT:%s from:%s to:%s serialNumber:%s",
+    "%s transferToken:%s from:%s to:%s amount:%s",
     rc.hash,
     tokenAddress,
     transferContract.target,
     receiverContract.target,
-    serialNumber,
+    amount,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
       address: tokenAddress,
       from: transferContract.target,
       to: receiverContract.target,
-      serial: serialNumber,
+      amount: amount,
     },
   ]);
 }
 
-async function transferFromNFTTest(
+async function transferFromTest(
   htsAddress,
   transferContract,
   tokenAddress,
-  senderContract,
   receiverContract,
-  serialNumber,
   responseCode,
 ) {
+  const amount = 1;
   const rc = await (
-    await transferContract.transferFromNFT(
+    await transferContract.transferFrom(
       htsAddress,
-      tokenAddress,
-      senderContract,
-      receiverContract,
-      serialNumber,
-    )
-  ).wait();
-  console.log(
-    "%s transferFromNFT:%s from:%s to:%s serialNumber:%s",
-    rc.hash,
-    tokenAddress,
-    transferContract.target,
-    receiverContract.target,
-    serialNumber,
-  );
-  await validateRcWithErcEvent(rc, responseCode, [
-    {
-      address: tokenAddress,
-      from: senderContract.target,
-      to: receiverContract.target,
-      serial: serialNumber,
-    },
-  ]);
-}
-
-async function transferFromNftProxyTest(
-  transferContract,
-  tokenAddress,
-  receiverContract,
-  serialNumber,
-  responseCode,
-) {
-  const rc = await (
-    await transferContract.transferFromNftProxy(
       tokenAddress,
       transferContract,
       receiverContract,
-      serialNumber,
+      amount,
     )
   ).wait();
   console.log(
-    "%s transferFromNft proxy:%s from:%s to:%s serialNumber:%s",
+    "%s transferFrom:%s from:%s to:%s amount:%s",
     rc.hash,
     tokenAddress,
     transferContract.target,
     receiverContract.target,
-    serialNumber,
+    amount,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
       address: tokenAddress,
       from: transferContract.target,
       to: receiverContract.target,
-      serial: serialNumber,
+      amount: amount,
     },
   ]);
 }
 
-async function transferNFTsTest(
+async function transferFtProxyTest(
+  transferContract,
+  tokenAddress,
+  receiverContract,
+  responseCode,
+) {
+  const amount = 1;
+  const rc = await (
+    await transferContract.transferFtProxy(
+      tokenAddress,
+      receiverContract.target,
+      amount,
+    )
+  ).wait();
+  console.log(
+    "%s FT transfer proxy:%s from:%s to:%s amount:%s",
+    rc.hash,
+    tokenAddress,
+    transferContract.target,
+    receiverContract.target,
+    amount,
+  );
+  await validateRcWithErcEvent(rc, responseCode, [
+    {
+      address: tokenAddress,
+      from: transferContract.target,
+      to: receiverContract.target,
+      amount: amount,
+    },
+  ]);
+}
+
+async function transferFromFtProxyTest(
+  transferContract,
+  tokenAddress,
+  receiverContract,
+  responseCode,
+) {
+  const amount = 1;
+  const rc = await (
+    await transferContract.transferFromFtProxy(
+      tokenAddress,
+      transferContract,
+      receiverContract,
+      amount,
+    )
+  ).wait();
+  console.log(
+    "%s FT transferFrom proxy:%s from:%s to:%s amount:%s",
+    rc.hash,
+    tokenAddress,
+    transferContract.target,
+    receiverContract.target,
+    amount,
+  );
+  await validateRcWithErcEvent(rc, responseCode, [
+    {
+      address: tokenAddress,
+      from: transferContract.target,
+      to: receiverContract.target,
+      amount: amount,
+    },
+  ]);
+}
+
+async function transferTokensTest(
   htsAddress,
   transferContract,
   tokenAddress,
   receiverContract1,
   receiverContract2,
-  serialNumber1,
-  serialNumber2,
   responseCode,
 ) {
-  const senders = [transferContract, transferContract];
-  const receivers = [receiverContract1, receiverContract2];
-  const serialNumbers = [serialNumber1, serialNumber2];
+  const accounts = [transferContract, receiverContract1, receiverContract2];
+  const amounts = [-3, 1, 2];
   const rc = await (
-    await transferContract.transferNFTs(
+    await transferContract.transferTokens(
       htsAddress,
       tokenAddress,
-      senders,
-      receivers,
-      serialNumbers,
+      accounts,
+      amounts,
     )
   ).wait();
   console.log(
-    "%s NFT transferNFTs:%s senders:%s receivers:%s serialNumbers:%s",
+    "%s FT transferTokens:%s accounts:%s amounts:%s",
     rc.hash,
     tokenAddress,
-    senders,
-    receivers,
-    serialNumbers,
+    accounts,
+    amounts,
   );
   await validateRcWithErcEvent(rc, responseCode, [
     {
       address: tokenAddress,
       from: transferContract.target,
       to: receiverContract1.target,
-      serial: serialNumber1,
+      amount: 1,
     },
     {
       address: tokenAddress,
       from: transferContract.target,
       to: receiverContract2.target,
-      serial: serialNumber2,
+      amount: 2,
     },
   ]);
 }
@@ -174,33 +214,24 @@ async function cryptoTransferV1Test(
   tokenAddress,
   receiverContract1,
   receiverContract2,
-  serialNumber1,
-  serialNumber2,
   responseCode,
 ) {
   const tokenTransfers = [
     {
       token: tokenAddress,
-      transfers: [],
-      nftTransfers: [
-        {
-          senderAccountID: transferContract,
-          receiverAccountID: receiverContract1,
-          serialNumber: serialNumber1,
-        },
-        {
-          senderAccountID: transferContract,
-          receiverAccountID: receiverContract2,
-          serialNumber: serialNumber2,
-        },
+      transfers: [
+        { accountID: transferContract, amount: -3 },
+        { accountID: receiverContract1, amount: 1 },
+        { accountID: receiverContract2, amount: 2 },
       ],
+      nftTransfers: [],
     },
   ];
   const rc = await (
     await transferContract.cryptoTransferV1(htsAddress, tokenTransfers)
   ).wait();
   console.log(
-    "%s NFT cryptoTransferV1 tokenTransfers:%s",
+    "%s FT cryptoTransferV1 tokenTransfers:%s",
     rc.hash,
     tokenTransfers,
   );
@@ -209,13 +240,13 @@ async function cryptoTransferV1Test(
       address: tokenAddress,
       from: transferContract.target,
       to: receiverContract1.target,
-      serial: serialNumber1,
+      amount: 1,
     },
     {
       address: tokenAddress,
       from: transferContract.target,
       to: receiverContract2.target,
-      serial: serialNumber2,
+      amount: 2,
     },
   ]);
 }
@@ -226,8 +257,6 @@ async function cryptoTransferV2Test(
   tokenAddress,
   receiverContract1,
   receiverContract2,
-  serialNumber1,
-  serialNumber2,
   responseCode,
 ) {
   const transferList = {
@@ -236,21 +265,12 @@ async function cryptoTransferV2Test(
   const tokenTransfers = [
     {
       token: tokenAddress,
-      transfers: [],
-      nftTransfers: [
-        {
-          senderAccountID: transferContract,
-          receiverAccountID: receiverContract1,
-          serialNumber: serialNumber1,
-          isApproval: false,
-        },
-        {
-          senderAccountID: transferContract,
-          receiverAccountID: receiverContract2,
-          serialNumber: serialNumber2,
-          isApproval: false,
-        },
+      transfers: [
+        { accountID: transferContract, amount: -3, isApproval: false },
+        { accountID: receiverContract1, amount: 1, isApproval: false },
+        { accountID: receiverContract2, amount: 2, isApproval: false },
       ],
+      nftTransfers: [],
     },
   ];
   const rc = await (
@@ -261,7 +281,7 @@ async function cryptoTransferV2Test(
     )
   ).wait();
   console.log(
-    "%s NFT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
+    "%s FT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
     rc.hash,
     transferList,
     tokenTransfers,
@@ -271,13 +291,13 @@ async function cryptoTransferV2Test(
       address: tokenAddress,
       from: transferContract.target,
       to: receiverContract1.target,
-      serial: serialNumber1,
+      amount: 1,
     },
     {
       address: tokenAddress,
       from: transferContract.target,
       to: receiverContract2.target,
-      serial: serialNumber2,
+      amount: 2,
     },
   ]);
 }
@@ -287,22 +307,17 @@ async function airdropTokensTest(
   transferContract,
   tokenAddress,
   receiverContract,
-  serialNumber,
   responseCode,
   pendingAirdrops,
 ) {
   const tokenTransfers = [
     {
       token: tokenAddress,
-      transfers: [],
-      nftTransfers: [
-        {
-          senderAccountID: transferContract,
-          receiverAccountID: receiverContract,
-          serialNumber: serialNumber,
-          isApproval: false,
-        },
+      transfers: [
+        { accountID: transferContract, amount: -1, isApproval: false },
+        { accountID: receiverContract, amount: 1, isApproval: false },
       ],
+      nftTransfers: [],
     },
   ];
   const rc = await (
@@ -319,7 +334,7 @@ async function airdropTokensTest(
             address: tokenAddress,
             from: transferContract.target,
             to: receiverContract.target,
-            serial: serialNumber,
+            amount: 1,
           },
         ],
   );
@@ -330,7 +345,6 @@ async function claimAirdropsTest(
   transferContract,
   tokenAddress,
   receiverContract,
-  serialNumber,
   responseCode,
 ) {
   const pendingAirdrops = [
@@ -338,7 +352,7 @@ async function claimAirdropsTest(
       sender: transferContract,
       receiver: receiverContract,
       token: tokenAddress,
-      serial: serialNumber,
+      serial: 0,
     },
   ];
   const rc = await (
@@ -354,103 +368,97 @@ async function claimAirdropsTest(
       address: tokenAddress,
       from: transferContract.target,
       to: receiverContract.target,
-      serial: serialNumber,
+      amount: 1,
     },
   ]);
 }
 
-// ---------------- Tests setup ----------------
-async function erc721EventsTests(htsAddress, runProxyTests, context) {
+/**
+ * ERC 20 events tests. Using this method to reuse tests for different HTS addresses
+ * @param htsAddress address of the HTS contract
+ * @param runProxyTests if we want to run tests with proxy transfers. Because proxy transfers do not use htsAddress,
+ * we do not want to run them for each execution
+ * @param context test context, holding pre-created data
+ * @returns {Promise<void>}
+ */
+async function erc20EventsRelayTests(htsAddress, runProxyTests, context) {
   const displayAddress = htsAddress.replace(/(0)\1+/g, "");
 
   // ---------------- Tests setup ----------------
-
   describe(`Relay: ${displayAddress} positive cases`, async () => {
-    it(`${displayAddress} NFT transferNFT`, async () => {
-      await transferNFTTest(
+    it(`${displayAddress} FT transferToken`, async () => {
+      await transferTokenTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
-        context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
       );
     });
 
-    it(`${displayAddress} NFT transferFromNFT`, async () => {
-      // mint nft token at treasury
-      const serialNumber = (
-        await (
-          await context.treasury.mintTokenPublic(context.nftTokenAddress, 0, [
-            "0x0101",
-          ])
-        ).wait()
-      ).logs.find((e) => e.fragment.name === Constants.Events.MintedToken).args
-        .serialNumbers[0];
-      // approve minted nft transfer from treasury
-      await approveNft(
-        context.treasury,
-        context.nftTokenAddress,
-        context.transferContract,
-        serialNumber,
-      );
-      // transfer from treasury to receiverContract1
-      await transferFromNFTTest(
+    it(`${displayAddress} FT transferFrom`, async () => {
+      await approveFt(context.transferContract, context.ftTokenAddress, 1);
+      await transferFromTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
-        context.treasury,
+        context.ftTokenAddress,
         context.receiverContract1,
-        serialNumber,
         ResponseCodeEnum.SUCCESS,
       );
     });
 
-    it(`${displayAddress} NFT transferFromNft proxy`, async () => {
-      await transferFromNftProxyTest(
-        context.transferContract,
-        context.nftTokenAddress,
-        context.receiverContract1,
-        context.serialNumbers.shift(),
-        ResponseCodeEnum.SUCCESS,
-      );
-    });
+    if (runProxyTests) {
+      it(`${displayAddress} FT transfer proxy`, async () => {
+        await transferFtProxyTest(
+          context.transferContract,
+          context.ftTokenAddress,
+          context.receiverContract1,
+          ResponseCodeEnum.SUCCESS,
+        );
+      });
+    }
 
-    it(`${displayAddress} NFT transferNFTsTest`, async () => {
-      await transferNFTsTest(
+    if (runProxyTests) {
+      it(`${displayAddress} FT transferFrom proxy`, async () => {
+        await approveFt(context.transferContract, context.ftTokenAddress, 1);
+        await transferFromFtProxyTest(
+          context.transferContract,
+          context.ftTokenAddress,
+          context.receiverContract1,
+          ResponseCodeEnum.SUCCESS,
+        );
+      });
+    }
+
+    it(`${displayAddress} FT transferTokens`, async () => {
+      await transferTokensTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverContract2,
-        context.serialNumbers.shift(),
-        context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
       );
     });
 
-    it(`${displayAddress} NFT cryptoTransferV1`, async () => {
+    it(`${displayAddress} FT cryptoTransferV1`, async () => {
       await cryptoTransferV1Test(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverContract2,
-        context.serialNumbers.shift(),
-        context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
       );
     });
 
-    it(`${displayAddress} NFT cryptoTransferV2`, async () => {
+    it(`${displayAddress} FT cryptoTransferV2`, async () => {
       await cryptoTransferV2Test(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverContract2,
-        context.serialNumbers.shift(),
-        context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
       );
     });
@@ -459,9 +467,8 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
       await airdropTokensTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
-        context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
         false,
       );
@@ -469,74 +476,77 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
   });
 
   describe(`Relay: ${displayAddress} negative cases`, async () => {
-    it(`${displayAddress} NFT transferNFT TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await transferNFTTest(
+    it(`${displayAddress} FT transferToken TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+      await transferTokenTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverNotAssociated,
-        context.serialNumbers[0],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
 
-    it(`${displayAddress} NFT transferFromNFT SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
-      await transferFromNFTTest(
+    it(`${displayAddress} FT transferFrom SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
+      await transferFromTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
-        context.transferContract,
+        context.ftTokenAddress,
         context.receiverContract1,
-        context.serialNumbers[0],
         ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
       );
     });
 
-    it(`${displayAddress} NFT transferFromNft proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await transferFromNftProxyTest(
-        context.transferContract,
-        context.nftTokenAddress,
-        context.receiverNotAssociated,
-        context.serialNumbers[0],
-        ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
-      );
-    });
+    if (runProxyTests) {
+      it(`${displayAddress} FT transfer proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+        await transferFtProxyTest(
+          context.transferContract,
+          context.ftTokenAddress,
+          context.receiverNotAssociated,
+          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
+        );
+      });
+    }
 
-    it(`${displayAddress} FT transferTokens proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await transferNFTsTest(
+    if (runProxyTests) {
+      it(`${displayAddress} FT transferFrom proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+        await transferFromFtProxyTest(
+          context.transferContract,
+          context.ftTokenAddress,
+          context.receiverNotAssociated,
+          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
+        );
+      });
+    }
+
+    it(`${displayAddress} FT transferTokens TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+      await transferTokensTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverNotAssociated,
-        context.serialNumbers[0],
-        context.serialNumbers[1],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
 
-    it(`${displayAddress} FT cryptoTransferV1 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+    it(`${displayAddress} FT cryptoTransferV1 TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
       await cryptoTransferV1Test(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverNotAssociated,
-        context.serialNumbers[0],
-        context.serialNumbers[1],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
 
-    it(`${displayAddress} FT cryptoTransferV2 proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+    it(`${displayAddress} FT cryptoTransferV2 TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
       await cryptoTransferV2Test(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverNotAssociated,
-        context.serialNumbers[0],
-        context.serialNumbers[1],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
@@ -546,14 +556,12 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
       const receiver = await contractDeployAndFund(
         Constants.Contract.ErcEventsReceiverContract,
       );
-      const serial = context.serialNumbers.shift();
       // send pending airdrop
       await airdropTokensTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         receiver,
-        serial,
         ResponseCodeEnum.SUCCESS,
         true,
       );
@@ -561,9 +569,8 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
       await claimAirdropsTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         receiver,
-        serial,
         ResponseCodeEnum.SUCCESS,
       );
     });
@@ -571,5 +578,6 @@ async function erc721EventsTests(htsAddress, runProxyTests, context) {
 }
 
 module.exports = {
-  erc721EventsTests,
+  validateRcWithErcEvent,
+  erc20EventsRelayTests,
 };

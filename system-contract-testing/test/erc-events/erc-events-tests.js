@@ -4,9 +4,10 @@ const {
   beforeNftTests,
   afterTests,
 } = require("./erc-events-main");
-const { erc20EventsTests } = require("./erc20");
-const { erc721EventsTests } = require("./erc721");
-const { erc20AndErc721EventsTests } = require("./erc20AndErc721");
+const { erc20EventsRelayTests } = require("./relay/erc20");
+const { erc20EventsSdkTests } = require("./sdk/erc20");
+const { erc721EventsTests } = require("./relay/erc721");
+const { erc20AndErc721EventsTests } = require("./relay/erc20AndErc721");
 const { HTS_ADDRESS, HTS_ADDRESS_V2 } = require("../../utils/constants");
 
 describe("ERC Transfer events", async () => {
@@ -49,12 +50,17 @@ describe("ERC Transfer events", async () => {
 
   describe("ERC20 events", async () => {
     describe("HTS 0x167", async () => {
-      await erc20EventsTests(HTS_ADDRESS, true, context);
+      await erc20EventsRelayTests(HTS_ADDRESS, true, context);
     });
 
     describe("HTS 0x16c", async () => {
-      await erc20EventsTests(HTS_ADDRESS_V2, false, context);
+      await erc20EventsRelayTests(HTS_ADDRESS_V2, false, context);
     });
+
+    // TODO work on SDK
+    // describe("SDK HTS 0x167", async () => {
+    //   await erc20EventsSdkTests(HTS_ADDRESS, true, context);
+    // });
   });
 
   describe("ERC721 events", async () => {

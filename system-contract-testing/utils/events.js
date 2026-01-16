@@ -27,7 +27,6 @@ async function validateResponseCodeEvent(rc, responseCode) {
  * @param expectedEvents array of expected transfer events. Structure {from: "", to: "", amount: 0}
  * @returns {Promise<void>}
  */
-// TODO add token to 'expectedEvent'
 async function validateErcEvent(rc, expectedEvents) {
   const transferEvents = rc.logs.filter(
     (e) => e.topics && e.topics[0] === ERC20_TRANSFER_EVENT_SIGNATURE,

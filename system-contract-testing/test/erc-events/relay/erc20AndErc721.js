@@ -1,7 +1,7 @@
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
 const { validateRcWithErcEvent } = require("./erc20");
-const { contractDeployAndFund } = require("../../utils/contract");
-const Constants = require("../../utils/constants");
+const { contractDeployAndFund } = require("../../../utils/contract");
+const Constants = require("../../../utils/constants");
 
 // ---------------- Test functions ----------------
 async function cryptoTransferV1Test(

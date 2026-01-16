@@ -1,13 +1,34 @@
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
+const { ethers } = require("hardhat");
 const {
   validateResponseCodeEvent,
   validateErcEvent,
-} = require("../../utils/events");
-const { contractDeployAndFund } = require("../../utils/contract");
-const Constants = require("../../utils/constants");
+} = require("../../../utils/events");
+const { contractDeployAndFund } = require("../../../utils/contract");
+const Constants = require("../../../utils/constants");
+const {
+  ContractFunctionParameters,
+  ContractExecuteTransaction,
+  ContractId,
+} = require("@hashgraph/sdk");
 
 // ---------------- Test util functions ----------------
-async function validateRcWithErcEvent(rc, responseCode, expectedEvents) {
+const gas = 1_000_000;
+
+/**
+ * Validate ERC events from SDK client transaction hash
+ *
+ * @param txResponse Hedera SDK client TransactionResponse
+ * @param responseCode HederaResponseCodes to validate
+ * @param expectedEvents ERC event to validate
+ * @returns {Promise<void>}
+ */
+async function validateTxWithErcEvent(txResponse, responseCode, expectedEvents) {
+  const rc = await ethers.provider.waitForTransaction(
+    Buffer.from(txResponse.transactionHash).toString("hex"),
+    1,
+    180000,
+  );
   // check ContractTransactionReceipt has event with correct ResponseCode
   await validateResponseCodeEvent(rc, responseCode.valueOf());
   if (responseCode === ResponseCodeEnum.SUCCESS) {
@@ -28,6 +49,7 @@ async function approveFt(transferContract, tokenAddress, amount) {
 
 // ---------------- Test functions ----------------
 async function transferTokenTest(
+  sdkClient,
   htsAddress,
   transferContract,
   tokenAddress,
@@ -35,24 +57,28 @@ async function transferTokenTest(
   responseCode,
 ) {
   const amount = 1;
-  const rc = await (
-    await transferContract.transferToken(
-      htsAddress,
-      tokenAddress,
-      transferContract,
-      receiverContract,
-      amount,
-    )
-  ).wait();
+  const tx =new ContractExecuteTransaction()
+    .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
+    .setGas(gas)
+    .setFunction(
+      "transferToken",
+      new ContractFunctionParameters()
+        .addAddress(htsAddress)
+        .addAddress(tokenAddress)
+        .addAddress(transferContract.target)
+        .addAddress(receiverContract.target)
+        .addInt64(amount),
+    );
+  const response = await tx.execute(sdkClient);
   console.log(
     "%s transferToken:%s from:%s to:%s amount:%s",
-    rc.hash,
+    tx.hash,
     tokenAddress,
     transferContract.target,
     receiverContract.target,
     amount,
   );
-  await validateRcWithErcEvent(rc, responseCode, [
+  await validateTxWithErcEvent(tx.hash, responseCode, [
     {
       address: tokenAddress,
       from: transferContract.target,
@@ -376,13 +402,14 @@ async function claimAirdropsTest(
  * @param context test context, holding pre-created data
  * @returns {Promise<void>}
  */
-async function erc20EventsTests(htsAddress, runProxyTests, context) {
+async function erc20EventsSdkTests(htsAddress, runProxyTests, context) {
   const displayAddress = htsAddress.replace(/(0)\1+/g, "");
 
   // ---------------- Tests setup ----------------
   describe(`Relay: ${displayAddress} positive cases`, async () => {
     it(`${displayAddress} FT transferToken`, async () => {
       await transferTokenTest(
+        context.sdkClient,
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
@@ -391,7 +418,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${displayAddress} FT transferFrom`, async () => {
+    xit(`${displayAddress} FT transferFrom`, async () => {
       await approveFt(context.transferContract, context.ftTokenAddress, 1);
       await transferFromTest(
         htsAddress,
@@ -403,7 +430,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
     });
 
     if (runProxyTests) {
-      it(`${displayAddress} FT transfer proxy`, async () => {
+      xit(`${displayAddress} FT transfer proxy`, async () => {
         await transferFtProxyTest(
           context.transferContract,
           context.ftTokenAddress,
@@ -414,7 +441,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
     }
 
     if (runProxyTests) {
-      it(`${displayAddress} FT transferFrom proxy`, async () => {
+      xit(`${displayAddress} FT transferFrom proxy`, async () => {
         await approveFt(context.transferContract, context.ftTokenAddress, 1);
         await transferFromFtProxyTest(
           context.transferContract,
@@ -425,7 +452,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       });
     }
 
-    it(`${displayAddress} FT transferTokens`, async () => {
+    xit(`${displayAddress} FT transferTokens`, async () => {
       await transferTokensTest(
         htsAddress,
         context.transferContract,
@@ -436,7 +463,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${displayAddress} FT cryptoTransferV1`, async () => {
+    xit(`${displayAddress} FT cryptoTransferV1`, async () => {
       await cryptoTransferV1Test(
         htsAddress,
         context.transferContract,
@@ -447,7 +474,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${displayAddress} FT cryptoTransferV2`, async () => {
+    xit(`${displayAddress} FT cryptoTransferV2`, async () => {
       await cryptoTransferV2Test(
         htsAddress,
         context.transferContract,
@@ -458,7 +485,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${displayAddress} FT airdropTokens`, async () => {
+    xit(`${displayAddress} FT airdropTokens`, async () => {
       await airdropTokensTest(
         htsAddress,
         context.transferContract,
@@ -471,7 +498,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
   });
 
   describe(`Relay: ${displayAddress} negative cases`, async () => {
-    it(`${displayAddress} FT transferToken TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+    xit(`${displayAddress} FT transferToken TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
       await transferTokenTest(
         htsAddress,
         context.transferContract,
@@ -481,7 +508,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${displayAddress} FT transferFrom SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
+    xit(`${displayAddress} FT transferFrom SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
       await transferFromTest(
         htsAddress,
         context.transferContract,
@@ -492,7 +519,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
     });
 
     if (runProxyTests) {
-      it(`${displayAddress} FT transfer proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+      xit(`${displayAddress} FT transfer proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
         await transferFtProxyTest(
           context.transferContract,
           context.ftTokenAddress,
@@ -503,7 +530,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
     }
 
     if (runProxyTests) {
-      it(`${displayAddress} FT transferFrom proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+      xit(`${displayAddress} FT transferFrom proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
         await transferFromFtProxyTest(
           context.transferContract,
           context.ftTokenAddress,
@@ -513,7 +540,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       });
     }
 
-    it(`${displayAddress} FT transferTokens TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+    xit(`${displayAddress} FT transferTokens TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
       await transferTokensTest(
         htsAddress,
         context.transferContract,
@@ -524,7 +551,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${displayAddress} FT cryptoTransferV1 TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+    xit(`${displayAddress} FT cryptoTransferV1 TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
       await cryptoTransferV1Test(
         htsAddress,
         context.transferContract,
@@ -535,7 +562,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${displayAddress} FT cryptoTransferV2 TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+    xit(`${displayAddress} FT cryptoTransferV2 TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
       await cryptoTransferV2Test(
         htsAddress,
         context.transferContract,
@@ -546,7 +573,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${displayAddress} FT claimAirdrops`, async () => {
+    xit(`${displayAddress} FT claimAirdrops`, async () => {
       // not associated receiver for pending aidrop
       const receiver = await contractDeployAndFund(
         Constants.Contract.ErcEventsReceiverContract,
@@ -573,6 +600,6 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
 }
 
 module.exports = {
-  validateRcWithErcEvent,
-  erc20EventsTests,
+  validateTxWithErcEvent,
+  erc20EventsSdkTests,
 };
