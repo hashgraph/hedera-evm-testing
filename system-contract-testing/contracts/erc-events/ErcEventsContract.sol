@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 contract ErcEventsContract {
 
     address constant HTS = address(0x167);
-    TokenCreateContract public createContract = new TokenCreateContract();
 
     receive() external payable {}
 
@@ -23,25 +22,25 @@ contract ErcEventsContract {
     event RevertReason(bytes message);
 
     // ----------------------------- Tokens -----------------------------
-    function createFungibleTokenWithoutKYCPublic() public payable returns (address tokenAddress) {
-        tokenAddress = createContract.createFungibleTokenWithoutKYCPublic{value: msg.value}(address(createContract));
+    function createFungibleTokenWithoutKYCPublic(address tokenContract) public payable returns (address tokenAddress) {
+        tokenAddress = TokenCreateContract(tokenContract).createFungibleTokenWithoutKYCPublic{value: msg.value}(address(tokenContract));
         IHederaTokenService(HTS).associateToken(address(this), tokenAddress);
-        createContract.transferTokenPublic(tokenAddress, address(this), 1000);
+        TokenCreateContract(tokenContract).transferTokenPublic(tokenAddress, address(this), 1000);
         emit CreatedToken(tokenAddress);
         return tokenAddress;
     }
 
-    function createNonFungibleTokenWithoutKYCPublic() public payable returns (address tokenAddress) {
-        tokenAddress = createContract.createNonFungibleTokenWithoutKYCPublic{value: msg.value}(address(createContract));
+    function createNonFungibleTokenWithoutKYCPublic(address tokenContract) public payable returns (address tokenAddress) {
+        tokenAddress = TokenCreateContract(tokenContract).createNonFungibleTokenWithoutKYCPublic{value: msg.value}(address(tokenContract));
         IHederaTokenService(HTS).associateToken(address(this), tokenAddress);
         emit CreatedToken(tokenAddress);
         return tokenAddress;
     }
 
-    function mintTokenPublic(address token, int64 amount, bytes[] memory metadata)
+    function mintTokenPublic(address tokenContract, address token, int64 amount, bytes[] memory metadata)
     public returns (int responseCode, int64 newTotalSupply, int64[] memory serialNumbers) {
         (responseCode, newTotalSupply, serialNumbers)
-            = createContract.mintTokenToAddressPublic(token, amount, metadata, address(this));
+            = TokenCreateContract(tokenContract).mintTokenToAddressPublic(token, amount, metadata, address(this));
         emit MintedToken(newTotalSupply, serialNumbers);
     }
 

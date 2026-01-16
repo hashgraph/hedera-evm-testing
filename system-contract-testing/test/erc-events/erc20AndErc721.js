@@ -1,5 +1,6 @@
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
 const { validateRcWithErcEvent } = require("./erc20");
+const { contractDeployAndFund } = require("../../utils/contract");
 const Constants = require("../../utils/constants");
 
 // ---------------- Test functions ----------------
@@ -62,8 +63,7 @@ async function cryptoTransferV2Test(
   transferContract,
   ftTokenAddress,
   nftTokenAddress,
-  ftReceiverContract,
-  nftReceiverContract,
+  receiverContract,
   serialNumber,
   responseCode,
 ) {
@@ -75,7 +75,7 @@ async function cryptoTransferV2Test(
       token: ftTokenAddress,
       transfers: [
         { accountID: transferContract, amount: -1, isApproval: false },
-        { accountID: ftReceiverContract, amount: 1, isApproval: false },
+        { accountID: receiverContract, amount: 1, isApproval: false },
       ],
       nftTransfers: [],
     },
@@ -85,7 +85,7 @@ async function cryptoTransferV2Test(
       nftTransfers: [
         {
           senderAccountID: transferContract.target,
-          receiverAccountID: nftReceiverContract.target,
+          receiverAccountID: receiverContract.target,
           serialNumber: serialNumber,
           isApproval: false,
         },
@@ -109,13 +109,13 @@ async function cryptoTransferV2Test(
     {
       address: ftTokenAddress,
       from: transferContract.target,
-      to: ftReceiverContract.target,
+      to: receiverContract.target,
       amount: 1,
     },
     {
       address: nftTokenAddress,
       from: transferContract.target,
-      to: nftReceiverContract.target,
+      to: receiverContract.target,
       serial: serialNumber,
     },
   ]);
@@ -129,6 +129,7 @@ async function airdropTokensTest(
   receiverContract,
   serialNumber,
   responseCode,
+  pendingAirdrops,
 ) {
   const tokenTransfers = [
     {
@@ -160,20 +161,26 @@ async function airdropTokensTest(
     rc.hash,
     tokenTransfers,
   );
-  await validateRcWithErcEvent(rc, responseCode, [
-    {
-      address: ftTokenAddress,
-      from: transferContract.target,
-      to: receiverContract.target,
-      amount: 1,
-    },
-    {
-      address: nftTokenAddress,
-      from: transferContract.target,
-      to: receiverContract.target,
-      serial: serialNumber,
-    },
-  ]);
+  await validateRcWithErcEvent(
+    rc,
+    responseCode,
+    pendingAirdrops
+      ? []
+      : [
+          {
+            address: ftTokenAddress,
+            from: transferContract.target,
+            to: receiverContract.target,
+            amount: 1,
+          },
+          {
+            address: nftTokenAddress,
+            from: transferContract.target,
+            to: receiverContract.target,
+            serial: serialNumber,
+          },
+        ],
+  );
 }
 
 async function claimAirdropsTest(
@@ -190,6 +197,7 @@ async function claimAirdropsTest(
       sender: transferContract,
       receiver: receiverContract,
       token: ftTokenAddress,
+      serial: 0,
     },
     {
       sender: transferContract,
@@ -199,7 +207,7 @@ async function claimAirdropsTest(
     },
   ];
   const rc = await (
-    await transferContract.claimAirdrops(htsAddress, pendingAirdrops)
+    await receiverContract.claimAirdrops(htsAddress, pendingAirdrops)
   ).wait();
   console.log(
     "%s FT/NFT claimAirdrops pendingAirdrops:%s",
@@ -250,7 +258,6 @@ async function erc20AndErc721EventsTests(htsAddress, context) {
     );
   });
 
-  // TODO
   it(`${displayAddress} FT/NFT airdropTokens`, async () => {
     await airdropTokensTest(
       htsAddress,
@@ -262,8 +269,7 @@ async function erc20AndErc721EventsTests(htsAddress, context) {
       ResponseCodeEnum.SUCCESS,
     );
   });
-
-  // TODO
+  
   it(`${displayAddress} FT/NFT claimAirdrops`, async () => {
     // not associated receiver for pending airdrop
     const receiver = await contractDeployAndFund(
@@ -279,6 +285,7 @@ async function erc20AndErc721EventsTests(htsAddress, context) {
       receiver,
       serial,
       ResponseCodeEnum.SUCCESS,
+      true,
     );
     // claim pending airdrop
     await claimAirdropsTest(

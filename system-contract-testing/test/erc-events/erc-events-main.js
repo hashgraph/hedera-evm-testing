@@ -5,12 +5,16 @@ const Constants = require("../../utils/constants");
 async function beforeTests(receivers) {
   const sdkClient = await createSDKClient();
   // create test 'transferContract'
+  const tokenContract = await contractDeployAndFund(
+    Constants.Contract.TokenCreateContract,
+  );
+  // create test 'transferContract'
   const transferContract = await contractDeployAndFund(
     Constants.Contract.ErcEventsContract,
     0,
     10, // TODO do we need funding?
   );
-  const retval = [sdkClient, transferContract];
+  const retval = [sdkClient, tokenContract, transferContract];
   // create receiverContracts
   for (let i = 0; i < receivers; i++) {
     retval.push(
@@ -21,13 +25,14 @@ async function beforeTests(receivers) {
 }
 
 async function beforeFtTests(
+  tokenContract,
   transferContract,
   receiverContract1,
   receiverContract2,
 ) {
   // create test FT token with 'tokenContract' as a 'treasury'
   const rc = await (
-    await transferContract.createFungibleTokenWithoutKYCPublic({
+    await transferContract.createFungibleTokenWithoutKYCPublic(tokenContract, {
       value: Constants.Cost.CREATE_TOKEN_COST,
     })
   ).wait();
@@ -46,6 +51,7 @@ async function beforeFtTests(
 }
 
 async function beforeNftTests(
+  tokenContract,
   transferContract,
   mintAmount,
   receiverContract1,
@@ -53,9 +59,12 @@ async function beforeNftTests(
 ) {
   // create test NFT token with 'tokenContract' as a 'treasury'
   const rc = await (
-    await transferContract.createNonFungibleTokenWithoutKYCPublic({
-      value: Constants.Cost.CREATE_TOKEN_COST,
-    })
+    await transferContract.createNonFungibleTokenWithoutKYCPublic(
+      tokenContract,
+      {
+        value: Constants.Cost.CREATE_TOKEN_COST,
+      },
+    )
   ).wait();
   const tokenAddress = rc.logs.find(
     (e) => e.fragment.name === Constants.Events.CreatedToken,
@@ -68,12 +77,17 @@ async function beforeNftTests(
       .keys()
       .map((e) => `0x${e.toString(16).padStart(2, "0")}`),
   );
-  const singleMintSize = 10;
+  const singleMintSize = 10; // 10 is max for a single call
   for (let i = 0; i < metadata.length; i += singleMintSize) {
     const requestMetadata = metadata.slice(i, i + singleMintSize);
     const serialNumbersObject = (
       await (
-        await transferContract.mintTokenPublic(tokenAddress, 0, requestMetadata)
+        await transferContract.mintTokenPublic(
+          tokenContract,
+          tokenAddress,
+          0,
+          requestMetadata,
+        )
       ).wait()
     ).logs.find((e) => e.fragment.name === Constants.Events.MintedToken).args
       .serialNumbers;

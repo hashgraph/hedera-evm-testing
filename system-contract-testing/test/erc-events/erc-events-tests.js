@@ -22,17 +22,20 @@ describe("ERC Transfer events", async () => {
   before(async () => {
     [
       context.sdkClient,
+      context.treasury,
       context.transferContract,
       context.receiverContract1,
       context.receiverContract2,
       context.receiverNotAssociated,
     ] = await beforeTests(3);
     context.ftTokenAddress = await beforeFtTests(
+      context.treasury,
       context.transferContract,
       context.receiverContract1,
       context.receiverContract2,
     );
     [context.nftTokenAddress, context.serialNumbers] = await beforeNftTests(
+      context.treasury,
       context.transferContract,
       50,
       context.receiverContract1,
@@ -64,7 +67,6 @@ describe("ERC Transfer events", async () => {
     });
   });
 
-  //TODO finish
   describe("ERC20/ERC721 events", async () => {
     describe("HTS 0x167", async () => {
       await erc20AndErc721EventsTests(HTS_ADDRESS,  context);

@@ -3,7 +3,7 @@ const {
   validateResponseCodeEvent,
   validateErcEvent,
 } = require("../../utils/events");
-const {contractDeployAndFund} = require("../../utils/contract");
+const { contractDeployAndFund } = require("../../utils/contract");
 const Constants = require("../../utils/constants");
 
 // ---------------- Test util functions ----------------
@@ -303,6 +303,7 @@ async function airdropTokensTest(
   tokenAddress,
   receiverContract,
   responseCode,
+  pendingAirdrops,
 ) {
   const tokenTransfers = [
     {
@@ -318,14 +319,20 @@ async function airdropTokensTest(
     await transferContract.airdropTokens(htsAddress, tokenTransfers)
   ).wait();
   console.log("%s FT airdropTokens tokenTransfers:%s", rc.hash, tokenTransfers);
-  await validateRcWithErcEvent(rc, responseCode, [
-    {
-      address: tokenAddress,
-      from: transferContract.target,
-      to: receiverContract.target,
-      amount: 1,
-    }
-  ]);
+  await validateRcWithErcEvent(
+    rc,
+    responseCode,
+    pendingAirdrops
+      ? []
+      : [
+          {
+            address: tokenAddress,
+            from: transferContract.target,
+            to: receiverContract.target,
+            amount: 1,
+          },
+        ],
+  );
 }
 
 async function claimAirdropsTest(
@@ -458,6 +465,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
         context.ftTokenAddress,
         context.receiverContract1,
         ResponseCodeEnum.SUCCESS,
+        false,
       );
     });
   });
@@ -538,10 +546,11 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
       );
     });
 
-    //TODO finish
     it(`${displayAddress} FT claimAirdrops`, async () => {
       // not associated receiver for pending aidrop
-      const receiver = await contractDeployAndFund(Constants.Contract.ErcEventsReceiverContract);
+      const receiver = await contractDeployAndFund(
+        Constants.Contract.ErcEventsReceiverContract,
+      );
       // send pending airdrop
       await airdropTokensTest(
         htsAddress,
@@ -549,6 +558,7 @@ async function erc20EventsTests(htsAddress, runProxyTests, context) {
         context.ftTokenAddress,
         receiver,
         ResponseCodeEnum.SUCCESS,
+        true,
       );
       // claim pending airdrop
       await claimAirdropsTest(
