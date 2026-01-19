@@ -211,7 +211,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       await client.close();
 
       // create a wallet with a different private key (not the admin key)
-      // Use signers[1]'s private key which is different from signers[0]
+      // Use signers[2]'s private key which is different from signers[0]
       const invalidPrivateKey = Utils.getHardhatSignerPrivateKeyByIndex(2);
       const invalidWallet = new ethers.Wallet(
         invalidPrivateKey,
