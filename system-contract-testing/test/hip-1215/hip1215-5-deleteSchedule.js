@@ -144,7 +144,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       expect(infoAfter.deleted).to.be.true;
     });
 
-    xit("should delete schedule through proxy", async () => {
+    it("should delete schedule through proxy", async () => {
       // create schedule
       const createTx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
@@ -189,6 +189,56 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         deleteTx,
         ResponseCodeEnum.INVALID_SCHEDULE_ID.valueOf()
       );
+    });
+
+    it("should fail with wrong schedule admin key", async () => {
+      const client = await Utils.createSDKClient();
+      const key = PrivateKey.fromStringECDSA(
+        Utils.getHardhatSignerPrivateKeyByIndex(0)
+      );
+      const txn = await new ScheduleCreateTransaction()
+        .setScheduledTransaction(
+          new TransferTransaction()
+            .addHbarTransfer(await signers[0].getAddress(), new Hbar(-1))
+            .addHbarTransfer(await signers[1].getAddress(), new Hbar(1))
+        )
+        .setAdminKey(key.publicKey)
+        .setWaitForExpiry(true)
+        .setExpirationTime(new Timestamp(Date.now() / 1000 + 500))
+        .execute(client);
+      const receipt = await txn.getReceipt(client);
+      const scheduleAddress = await receipt.scheduleId.toSolidityAddress();
+      await client.close();
+
+      // create a wallet with a different private key (not the admin key)
+      // Use signers[1]'s private key which is different from signers[0]
+      const invalidPrivateKey = Utils.getHardhatSignerPrivateKeyByIndex(2);
+      const invalidWallet = new ethers.Wallet(
+        invalidPrivateKey,
+        ethers.provider
+      );
+
+      // create contract instance with the invalid key wallet
+      const hip1215WithInvalidKey = await ethers.getContractAt(
+        "HIP1215Contract",
+        await hip1215.getAddress(),
+        invalidWallet
+      );
+
+      // attempt to delete schedule with invalid key - should fail
+      const deleteTx = await hip1215WithInvalidKey.deleteSchedule(
+        "0x" + scheduleAddress
+      );
+      await testResponseCodeEvent(
+        deleteTx,
+        ResponseCodeEnum.INVALID_SIGNATURE.valueOf()
+      );
+
+      // verify schedule is NOT deleted (still exists)
+      const scheduleInfo = await getScheduleInfoFromMN(
+        Utils.convertAccountIdToLongZeroAddress(scheduleAddress, true)
+      );
+      expect(scheduleInfo.deleted).to.be.false;
     });
   });
 });
