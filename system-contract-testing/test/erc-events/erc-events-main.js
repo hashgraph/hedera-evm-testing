@@ -1,9 +1,7 @@
-const { createSDKClient } = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
 const Constants = require("../../utils/constants");
 
 async function beforeTests(receivers) {
-  const sdkClient = await createSDKClient();
   // create test 'transferContract'
   const tokenContract = await contractDeployAndFund(
     Constants.Contract.TokenCreateContract,
@@ -11,9 +9,9 @@ async function beforeTests(receivers) {
   // create test 'transferContract'
   const transferContract = await contractDeployAndFund(
     Constants.Contract.ErcEventsContract,
-    10,
+    20,
   );
-  const retval = [sdkClient, tokenContract, transferContract];
+  const retval = [tokenContract, transferContract];
   // create receiverContracts
   for (let i = 0; i < receivers; i++) {
     retval.push(
@@ -118,17 +116,9 @@ async function mintForNftTests(
   return serialNumbers;
 }
 
-async function afterTests(sdkClient) {
-  if (sdkClient != null) {
-    console.log("Closing client...");
-    sdkClient.close();
-  }
-}
-
 module.exports = {
   beforeTests,
   beforeFtTests,
   beforeNftTests,
   mintForNftTests,
-  afterTests,
 };

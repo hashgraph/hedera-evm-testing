@@ -173,7 +173,11 @@ class Erc20RelayTestsImpl {
     receiverContract2,
     responseCode,
   ) {
-    const accounts = [transferContract, receiverContract1, receiverContract2];
+    const accounts = [
+      transferContract.target,
+      receiverContract1.target,
+      receiverContract2.target,
+    ];
     const amounts = [-3, 1, 2];
     const rc = await (
       await transferContract.transferTokens(
@@ -218,9 +222,9 @@ class Erc20RelayTestsImpl {
       {
         token: tokenAddress,
         transfers: [
-          { accountID: transferContract, amount: -3 },
-          { accountID: receiverContract1, amount: 1 },
-          { accountID: receiverContract2, amount: 2 },
+          { accountID: transferContract.target, amount: -3 },
+          { accountID: receiverContract1.target, amount: 1 },
+          { accountID: receiverContract2.target, amount: 2 },
         ],
         nftTransfers: [],
       },
@@ -264,9 +268,9 @@ class Erc20RelayTestsImpl {
       {
         token: tokenAddress,
         transfers: [
-          { accountID: transferContract, amount: -3, isApproval: false },
-          { accountID: receiverContract1, amount: 1, isApproval: false },
-          { accountID: receiverContract2, amount: 2, isApproval: false },
+          { accountID: transferContract.target, amount: -3, isApproval: false },
+          { accountID: receiverContract1.target, amount: 1, isApproval: false },
+          { accountID: receiverContract2.target, amount: 2, isApproval: false },
         ],
         nftTransfers: [],
       },
@@ -312,8 +316,8 @@ class Erc20RelayTestsImpl {
       {
         token: tokenAddress,
         transfers: [
-          { accountID: transferContract, amount: -1, isApproval: false },
-          { accountID: receiverContract, amount: 1, isApproval: false },
+          { accountID: transferContract.target, amount: -1, isApproval: false },
+          { accountID: receiverContract.target, amount: 1, isApproval: false },
         ],
         nftTransfers: [],
       },
@@ -351,8 +355,8 @@ class Erc20RelayTestsImpl {
   ) {
     const pendingAirdrops = [
       {
-        sender: transferContract,
-        receiver: receiverContract,
+        sender: transferContract.target,
+        receiver: receiverContract.target,
         token: tokenAddress,
         serial: 0,
       },

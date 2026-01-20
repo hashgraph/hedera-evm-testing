@@ -134,8 +134,8 @@ class Erc721RelayTestsImpl {
     serialNumber2,
     responseCode,
   ) {
-    const senders = [transferContract, transferContract];
-    const receivers = [receiverContract1, receiverContract2];
+    const senders = [transferContract.target, transferContract.target];
+    const receivers = [receiverContract1.target, receiverContract2.target];
     const serialNumbers = [serialNumber1, serialNumber2];
     const rc = await (
       await transferContract.transferNFTs(
@@ -186,13 +186,13 @@ class Erc721RelayTestsImpl {
         transfers: [],
         nftTransfers: [
           {
-            senderAccountID: transferContract,
-            receiverAccountID: receiverContract1,
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract1.target,
             serialNumber: serialNumber1,
           },
           {
-            senderAccountID: transferContract,
-            receiverAccountID: receiverContract2,
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract2.target,
             serialNumber: serialNumber2,
           },
         ],
@@ -241,14 +241,14 @@ class Erc721RelayTestsImpl {
         transfers: [],
         nftTransfers: [
           {
-            senderAccountID: transferContract,
-            receiverAccountID: receiverContract1,
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract1.target,
             serialNumber: serialNumber1,
             isApproval: false,
           },
           {
-            senderAccountID: transferContract,
-            receiverAccountID: receiverContract2,
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract2.target,
             serialNumber: serialNumber2,
             isApproval: false,
           },
@@ -299,8 +299,8 @@ class Erc721RelayTestsImpl {
         transfers: [],
         nftTransfers: [
           {
-            senderAccountID: transferContract,
-            receiverAccountID: receiverContract,
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract.target,
             serialNumber: serialNumber,
             isApproval: false,
           },
@@ -341,8 +341,8 @@ class Erc721RelayTestsImpl {
   ) {
     const pendingAirdrops = [
       {
-        sender: transferContract,
-        receiver: receiverContract,
+        sender: transferContract.target,
+        receiver: receiverContract.target,
         token: tokenAddress,
         serial: serialNumber,
       },

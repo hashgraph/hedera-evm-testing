@@ -19,8 +19,8 @@ class Erc20Erc721RelayTestsImpl {
       {
         token: ftTokenAddress,
         transfers: [
-          { accountID: transferContract, amount: -1 },
-          { accountID: receiverContract, amount: 1 },
+          { accountID: transferContract.target, amount: -1 },
+          { accountID: receiverContract.target, amount: 1 },
         ],
         nftTransfers: [],
       },
@@ -29,8 +29,8 @@ class Erc20Erc721RelayTestsImpl {
         transfers: [],
         nftTransfers: [
           {
-            senderAccountID: transferContract,
-            receiverAccountID: receiverContract,
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract.target,
             serialNumber: serialNumber,
           },
         ],
@@ -76,8 +76,8 @@ class Erc20Erc721RelayTestsImpl {
       {
         token: ftTokenAddress,
         transfers: [
-          { accountID: transferContract, amount: -1, isApproval: false },
-          { accountID: receiverContract, amount: 1, isApproval: false },
+          { accountID: transferContract.target, amount: -1, isApproval: false },
+          { accountID: receiverContract.target, amount: 1, isApproval: false },
         ],
         nftTransfers: [],
       },
@@ -137,8 +137,8 @@ class Erc20Erc721RelayTestsImpl {
       {
         token: ftTokenAddress,
         transfers: [
-          { accountID: transferContract, amount: -1, isApproval: false },
-          { accountID: receiverContract, amount: 1, isApproval: false },
+          { accountID: transferContract.target, amount: -1, isApproval: false },
+          { accountID: receiverContract.target, amount: 1, isApproval: false },
         ],
         nftTransfers: [],
       },
@@ -147,8 +147,8 @@ class Erc20Erc721RelayTestsImpl {
         transfers: [],
         nftTransfers: [
           {
-            senderAccountID: transferContract,
-            receiverAccountID: receiverContract,
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract.target,
             serialNumber: serialNumber,
             isApproval: false,
           },
@@ -196,14 +196,14 @@ class Erc20Erc721RelayTestsImpl {
   ) {
     const pendingAirdrops = [
       {
-        sender: transferContract,
-        receiver: receiverContract,
+        sender: transferContract.target,
+        receiver: receiverContract.target,
         token: ftTokenAddress,
         serial: 0,
       },
       {
-        sender: transferContract,
-        receiver: receiverContract,
+        sender: transferContract.target,
+        receiver: receiverContract.target,
         token: nftTokenAddress,
         serial: serialNumber,
       },
