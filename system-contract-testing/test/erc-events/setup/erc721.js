@@ -33,6 +33,7 @@ async function erc721EventsTests(
     });
 
     it(`${testsImpl.engine()}: ${displayAddress} NFT transferFromNFT`, async () => {
+      // We are minting separate token at treasury because we cant self-approve NFT
       // mint nft token at treasury
       const serialNumber = (
         await (

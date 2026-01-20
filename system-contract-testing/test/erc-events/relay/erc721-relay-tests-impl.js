@@ -9,7 +9,7 @@ async function approveNft(treasury, tokenAddress, sender, serialNumber) {
     "%s approveNftPublic:%s sender:%s serialNumber:%s",
     rc.hash,
     tokenAddress,
-    sender,
+    sender.target,
     serialNumber,
   );
 }

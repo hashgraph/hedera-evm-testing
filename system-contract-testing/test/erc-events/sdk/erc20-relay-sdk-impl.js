@@ -9,58 +9,66 @@ const {
 const { Interface } = require("@ethersproject/abi");
 const { readFileSync } = require("node:fs");
 
+/**
+ * Helper function to encode function name and parameters that can be used to invoke a contract's function
+ * @param abiInterface ABI of the contract for this functionName
+ * @param functionName the name of the function to invoke
+ * @param parameterArray an array of parameters to pass to the function
+ */
+function encodeFunctionParameters(abiInterface, functionName, parameterArray) {
+  // build the call parameters using ethers.js
+  // .slice(2) to remove leading '0x'
+  const functionCallAsHexString = abiInterface
+    .encodeFunctionData(functionName, parameterArray)
+    .slice(2);
+  // convert to a Uint8Array
+  return Buffer.from(functionCallAsHexString, `hex`);
+}
+
+/**
+ * Getting ether receipt object from Hedera SDK TransactionResponse object. This is used to reuse ERC events validation logic
+ * @param response Hedera SDK TransactionResponse
+ * @returns {Promise<*|undefined>}
+ */
+async function getReceiptFromSdkTxResponse(response) {
+  let txHash = "0x" + Buffer.from(response.transactionHash).toString("hex");
+  if (txHash.length > 66) {
+    txHash = txHash.slice(0, 66); // cut up to '0x' + 32 bytes to EVM eth tx hash
+  }
+  return await Async.waitForCondition(
+    "getTransactionReceipt",
+    () => ethers.provider.getTransactionReceipt(txHash),
+    (result) => result != null,
+    1000,
+    60,
+  );
+}
+
 class Erc20SdkTestsImpl {
-  constructor(sdkClient) {
-    this.sdkClient = sdkClient;
+  constructor(context) {
+    this.context = context;
     this.gas = 1_000_000;
+    // Import the ABI
+    this.abi = JSON.parse(
+      readFileSync(
+        "./abi/contracts/erc-events/ErcEventsContract.sol/ErcEventsContract.json",
+        "utf8",
+      ),
+    );
+    // Setup an ethers.js interface using the abi
+    this.abiInterface = new Interface(this.abi);
   }
 
-  // Import the ABI
-  static abi = JSON.parse(
-    readFileSync(
-      "./abi/contracts/erc-events/ErcEventsContract.sol/ErcEventsContract.json",
-      "utf8",
-    ),
-  );
-  // Setup an ethers.js interface using the abi
-  static abiInterface = new Interface(this.abi);
+  /**
+   * Using this method because on instantiation time, context.sdkClient = undefined. And context.sdkClient is instantiated on tests execution time
+   * @returns {any} Hedera sdkClient
+   */
+  sdkClient() {
+    return this.context.sdkClient;
+  }
 
   engine() {
     return "SDK";
-  }
-
-  /**
-   * Helper function to encode function name and parameters that can be used to invoke a contract's function
-   * @param functionName the name of the function to invoke
-   * @param parameterArray an array of parameters to pass to the function
-   */
-  static encodeFunctionParameters(functionName, parameterArray) {
-    // build the call parameters using ethers.js
-    // .slice(2) to remove leading '0x'
-    const functionCallAsHexString = abiInterface
-      .encodeFunctionData(functionName, parameterArray)
-      .slice(2);
-    // convert to a Uint8Array
-    return Buffer.from(functionCallAsHexString, `hex`);
-  }
-
-  /**
-   * Getting ether receipt object from Hedera SDK TransactionResponse object. This is used to reuse ERC events validation logic
-   * @param response Hedera SDK TransactionResponse
-   * @returns {Promise<*|undefined>}
-   */
-  static async getReceiptFromSdkTxResponse(response) {
-    let txHash = "0x" + Buffer.from(response.transactionHash).toString("hex");
-    if (txHash.length > 66) {
-      txHash = txHash.slice(0, 66); // cut up to '0x' + 32 bytes to EVM eth tx hash
-    }
-    return await Async.waitForCondition(
-      "getTransactionReceipt",
-      () => ethers.provider.getTransactionReceipt(txHash),
-      (result) => result != null,
-      1000,
-      60,
-    );
   }
 
   // ---------------- Test functions ----------------
@@ -84,8 +92,8 @@ class Erc20SdkTestsImpl {
           .addAddress(receiverContract.target)
           .addInt64(amount),
       );
-    const response = await tx.execute(this.sdkClient);
-    const rc = await this.getReceiptFromSdkTxResponse(response);
+    const response = await tx.execute(this.sdkClient());
+    const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s transferToken:%s from:%s to:%s amount:%s",
       rc.hash,
@@ -124,8 +132,8 @@ class Erc20SdkTestsImpl {
           .addAddress(receiverContract.target)
           .addInt64(amount),
       );
-    const response = await tx.execute(this.sdkClient);
-    const rc = await this.getReceiptFromSdkTxResponse(response);
+    const response = await tx.execute(this.sdkClient());
+    const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s transferFrom:%s from:%s to:%s amount:%s",
       rc.hash,
@@ -161,8 +169,8 @@ class Erc20SdkTestsImpl {
           .addAddress(receiverContract.target)
           .addInt64(amount),
       );
-    const response = await tx.execute(this.sdkClient);
-    const rc = await this.getReceiptFromSdkTxResponse(response);
+    const response = await tx.execute(this.sdkClient());
+    const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT transfer proxy:%s from:%s to:%s amount:%s",
       rc.hash,
@@ -199,8 +207,8 @@ class Erc20SdkTestsImpl {
           .addAddress(receiverContract.target)
           .addInt64(amount),
       );
-    const response = await tx.execute(this.sdkClient);
-    const rc = await this.getReceiptFromSdkTxResponse(response);
+    const response = await tx.execute(this.sdkClient());
+    const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT transferFrom proxy:%s from:%s to:%s amount:%s",
       rc.hash,
@@ -244,8 +252,8 @@ class Erc20SdkTestsImpl {
           .addAddressArray(accounts)
           .addInt64Array(accounts),
       );
-    const response = await tx.execute(this.sdkClient);
-    const rc = await this.getReceiptFromSdkTxResponse(response);
+    const response = await tx.execute(this.sdkClient());
+    const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT transferTokens:%s accounts:%s amounts:%s",
       rc.hash,
@@ -292,13 +300,13 @@ class Erc20SdkTestsImpl {
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
       .setFunctionParameters(
-        this.encodeFunctionParameters("cryptoTransferV1", [
+        encodeFunctionParameters(this.abiInterface, "cryptoTransferV1", [
           htsAddress,
           tokenTransfers,
         ]),
       );
-    const response = await tx.execute(this.sdkClient);
-    const rc = await this.getReceiptFromSdkTxResponse(response);
+    const response = await tx.execute(this.sdkClient());
+    const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT cryptoTransferV1 tokenTransfers:%s",
       rc.hash,
@@ -346,14 +354,14 @@ class Erc20SdkTestsImpl {
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
       .setFunctionParameters(
-        this.encodeFunctionParameters("cryptoTransferV2", [
+        encodeFunctionParameters(this.abiInterface, "cryptoTransferV2", [
           htsAddress,
           transferList,
           tokenTransfers,
         ]),
       );
-    const response = await tx.execute(this.sdkClient);
-    const rc = await this.getReceiptFromSdkTxResponse(response);
+    const response = await tx.execute(this.sdkClient());
+    const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
       rc.hash,
@@ -398,10 +406,13 @@ class Erc20SdkTestsImpl {
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
       .setFunctionParameters(
-        this.encodeFunctionParameters("airdropTokens", [htsAddress, tokenTransfers]),
+        encodeFunctionParameters(this.abiInterface, "airdropTokens", [
+          htsAddress,
+          tokenTransfers,
+        ]),
       );
-    const response = await tx.execute(this.sdkClient);
-    const rc = await this.getReceiptFromSdkTxResponse(response);
+    const response = await tx.execute(this.sdkClient());
+    const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT airdropTokens tokenTransfers:%s",
       rc.hash,
@@ -442,13 +453,13 @@ class Erc20SdkTestsImpl {
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
       .setFunctionParameters(
-        this.encodeFunctionParameters("claimAirdrops", [
+        encodeFunctionParameters(this.abiInterface, "claimAirdrops", [
           htsAddress,
           pendingAirdrops,
         ]),
       );
-    const response = await tx.execute(this.sdkClient);
-    const rc = await this.getReceiptFromSdkTxResponse(response);
+    const response = await tx.execute(this.sdkClient());
+    const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT claimAirdrops pendingAirdrops:%s",
       rc.hash,
@@ -466,5 +477,7 @@ class Erc20SdkTestsImpl {
 }
 
 module.exports = {
+  encodeFunctionParameters,
+  getReceiptFromSdkTxResponse,
   Erc20SdkTestsImpl,
 };

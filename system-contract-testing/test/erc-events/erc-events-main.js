@@ -52,7 +52,6 @@ async function beforeFtTests(
 async function beforeNftTests(
   tokenContract,
   transferContract,
-  mintAmount,
   receiverContract1,
   receiverContract2,
 ) {
@@ -68,7 +67,23 @@ async function beforeNftTests(
   const tokenAddress = rc.logs.find(
     (e) => e.fragment.name === Constants.Events.CreatedToken,
   ).args.tokenAddress;
+  console.log(
+    "Create token:%s treasury:%s",
+    tokenAddress,
+    transferContract.target,
+  );
+  // associated for receiverContracts
+  await (await receiverContract1.associateToken(tokenAddress)).wait();
+  await (await receiverContract2.associateToken(tokenAddress)).wait();
+  return tokenAddress;
+}
 
+async function mintForNftTests(
+  tokenContract,
+  transferContract,
+  tokenAddress,
+  mintAmount,
+) {
   // mint NFTs
   let serialNumbers = [];
   const metadata = Array.from(
@@ -95,15 +110,12 @@ async function beforeNftTests(
     );
   }
   console.log(
-    "Create token:%s treasury:%s serialNumbers:%s",
+    "Mint token:%s treasury:%s serialNumbers:%s",
     tokenAddress,
     transferContract.target,
     serialNumbers,
   );
-  // associated for receiverContracts
-  await (await receiverContract1.associateToken(tokenAddress)).wait();
-  await (await receiverContract2.associateToken(tokenAddress)).wait();
-  return [tokenAddress, serialNumbers];
+  return serialNumbers;
 }
 
 async function afterTests(sdkClient) {
@@ -117,5 +129,6 @@ module.exports = {
   beforeTests,
   beforeFtTests,
   beforeNftTests,
+  mintForNftTests,
   afterTests,
 };

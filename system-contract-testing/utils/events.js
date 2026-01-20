@@ -19,7 +19,7 @@ async function validateResponseCodeEvent(rc, responseCode) {
     (e) => e.fragment && e.fragment.name === Events.ResponseCode,
   );
   if (log) {
-    // if log is recognized as EventLog by hardhat //TODO test
+    // if log is recognized as EventLog by hardhat
     expect(log).to.not.be.undefined;
     expect(log.args[0]).to.equal(responseCode);
   } else {

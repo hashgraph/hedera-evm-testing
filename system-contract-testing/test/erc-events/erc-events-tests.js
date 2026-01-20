@@ -2,6 +2,7 @@ const {
   beforeTests,
   beforeFtTests,
   beforeNftTests,
+  mintForNftTests,
   afterTests,
 } = require("./erc-events-main");
 const { HTS_ADDRESS, HTS_ADDRESS_V2 } = require("../../utils/constants");
@@ -9,7 +10,7 @@ const { erc20EventsTests } = require("./setup/erc20");
 const { erc721EventsTests } = require("./setup/erc721");
 const { erc20AndErc721EventsTests } = require("./setup/erc20AndErc721");
 const { Erc20RelayTestsImpl } = require("./relay/erc20-relay-tests-impl");
-const { Erc721RelayTestsImpl } = require("./relay/erc20-relay-tests-impl");
+const { Erc721RelayTestsImpl } = require("./relay/erc721-relay-tests-impl");
 const {
   Erc20Erc721RelayTestsImpl,
 } = require("./relay/erc20AndErc721-relay-tests-impl");
@@ -20,6 +21,7 @@ describe("ERC Transfer events", async () => {
     transferContract: "",
     ftTokenAddress: "",
     nftTokenAddress: "",
+    serialNumbers: [],
     receiverContract1: "",
     receiverContract2: "",
     receiverNotAssociated: "",
@@ -73,7 +75,7 @@ describe("ERC Transfer events", async () => {
     // TODO work on SDK
     describe("SDK HTS 0x167", async () => {
       await erc20EventsTests(
-        new Erc20SdkTestsImpl(context.sdkClient),
+        new Erc20SdkTestsImpl(context),
         HTS_ADDRESS,
         true,
         context,
@@ -84,14 +86,21 @@ describe("ERC Transfer events", async () => {
   describe("ERC721 events", async () => {
     before(async () => {
       if (!context.nftTokenAddress) {
-        [context.nftTokenAddress, context.serialNumbers] = await beforeNftTests(
+        context.nftTokenAddress = await beforeNftTests(
           context.treasury,
           context.transferContract,
-          40, // TODO move minting separately?
           context.receiverContract1,
           context.receiverContract2,
         );
       }
+      context.serialNumbers = context.serialNumbers.concat(
+        await mintForNftTests(
+          context.treasury,
+          context.transferContract,
+          context.nftTokenAddress,
+          30,
+        ),
+      );
     });
 
     describe("HTS 0x167", async () => {
@@ -127,11 +136,18 @@ describe("ERC Transfer events", async () => {
         [context.nftTokenAddress, context.serialNumbers] = await beforeNftTests(
           context.treasury,
           context.transferContract,
-          40,
           context.receiverContract1,
           context.receiverContract2,
         );
       }
+      context.serialNumbers = context.serialNumbers.concat(
+        await mintForNftTests(
+          context.treasury,
+          context.transferContract,
+          context.nftTokenAddress,
+          10,
+        ),
+      );
     });
 
     describe("HTS 0x167", async () => {
