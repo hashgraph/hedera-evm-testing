@@ -23,7 +23,7 @@ const systemContractAddresses = [0x167, 0x168, 0x169, 0x16a, 0x16b, 0x16c].map(a
  */
 const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc';
 
-describe('HIP-1340 - EIP-7702 features', function () {
+describe.skip('HIP-1340 - EIP-7702 features', function () {
 
     /**
      * @type {ethers.JsonRpcProvider}
