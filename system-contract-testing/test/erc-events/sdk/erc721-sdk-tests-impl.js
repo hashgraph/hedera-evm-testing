@@ -1,62 +1,17 @@
 const { validateRcWithErcEvent } = require("../relay/erc20-relay-tests-impl");
-const Async = require("../../../utils/async");
-const { ethers } = require("hardhat");
+const { getReceiptFromSdkTxResponse } = require("../sdk/erc20-sdk-tests-impl");
+const { encodeFunctionParameters } = require("../sdk/erc20-sdk-tests-impl");
 const {
   ContractExecuteTransaction,
   ContractId,
   ContractFunctionParameters,
 } = require("@hashgraph/sdk");
-const { Interface } = require("@ethersproject/abi");
-const { readFileSync } = require("node:fs");
 
-/**
- * Helper function to encode function name and parameters that can be used to invoke a contract's function
- * @param abiInterface ABI of the contract for this functionName
- * @param functionName the name of the function to invoke
- * @param parameterArray an array of parameters to pass to the function
- */
-function encodeFunctionParameters(abiInterface, functionName, parameterArray) {
-  // build the call parameters using ethers.js
-  // .slice(2) to remove leading '0x'
-  const functionCallAsHexString = abiInterface
-    .encodeFunctionData(functionName, parameterArray)
-    .slice(2);
-  // convert to a Uint8Array
-  return Buffer.from(functionCallAsHexString, `hex`);
-}
-
-/**
- * Getting ether receipt object from Hedera SDK TransactionResponse object. This is used to reuse ERC events validation logic
- * @param response Hedera SDK TransactionResponse
- * @returns {Promise<*|undefined>}
- */
-async function getReceiptFromSdkTxResponse(response) {
-  let txHash = "0x" + Buffer.from(response.transactionHash).toString("hex");
-  if (txHash.length > 66) {
-    txHash = txHash.slice(0, 66); // cut up to '0x' + 32 bytes to EVM eth tx hash
-  }
-  return await Async.waitForCondition(
-    "getTransactionReceipt",
-    () => ethers.provider.getTransactionReceipt(txHash),
-    (result) => result != null,
-    1000,
-    60,
-  );
-}
-
-class Erc20SdkTestsImpl {
+// ---------------- Test util functions ----------------
+class Erc721SdkTestsImpl {
   constructor(context) {
     this.context = context;
     this.gas = 1_000_000;
-    // Import the ABI
-    this.abi = JSON.parse(
-      readFileSync(
-        "./abi/contracts/erc-events/ErcEventsContract.sol/ErcEventsContract.json",
-        "utf8",
-      ),
-    );
-    // Setup an ethers.js interface using the abi
-    this.abiInterface = new Interface(this.abi);
   }
 
   /**
@@ -72,130 +27,94 @@ class Erc20SdkTestsImpl {
   }
 
   // ---------------- Test functions ----------------
-  async transferTokenTest(
+  async transferNFTTest(
     htsAddress,
     transferContract,
     tokenAddress,
     receiverContract,
+    serialNumber,
     responseCode,
   ) {
-    const amount = 1;
     const tx = new ContractExecuteTransaction()
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
       .setFunction(
-        "transferToken",
+        "transferNFT",
         new ContractFunctionParameters()
           .addAddress(htsAddress)
           .addAddress(tokenAddress)
           .addAddress(transferContract.target)
           .addAddress(receiverContract.target)
-          .addInt64(amount),
+          .addInt64(Number(serialNumber)),
       );
     const response = await tx.execute(this.sdkClient());
     const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
-      "%s transferToken:%s from:%s to:%s amount:%s",
+      "%s transferNFT:%s from:%s to:%s serialNumber:%s",
       rc.hash,
       tokenAddress,
       transferContract.target,
       receiverContract.target,
-      amount,
+      serialNumber,
     );
     await validateRcWithErcEvent(rc, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract.target,
-        amount: amount,
+        serial: serialNumber,
       },
     ]);
   }
 
-  async transferFromTest(
+  async transferFromNFTTest(
     htsAddress,
     transferContract,
     tokenAddress,
+    senderContract,
     receiverContract,
+    serialNumber,
     responseCode,
   ) {
-    const amount = 1;
     const tx = new ContractExecuteTransaction()
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
       .setFunction(
-        "transferFrom",
+        "transferFromNFT",
         new ContractFunctionParameters()
           .addAddress(htsAddress)
           .addAddress(tokenAddress)
-          .addAddress(transferContract.target)
+          .addAddress(senderContract.target)
           .addAddress(receiverContract.target)
-          .addInt64(amount),
+          .addUint256(Number(serialNumber)),
       );
     const response = await tx.execute(this.sdkClient());
     const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
-      "%s transferFrom:%s from:%s to:%s amount:%s",
+      "%s transferFromNFT:%s from:%s to:%s serialNumber:%s",
       rc.hash,
       tokenAddress,
       transferContract.target,
       receiverContract.target,
-      amount,
+      serialNumber,
     );
     await validateRcWithErcEvent(rc, responseCode, [
       {
         address: tokenAddress,
-        from: transferContract.target,
+        from: senderContract.target,
         to: receiverContract.target,
-        amount: amount,
+        serial: serialNumber,
       },
     ]);
   }
 
-  async transferFtProxyTest(
+  async transferFromNftProxyTest(
     transferContract,
     tokenAddress,
     receiverContract,
+    serialNumber,
     responseCode,
   ) {
-    const amount = 1;
-    const tx = new ContractExecuteTransaction()
-      .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
-      .setGas(this.gas)
-      .setFunction(
-        "transferFtProxy",
-        new ContractFunctionParameters()
-          .addAddress(tokenAddress)
-          .addAddress(receiverContract.target)
-          .addInt64(amount),
-      );
-    const response = await tx.execute(this.sdkClient());
-    const rc = await getReceiptFromSdkTxResponse(response);
-    console.log(
-      "%s FT transfer proxy:%s from:%s to:%s amount:%s",
-      rc.hash,
-      tokenAddress,
-      transferContract.target,
-      receiverContract.target,
-      amount,
-    );
-    await validateRcWithErcEvent(rc, responseCode, [
-      {
-        address: tokenAddress,
-        from: transferContract.target,
-        to: receiverContract.target,
-        amount: amount,
-      },
-    ]);
-  }
-
-  async transferFromFtProxyTest(
-    transferContract,
-    tokenAddress,
-    receiverContract,
-    responseCode,
-  ) {
-    const amount = 1;
     const tx = new ContractExecuteTransaction()
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
@@ -205,74 +124,75 @@ class Erc20SdkTestsImpl {
           .addAddress(tokenAddress)
           .addAddress(transferContract.target)
           .addAddress(receiverContract.target)
-          .addInt64(amount),
+          .addUint256(Number(serialNumber)),
       );
     const response = await tx.execute(this.sdkClient());
     const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
-      "%s FT transferFrom proxy:%s from:%s to:%s amount:%s",
+      "%s transferFromNft proxy:%s from:%s to:%s serialNumber:%s",
       rc.hash,
       tokenAddress,
       transferContract.target,
       receiverContract.target,
-      amount,
+      serialNumber,
     );
     await validateRcWithErcEvent(rc, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract.target,
-        amount: amount,
+        serial: serialNumber,
       },
     ]);
   }
 
-  async transferTokensTest(
+  async transferNFTsTest(
     htsAddress,
     transferContract,
     tokenAddress,
     receiverContract1,
     receiverContract2,
+    serialNumber1,
+    serialNumber2,
     responseCode,
   ) {
-    const accounts = [
-      transferContract.target,
-      receiverContract1.target,
-      receiverContract2.target,
-    ];
-    const amounts = [-3, 1, 2];
+    const senders = [transferContract.target, transferContract.target];
+    const receivers = [receiverContract1.target, receiverContract2.target];
+    const serialNumbers = [serialNumber1, serialNumber2];
     const tx = new ContractExecuteTransaction()
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
       .setFunction(
-        "transferTokens",
+        "transferNFTs",
         new ContractFunctionParameters()
           .addAddress(htsAddress)
           .addAddress(tokenAddress)
-          .addAddressArray(accounts)
-          .addInt64Array(accounts),
+          .addAddressArray(senders)
+          .addAddressArray(receivers)
+          .addInt64Array(serialNumbers),
       );
     const response = await tx.execute(this.sdkClient());
     const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
-      "%s FT transferTokens:%s accounts:%s amounts:%s",
+      "%s NFT transferNFTs:%s senders:%s receivers:%s serialNumbers:%s",
       rc.hash,
       tokenAddress,
-      accounts,
-      amounts,
+      senders,
+      receivers,
+      serialNumbers,
     );
     await validateRcWithErcEvent(rc, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract1.target,
-        amount: 1,
+        serial: serialNumber1,
       },
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract2.target,
-        amount: 2,
+        serial: serialNumber2,
       },
     ]);
   }
@@ -283,32 +203,42 @@ class Erc20SdkTestsImpl {
     tokenAddress,
     receiverContract1,
     receiverContract2,
+    serialNumber1,
+    serialNumber2,
     responseCode,
   ) {
     const tokenTransfers = [
       {
         token: tokenAddress,
-        transfers: [
-          { accountID: transferContract, amount: -3 },
-          { accountID: receiverContract1, amount: 1 },
-          { accountID: receiverContract2, amount: 2 },
+        transfers: [],
+        nftTransfers: [
+          {
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract1.target,
+            serialNumber: serialNumber1,
+          },
+          {
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract2.target,
+            serialNumber: serialNumber2,
+          },
         ],
-        nftTransfers: [],
       },
     ];
     const tx = new ContractExecuteTransaction()
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
       .setFunctionParameters(
-        encodeFunctionParameters(this.abiInterface, "cryptoTransferV1", [
-          htsAddress,
-          tokenTransfers,
-        ]),
+        encodeFunctionParameters(
+          this.context.transferAbiInterface,
+          "cryptoTransferV1",
+          [htsAddress, tokenTransfers],
+        ),
       );
     const response = await tx.execute(this.sdkClient());
     const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
-      "%s FT cryptoTransferV1 tokenTransfers:%s",
+      "%s NFT cryptoTransferV1 tokenTransfers:%s",
       rc.hash,
       tokenTransfers,
     );
@@ -317,13 +247,13 @@ class Erc20SdkTestsImpl {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract1.target,
-        amount: 1,
+        serial: serialNumber1,
       },
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract2.target,
-        amount: 2,
+        serial: serialNumber2,
       },
     ]);
   }
@@ -334,6 +264,8 @@ class Erc20SdkTestsImpl {
     tokenAddress,
     receiverContract1,
     receiverContract2,
+    serialNumber1,
+    serialNumber2,
     responseCode,
   ) {
     const transferList = {
@@ -342,28 +274,37 @@ class Erc20SdkTestsImpl {
     const tokenTransfers = [
       {
         token: tokenAddress,
-        transfers: [
-          { accountID: transferContract, amount: -3, isApproval: false },
-          { accountID: receiverContract1, amount: 1, isApproval: false },
-          { accountID: receiverContract2, amount: 2, isApproval: false },
+        transfers: [],
+        nftTransfers: [
+          {
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract1.target,
+            serialNumber: serialNumber1,
+            isApproval: false,
+          },
+          {
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract2.target,
+            serialNumber: serialNumber2,
+            isApproval: false,
+          },
         ],
-        nftTransfers: [],
       },
     ];
     const tx = new ContractExecuteTransaction()
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
       .setFunctionParameters(
-        encodeFunctionParameters(this.abiInterface, "cryptoTransferV2", [
-          htsAddress,
-          transferList,
-          tokenTransfers,
-        ]),
+        encodeFunctionParameters(
+          this.context.transferAbiInterface,
+          "cryptoTransferV2",
+          [htsAddress, transferList, tokenTransfers],
+        ),
       );
     const response = await tx.execute(this.sdkClient());
     const rc = await getReceiptFromSdkTxResponse(response);
     console.log(
-      "%s FT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
+      "%s NFT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
       rc.hash,
       transferList,
       tokenTransfers,
@@ -373,13 +314,13 @@ class Erc20SdkTestsImpl {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract1.target,
-        amount: 1,
+        serial: serialNumber1,
       },
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract2.target,
-        amount: 2,
+        serial: serialNumber2,
       },
     ]);
   }
@@ -389,24 +330,29 @@ class Erc20SdkTestsImpl {
     transferContract,
     tokenAddress,
     receiverContract,
+    serialNumber,
     responseCode,
     pendingAirdrops,
   ) {
     const tokenTransfers = [
       {
         token: tokenAddress,
-        transfers: [
-          { accountID: transferContract, amount: -1, isApproval: false },
-          { accountID: receiverContract, amount: 1, isApproval: false },
+        transfers: [],
+        nftTransfers: [
+          {
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract.target,
+            serialNumber: serialNumber,
+            isApproval: false,
+          },
         ],
-        nftTransfers: [],
       },
     ];
     const tx = new ContractExecuteTransaction()
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
-      .setGas(this.gas)
+      .setGas(2 * this.gas)
       .setFunctionParameters(
-        encodeFunctionParameters(this.abiInterface, "airdropTokens", [
+        encodeFunctionParameters(this.context.transferAbiInterface, "airdropTokens", [
           htsAddress,
           tokenTransfers,
         ]),
@@ -428,7 +374,7 @@ class Erc20SdkTestsImpl {
               address: tokenAddress,
               from: transferContract.target,
               to: receiverContract.target,
-              amount: 1,
+              serial: serialNumber,
             },
           ],
     );
@@ -439,24 +385,26 @@ class Erc20SdkTestsImpl {
     transferContract,
     tokenAddress,
     receiverContract,
+    serialNumber,
     responseCode,
   ) {
     const pendingAirdrops = [
       {
-        sender: transferContract,
-        receiver: receiverContract,
+        sender: transferContract.target,
+        receiver: receiverContract.target,
         token: tokenAddress,
-        serial: 0,
+        serial: serialNumber,
       },
     ];
     const tx = new ContractExecuteTransaction()
-      .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
+      .setContractId(ContractId.fromEvmAddress(0, 0, receiverContract.target))
       .setGas(this.gas)
       .setFunctionParameters(
-        encodeFunctionParameters(this.abiInterface, "claimAirdrops", [
-          htsAddress,
-          pendingAirdrops,
-        ]),
+        encodeFunctionParameters(
+          this.context.receiverAbiInterface,
+          "claimAirdrops",
+          [htsAddress, pendingAirdrops],
+        ),
       );
     const response = await tx.execute(this.sdkClient());
     const rc = await getReceiptFromSdkTxResponse(response);
@@ -470,14 +418,12 @@ class Erc20SdkTestsImpl {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract.target,
-        amount: 1,
+        serial: serialNumber,
       },
     ]);
   }
 }
 
 module.exports = {
-  encodeFunctionParameters,
-  getReceiptFromSdkTxResponse,
-  Erc20SdkTestsImpl,
+  Erc721SdkTestsImpl,
 };

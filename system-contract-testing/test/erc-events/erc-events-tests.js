@@ -5,6 +5,8 @@ const {
   mintForNftTests,
   afterTests,
 } = require("./erc-events-main");
+const { Interface } = require("@ethersproject/abi");
+const { readFileSync } = require("node:fs");
 const { HTS_ADDRESS, HTS_ADDRESS_V2 } = require("../../utils/constants");
 const { erc20EventsTests } = require("./setup/erc20");
 const { erc721EventsTests } = require("./setup/erc721");
@@ -14,7 +16,9 @@ const { Erc721RelayTestsImpl } = require("./relay/erc721-relay-tests-impl");
 const {
   Erc20Erc721RelayTestsImpl,
 } = require("./relay/erc20AndErc721-relay-tests-impl");
-const { Erc20SdkTestsImpl } = require("./sdk/erc20-relay-sdk-impl");
+const { Erc20SdkTestsImpl } = require("./sdk/erc20-sdk-tests-impl");
+const { Erc721SdkTestsImpl } = require("./sdk/erc721-sdk-tests-impl");
+const {Erc20Erc721SdkTestsImpl} = require("./sdk/erc20AndErc721-sdk-tests-impl");
 
 describe("ERC Transfer events", async () => {
   const context = {
@@ -36,6 +40,23 @@ describe("ERC Transfer events", async () => {
       context.receiverContract2,
       context.receiverNotAssociated,
     ] = await beforeTests(3);
+    // Import the ABI for SDK tests and set up an ethers.js interface using the abi
+    context.transferAbiInterface = new Interface(
+      JSON.parse(
+        readFileSync(
+          "./abi/contracts/erc-events/ErcEventsContract.sol/ErcEventsContract.json",
+          "utf8",
+        ),
+      ),
+    );
+    context.receiverAbiInterface = new Interface(
+      JSON.parse(
+        readFileSync(
+          "./abi/contracts/erc-events/ErcEventsReceiverContract.sol/ErcEventsReceiverContract.json",
+          "utf8",
+        ),
+      ),
+    );
   });
 
   after(async () => {
@@ -54,7 +75,7 @@ describe("ERC Transfer events", async () => {
       }
     });
 
-    describe("HTS 0x167", async () => {
+    describe("ERC20 Relay HTS 0x167", async () => {
       await erc20EventsTests(
         new Erc20RelayTestsImpl(),
         HTS_ADDRESS,
@@ -63,7 +84,7 @@ describe("ERC Transfer events", async () => {
       );
     });
 
-    describe("HTS 0x16c", async () => {
+    describe("ERC20 Relay HTS 0x16c", async () => {
       await erc20EventsTests(
         new Erc20RelayTestsImpl(),
         HTS_ADDRESS_V2,
@@ -72,12 +93,20 @@ describe("ERC Transfer events", async () => {
       );
     });
 
-    // TODO work on SDK
-    describe("SDK HTS 0x167", async () => {
+    describe("ERC20 SDK HTS 0x167", async () => {
       await erc20EventsTests(
         new Erc20SdkTestsImpl(context),
         HTS_ADDRESS,
         true,
+        context,
+      );
+    });
+
+    describe("ERC20 SDK HTS 0x16c", async () => {
+      await erc20EventsTests(
+        new Erc20SdkTestsImpl(context),
+        HTS_ADDRESS_V2,
+        false,
         context,
       );
     });
@@ -98,12 +127,12 @@ describe("ERC Transfer events", async () => {
           context.treasury,
           context.transferContract,
           context.nftTokenAddress,
-          30,
+          40,
         ),
       );
     });
 
-    describe("HTS 0x167", async () => {
+    describe("ERC721 Relay HTS 0x167", async () => {
       await erc721EventsTests(
         new Erc721RelayTestsImpl(),
         HTS_ADDRESS,
@@ -112,9 +141,27 @@ describe("ERC Transfer events", async () => {
       );
     });
 
-    describe("HTS 0x16c", async () => {
+    describe("ERC721 Relay HTS 0x16c", async () => {
       await erc721EventsTests(
         new Erc721RelayTestsImpl(),
+        HTS_ADDRESS_V2,
+        false,
+        context,
+      );
+    });
+
+    describe("ERC721 SDK HTS 0x167", async () => {
+      await erc721EventsTests(
+        new Erc721SdkTestsImpl(context),
+        HTS_ADDRESS,
+        true,
+        context,
+      );
+    });
+
+    describe("ERC721 SDK HTS 0x16c", async () => {
+      await erc721EventsTests(
+        new Erc721SdkTestsImpl(context),
         HTS_ADDRESS_V2,
         false,
         context,
@@ -145,12 +192,12 @@ describe("ERC Transfer events", async () => {
           context.treasury,
           context.transferContract,
           context.nftTokenAddress,
-          10,
+          20,
         ),
       );
     });
 
-    describe("HTS 0x167", async () => {
+    describe("ERC20/ERC721 Relay HTS 0x167", async () => {
       await erc20AndErc721EventsTests(
         new Erc20Erc721RelayTestsImpl(),
         HTS_ADDRESS,
@@ -158,9 +205,25 @@ describe("ERC Transfer events", async () => {
       );
     });
 
-    describe("HTS 0x16c", async () => {
+    describe("ERC20/ERC721 Relay HTS 0x16c", async () => {
       await erc20AndErc721EventsTests(
         new Erc20Erc721RelayTestsImpl(),
+        HTS_ADDRESS_V2,
+        context,
+      );
+    });
+
+    describe("ERC20/ERC721 SDK HTS 0x167", async () => {
+      await erc20AndErc721EventsTests(
+        new Erc20Erc721SdkTestsImpl(context),
+        HTS_ADDRESS,
+        context,
+      );
+    });
+
+    describe("ERC20/ERC721 SDK HTS 0x16c", async () => {
+      await erc20AndErc721EventsTests(
+        new Erc20Erc721SdkTestsImpl(context),
         HTS_ADDRESS_V2,
         context,
       );
