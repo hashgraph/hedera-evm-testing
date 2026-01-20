@@ -162,7 +162,7 @@ async function erc721EventsTests(
       });
     }
 
-    it(`${testsImpl.engine()}: ${displayAddress} FT transferTokens TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+    it(`${testsImpl.engine()}: ${displayAddress} FT transferNFTsTest TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
       await testsImpl.transferNFTsTest(
         htsAddress,
         context.transferContract,

@@ -119,7 +119,7 @@ class Erc721SdkTestsImpl {
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)
       .setFunction(
-        "transferFromFtProxy",
+        "transferFromNftProxy",
         new ContractFunctionParameters()
           .addAddress(tokenAddress)
           .addAddress(transferContract.target)
@@ -158,7 +158,7 @@ class Erc721SdkTestsImpl {
   ) {
     const senders = [transferContract.target, transferContract.target];
     const receivers = [receiverContract1.target, receiverContract2.target];
-    const serialNumbers = [serialNumber1, serialNumber2];
+    const serialNumbers = [Number(serialNumber1), Number(serialNumber2)];
     const tx = new ContractExecuteTransaction()
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(this.gas)

@@ -18,7 +18,9 @@ const {
 } = require("./relay/erc20AndErc721-relay-tests-impl");
 const { Erc20SdkTestsImpl } = require("./sdk/erc20-sdk-tests-impl");
 const { Erc721SdkTestsImpl } = require("./sdk/erc721-sdk-tests-impl");
-const {Erc20Erc721SdkTestsImpl} = require("./sdk/erc20AndErc721-sdk-tests-impl");
+const {
+  Erc20Erc721SdkTestsImpl,
+} = require("./sdk/erc20AndErc721-sdk-tests-impl");
 
 describe("ERC Transfer events", async () => {
   const context = {
@@ -127,7 +129,7 @@ describe("ERC Transfer events", async () => {
           context.treasury,
           context.transferContract,
           context.nftTokenAddress,
-          40,
+          50,
         ),
       );
     });
@@ -171,16 +173,16 @@ describe("ERC Transfer events", async () => {
 
   describe("ERC20/ERC721 events", async () => {
     before(async () => {
+      if (!context.ftTokenAddress) {
+        context.ftTokenAddress = await beforeFtTests(
+          context.treasury,
+          context.transferContract,
+          context.receiverContract1,
+          context.receiverContract2,
+        );
+      }
       if (!context.nftTokenAddress) {
-        if (!context.ftTokenAddress) {
-          context.ftTokenAddress = await beforeFtTests(
-            context.treasury,
-            context.transferContract,
-            context.receiverContract1,
-            context.receiverContract2,
-          );
-        }
-        [context.nftTokenAddress, context.serialNumbers] = await beforeNftTests(
+        context.nftTokenAddress = await beforeNftTests(
           context.treasury,
           context.transferContract,
           context.receiverContract1,
