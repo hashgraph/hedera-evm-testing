@@ -4,6 +4,8 @@ const { Events } = require("./constants");
 
 const ERC20_TRANSFER_EVENT_SIGNATURE =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const RESPONSE_CODE_EVENT_SIGNATURE =
+  "0x7ec7ff436a10b9c36185cbe332f0e054bf1b5ee27d5f67530df59520f179c09a";
 
 /**
  * Validate if ResponseCode event contain expected responseCode value
@@ -16,8 +18,17 @@ async function validateResponseCodeEvent(rc, responseCode) {
   const log = rc.logs.find(
     (e) => e.fragment && e.fragment.name === Events.ResponseCode,
   );
-  expect(log).to.not.be.undefined;
-  expect(log.args[0]).to.equal(responseCode);
+  if (log) {
+    // if log is recognized as EventLog by hardhat //TODO test
+    expect(log).to.not.be.undefined;
+    expect(log.args[0]).to.equal(responseCode);
+  } else {
+    const log = rc.logs.find(
+      (e) => e.topics && e.topics[0] === RESPONSE_CODE_EVENT_SIGNATURE,
+    );
+    expect(log).to.not.be.undefined;
+    expect(Number(log.data)).to.equal(responseCode);
+  }
 }
 
 /**
@@ -52,7 +63,6 @@ async function validateErcEvent(rc, expectedEvents) {
         convertNumberToData(expectedEvent.serial),
       );
     }
-
   });
 }
 
