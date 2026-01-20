@@ -6,8 +6,8 @@ const {
 const { randomAddress } = require("../../utils/address");
 const {
   addTestCallData,
-  testScheduleCallEvent,
-  testResponseCodeEvent,
+  expectScheduleCallEvent,
+  expectResponseCodeEvent,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
 const Async = require("../../utils/async");
@@ -55,13 +55,13 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         0,
         addTestCallData("deleteSchedule")
       );
-      const scheduleAddress = await testScheduleCallEvent(
+      const scheduleAddress = await expectScheduleCallEvent(
         createTx,
         ResponseCodeEnum.SUCCESS.valueOf()
       );
       // delete schedule
       const deleteTx = await hip1215.deleteSchedule(scheduleAddress);
-      await testResponseCodeEvent(deleteTx, ResponseCodeEnum.SUCCESS.valueOf());
+      await expectResponseCodeEvent(deleteTx, ResponseCodeEnum.SUCCESS.valueOf());
     });
 
     it("should delete a schedule created from sdk", async () => {
@@ -153,20 +153,20 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         0,
         addTestCallData("deleteSchedule proxy")
       );
-      const scheduleAddress = await testScheduleCallEvent(
+      const scheduleAddress = await expectScheduleCallEvent(
         createTx,
         ResponseCodeEnum.SUCCESS.valueOf()
       );
       // delete schedule
       const deleteTx = await hip1215.deleteScheduleProxy(scheduleAddress);
-      await testResponseCodeEvent(deleteTx, ResponseCodeEnum.SUCCESS.valueOf());
+      await expectResponseCodeEvent(deleteTx, ResponseCodeEnum.SUCCESS.valueOf());
     });
   });
 
   describe("negative cases", () => {
     it("should fail with random address for to", async () => {
       const receipt = await hip1215.deleteSchedule(randomAddress());
-      await testResponseCodeEvent(receipt, ResponseCodeEnum.UNKNOWN.valueOf());
+      await expectResponseCodeEvent(receipt, ResponseCodeEnum.UNKNOWN.valueOf());
     });
 
     it("should fail with expired address for to", async () => {
@@ -178,20 +178,20 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         0,
         addTestCallData("deleteSchedule fail expired")
       );
-      const scheduleAddress = await testScheduleCallEvent(
+      const scheduleAddress = await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SUCCESS.valueOf()
       );
       await Async.wait(2000);
       // delete schedule
       const deleteTx = await hip1215.deleteSchedule(scheduleAddress);
-      await testResponseCodeEvent(
+      await expectResponseCodeEvent(
         deleteTx,
         ResponseCodeEnum.INVALID_SCHEDULE_ID.valueOf()
       );
     });
 
-    it("should fail with wrong schedule admin key", async () => {
+    it("should fail when invoked with wrong schedule admin key", async () => {
       const client = await Utils.createSDKClient();
       const key = PrivateKey.fromStringECDSA(
         Utils.getHardhatSignerPrivateKeyByIndex(0)
@@ -229,7 +229,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       const deleteTx = await hip1215WithInvalidKey.deleteSchedule(
         "0x" + scheduleAddress
       );
-      await testResponseCodeEvent(
+      await expectResponseCodeEvent(
         deleteTx,
         ResponseCodeEnum.INVALID_SIGNATURE.valueOf()
       );
