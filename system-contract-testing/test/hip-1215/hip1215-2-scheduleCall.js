@@ -338,7 +338,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         addTestCallData("scheduleCall fail gasLimit 0"),
       );
       console.log("scheduleCallDelegateCall tx.hash:", tx.hash);
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         tx,
         ResponseCodeEnum.UNKNOWN.valueOf(),
       );
