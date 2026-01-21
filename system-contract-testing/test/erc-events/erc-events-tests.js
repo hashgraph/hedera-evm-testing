@@ -75,7 +75,7 @@ describe("ERC Transfer events", async () => {
     context.transferAbiInterface = new Interface(
       JSON.parse(
         readFileSync(
-          "./abi/contracts/erc-events/ErcEventsContract.sol/ErcEventsContract.json",
+          "./artifacts/contracts/erc-events/ErcEventsContract.sol/ErcEventsContract.json",
           "utf8",
         ),
       ),
@@ -83,7 +83,7 @@ describe("ERC Transfer events", async () => {
     context.receiverAbiInterface = new Interface(
       JSON.parse(
         readFileSync(
-          "./abi/contracts/erc-events/ErcEventsReceiverContract.sol/ErcEventsReceiverContract.json",
+          "./artifacts/contracts/erc-events/ErcEventsReceiverContract.sol/ErcEventsReceiverContract.json",
           "utf8",
         ),
       ),
