@@ -10,6 +10,7 @@ contract ErcEventsReceiverContract {
 
     address internal constant HTS = address(0x167);
 
+    constructor() payable {}
     receive() external payable {}
 
     event ResponseCode(int64 responseCode);
