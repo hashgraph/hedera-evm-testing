@@ -64,13 +64,6 @@ describe("ERC Transfer events", async () => {
   }; // using this object to pass 'before' results to tests in other files
 
   before(async () => {
-    [
-      context.treasury,
-      context.transferContract,
-      context.receiverContract1,
-      context.receiverContract2,
-      context.receiverNotAssociated,
-    ] = await beforeTests(3);
     // Import the ABI for SDK tests and set up an ethers.js interface using the abi
     context.transferAbiInterface = new Interface(
       JSON.parse(
@@ -78,7 +71,7 @@ describe("ERC Transfer events", async () => {
           "./artifacts/contracts/erc-events/ErcEventsContract.sol/ErcEventsContract.json",
           "utf8",
         ),
-      ),
+      ).abi,
     );
     context.receiverAbiInterface = new Interface(
       JSON.parse(
@@ -86,8 +79,15 @@ describe("ERC Transfer events", async () => {
           "./artifacts/contracts/erc-events/ErcEventsReceiverContract.sol/ErcEventsReceiverContract.json",
           "utf8",
         ),
-      ),
+      ).abi,
     );
+    [
+      context.treasury,
+      context.transferContract,
+      context.receiverContract1,
+      context.receiverContract2,
+      context.receiverNotAssociated,
+    ] = await beforeTests(3);
   });
 
   describe("Relay ERC events", async () => {
