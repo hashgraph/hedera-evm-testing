@@ -1,6 +1,5 @@
 /** @type import('hardhat/config').HardhatUserConfig */
 
-require("hardhat-abi-exporter");
 require("@openzeppelin/hardhat-upgrades");
 require("@nomicfoundation/hardhat-chai-matchers");
 require("solidity-coverage");
@@ -25,7 +24,7 @@ module.exports = {
     },
   },
   solidity: {
-    version: "0.8.24",
+    version: "0.8.28",
     settings: {
       optimizer: {
         enabled: true,
@@ -33,10 +32,6 @@ module.exports = {
       },
       evmVersion: "cancun",
     },
-  },
-  abiExporter: {
-    path: "./abi",
-    runOnCompile: true,
   },
   // defaultNetwork: 'hardhat',
   defaultNetwork: "local",
