@@ -14,8 +14,8 @@ const {
   hasScheduleCapacityCallData,
   payableCallData,
   getExpirySecond,
-  testScheduleCallEvent,
-  testResponseCodeEvent,
+  expectScheduleCallEvent,
+  expectResponseCodeEvent,
   getRecursiveScheduleStatus,
   getChildTransactionsByScheduleId,
   getSignatureMap,
@@ -64,13 +64,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       callDataFunction(testId, expirySecond)
     );
 
-    const scheduleAddress = await testScheduleCallEvent(
+    const scheduleAddress = await expectScheduleCallEvent(
       scheduleTx,
       ResponseCodeEnum.SUCCESS.valueOf()
     );
     // sign schedule
     const signTx = await hip1215.authorizeSchedule(scheduleAddress);
-    await testResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
+    await expectResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
     // execution check in 'after'
     scheduleTxCheck.push({
       id: testId,
@@ -221,7 +221,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         addTestCallData("scheduleCall fail gasLimit 0")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
@@ -235,7 +235,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         addTestCallData("scheduleCall fail gasLimit 1000")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
@@ -249,7 +249,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         addTestCallData("scheduleCall fail uint.maxvalue")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf()
       );
@@ -263,7 +263,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         addTestCallData("scheduleCall fail expiry 0")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
@@ -277,7 +277,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         addTestCallData("scheduleCall fail expiry current")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
@@ -292,7 +292,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         addTestCallData("scheduleCall fail expiry + 1")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_TOO_FAR_IN_FUTURE.valueOf()
       );
@@ -306,7 +306,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         "0xabc123"
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
@@ -323,7 +323,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         deployContract.bytecode
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
@@ -338,7 +338,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         addTestCallData("scheduleCall fail gasLimit 0"),
       );
       console.log("scheduleCallDelegateCall tx.hash:", tx.hash);
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         tx,
         ResponseCodeEnum.UNKNOWN.valueOf(),
       );
@@ -371,7 +371,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0
       );
 
-      const scheduleAddress = await testScheduleCallEvent(
+      const scheduleAddress = await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SUCCESS.valueOf()
       );
@@ -401,7 +401,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         signers[2]
       );
       console.log("Schedule created. Trying to get schedule logs");
-      const schedule = await testScheduleCallEvent(
+      const schedule = await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SUCCESS.valueOf()
       );

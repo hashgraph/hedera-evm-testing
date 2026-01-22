@@ -1,7 +1,7 @@
 const { GAS_LIMIT_1_000_000, GAS_LIMIT_15M } = require("../../utils/constants");
 const {
   getExpirySecond,
-  testHasScheduleCapacityEvent,
+  expectHasScheduleCapacityEvent,
 } = require("./utils/hip1215-utils");
 const { expect } = require("chai");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
@@ -25,7 +25,7 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit
       );
-      await testHasScheduleCapacityEvent(receipt, true);
+      await expectHasScheduleCapacityEvent(receipt, true);
     });
 
     it("should have enough capacity with view context", async () => {
@@ -41,7 +41,7 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
         getExpirySecond(),
         GAS_LIMIT_15M.gasLimit - 1
       );
-      await testHasScheduleCapacityEvent(receipt, true);
+      await expectHasScheduleCapacityEvent(receipt, true);
     });
 
     it("should return true for valid expiry and max gas limit - 1 with view context", async () => {
@@ -59,7 +59,7 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
         1716666666,
         GAS_LIMIT_1_000_000.gasLimit
       );
-      await testHasScheduleCapacityEvent(receipt, false);
+      await expectHasScheduleCapacityEvent(receipt, false);
     });
 
     it("should return false for expiry in the past with view context", async () => {
@@ -75,7 +75,7 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
         0,
         GAS_LIMIT_1_000_000.gasLimit
       );
-      await testHasScheduleCapacityEvent(receipt, false);
+      await expectHasScheduleCapacityEvent(receipt, false);
     });
 
     it("should return false for 0 expiry with view context", async () => {
@@ -91,7 +91,7 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
         getExpirySecond(),
         GAS_LIMIT_15M.gasLimit + 1
       );
-      await testHasScheduleCapacityEvent(receipt, false);
+      await expectHasScheduleCapacityEvent(receipt, false);
     });
 
     // Skip until we deliver the optimizations
@@ -108,7 +108,7 @@ describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
         getExpirySecond(),
         BigInt("9223372036854775808")
       );
-      await testHasScheduleCapacityEvent(receipt, false);
+      await expectHasScheduleCapacityEvent(receipt, false);
     });
 
     // Skip until we deliver the optimizations
