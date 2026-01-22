@@ -1,6 +1,6 @@
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
-const { contractDeployAndFund } = require("../../../utils/contract");
-const Constants = require("../../../utils/constants");
+const { contractDeployAndFund } = require("../../../../utils/contract");
+const Constants = require("../../../../utils/constants");
 
 /**
  * ERC20/ERC721 events tests. Using this method to reuse tests for different HTS addresses
@@ -52,7 +52,7 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
   it(`${testsImpl.engine()}: ${displayAddress} FT/NFT claimAirdrops`, async () => {
     // not associated receiver for pending airdrop
     const receiver = await contractDeployAndFund(
-      Constants.Contract.ErcEventsReceiverContract,
+      Constants.Contract.TransferEventsReceiverContract,
     );
     const serial = context.serialNumbers.shift();
     // send pending airdrop

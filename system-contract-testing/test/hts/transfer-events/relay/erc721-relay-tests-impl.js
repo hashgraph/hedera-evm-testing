@@ -1,211 +1,171 @@
-const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
-const {
-  validateResponseCodeEvent,
-  validateErcEvent,
-} = require("../../../utils/events");
+const { validateRcWithErcEvent } = require("./erc20-relay-tests-impl");
 
 // ---------------- Test util functions ----------------
-async function validateRcWithErcEvent(rc, responseCode, expectedEvents) {
-  // check ContractTransactionReceipt has event with correct ResponseCode
-  await validateResponseCodeEvent(rc, responseCode.valueOf());
-  if (responseCode === ResponseCodeEnum.SUCCESS) {
-    // check ERC event
-    return validateErcEvent(rc, expectedEvents);
-  } else {
-    // check there is no ERC events
-    return validateErcEvent(rc, []);
-  }
-}
-
-async function approveFt(transferContract, tokenAddress, amount) {
-  const rc = await (
-    await transferContract.approve(tokenAddress, amount)
+async function approveNft(treasury, tokenAddress, sender, serialNumber) {
+  const receipt = await (
+    await treasury.approveNftPublic(tokenAddress, sender, serialNumber)
   ).wait();
-  console.log("%s approve:%s amount:%s", rc.hash, tokenAddress, amount);
+  console.log(
+    "%s approveNftPublic:%s sender:%s serialNumber:%s",
+    receipt.hash,
+    tokenAddress,
+    sender.target,
+    serialNumber,
+  );
 }
 
-class Erc20RelayTestsImpl {
+class Erc721RelayTestsImpl {
   engine() {
     return "Relay";
   }
 
   // ---------------- Test functions ----------------
-  async transferTokenTest(
+  async transferNFTTest(
     htsAddress,
     transferContract,
     tokenAddress,
     receiverContract,
+    serialNumber,
     responseCode,
   ) {
-    const amount = 1;
-    const rc = await (
-      await transferContract.transferToken(
+    const receipt = await (
+      await transferContract.transferNFT(
         htsAddress,
         tokenAddress,
         transferContract,
         receiverContract,
-        amount,
+        serialNumber,
       )
     ).wait();
     console.log(
-      "%s transferToken:%s from:%s to:%s amount:%s",
-      rc.hash,
+      "%s transferNFT:%s from:%s to:%s serialNumber:%s",
+      receipt.hash,
       tokenAddress,
       transferContract.target,
       receiverContract.target,
-      amount,
+      serialNumber,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract.target,
-        amount: amount,
+        serial: serialNumber,
       },
     ]);
   }
 
-  async transferFromTest(
+  async transferFromNFTTest(
     htsAddress,
     transferContract,
     tokenAddress,
+    senderContract,
     receiverContract,
+    serialNumber,
     responseCode,
   ) {
-    const amount = 1;
-    const rc = await (
-      await transferContract.transferFrom(
+    const receipt = await (
+      await transferContract.transferFromNFT(
         htsAddress,
         tokenAddress,
-        transferContract,
+        senderContract,
         receiverContract,
-        amount,
+        serialNumber,
       )
     ).wait();
     console.log(
-      "%s transferFrom:%s from:%s to:%s amount:%s",
-      rc.hash,
+      "%s transferFromNFT:%s from:%s to:%s serialNumber:%s",
+      receipt.hash,
       tokenAddress,
       transferContract.target,
       receiverContract.target,
-      amount,
+      serialNumber,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
-        from: transferContract.target,
+        from: senderContract.target,
         to: receiverContract.target,
-        amount: amount,
+        serial: serialNumber,
       },
     ]);
   }
 
-  async transferFtProxyTest(
+  async transferFromNftProxyTest(
     transferContract,
     tokenAddress,
     receiverContract,
+    serialNumber,
     responseCode,
   ) {
-    const amount = 1;
-    const rc = await (
-      await transferContract.transferFtProxy(
-        tokenAddress,
-        receiverContract.target,
-        amount,
-      )
-    ).wait();
-    console.log(
-      "%s FT transfer proxy:%s from:%s to:%s amount:%s",
-      rc.hash,
-      tokenAddress,
-      transferContract.target,
-      receiverContract.target,
-      amount,
-    );
-    await validateRcWithErcEvent(rc, responseCode, [
-      {
-        address: tokenAddress,
-        from: transferContract.target,
-        to: receiverContract.target,
-        amount: amount,
-      },
-    ]);
-  }
-
-  async transferFromFtProxyTest(
-    transferContract,
-    tokenAddress,
-    receiverContract,
-    responseCode,
-  ) {
-    const amount = 1;
-    const rc = await (
-      await transferContract.transferFromFtProxy(
+    const receipt = await (
+      await transferContract.transferFromNftProxy(
         tokenAddress,
         transferContract,
         receiverContract,
-        amount,
+        serialNumber,
       )
     ).wait();
     console.log(
-      "%s FT transferFrom proxy:%s from:%s to:%s amount:%s",
-      rc.hash,
+      "%s transferFromNft proxy:%s from:%s to:%s serialNumber:%s",
+      receipt.hash,
       tokenAddress,
       transferContract.target,
       receiverContract.target,
-      amount,
+      serialNumber,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract.target,
-        amount: amount,
+        serial: serialNumber,
       },
     ]);
   }
 
-  async transferTokensTest(
+  async transferNFTsTest(
     htsAddress,
     transferContract,
     tokenAddress,
     receiverContract1,
     receiverContract2,
+    serialNumber1,
+    serialNumber2,
     responseCode,
   ) {
-    const accounts = [
-      transferContract.target,
-      receiverContract1.target,
-      receiverContract2.target,
-    ];
-    const amounts = [-3, 1, 2];
-    const rc = await (
-      await transferContract.transferTokens(
+    const senders = [transferContract.target, transferContract.target];
+    const receivers = [receiverContract1.target, receiverContract2.target];
+    const serialNumbers = [serialNumber1, serialNumber2];
+    const receipt = await (
+      await transferContract.transferNFTs(
         htsAddress,
         tokenAddress,
-        accounts,
-        amounts,
+        senders,
+        receivers,
+        serialNumbers,
       )
     ).wait();
     console.log(
-      "%s FT transferTokens:%s accounts:%s amounts:%s",
-      rc.hash,
+      "%s NFT transferNFTs:%s senders:%s receivers:%s serialNumbers:%s",
+      receipt.hash,
       tokenAddress,
-      accounts,
-      amounts,
+      senders,
+      receivers,
+      serialNumbers,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract1.target,
-        amount: 1,
+        serial: serialNumber1,
       },
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract2.target,
-        amount: 2,
+        serial: serialNumber2,
       },
     ]);
   }
@@ -216,39 +176,48 @@ class Erc20RelayTestsImpl {
     tokenAddress,
     receiverContract1,
     receiverContract2,
+    serialNumber1,
+    serialNumber2,
     responseCode,
   ) {
     const tokenTransfers = [
       {
         token: tokenAddress,
-        transfers: [
-          { accountID: transferContract.target, amount: -3 },
-          { accountID: receiverContract1.target, amount: 1 },
-          { accountID: receiverContract2.target, amount: 2 },
+        transfers: [],
+        nftTransfers: [
+          {
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract1.target,
+            serialNumber: serialNumber1,
+          },
+          {
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract2.target,
+            serialNumber: serialNumber2,
+          },
         ],
-        nftTransfers: [],
       },
     ];
-    const rc = await (
+    const receipt = await (
       await transferContract.cryptoTransferV1(htsAddress, tokenTransfers)
     ).wait();
     console.log(
-      "%s FT cryptoTransferV1 tokenTransfers:%s",
-      rc.hash,
+      "%s NFT cryptoTransferV1 tokenTransfers:%s",
+      receipt.hash,
       tokenTransfers,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract1.target,
-        amount: 1,
+        serial: serialNumber1,
       },
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract2.target,
-        amount: 2,
+        serial: serialNumber2,
       },
     ]);
   }
@@ -259,6 +228,8 @@ class Erc20RelayTestsImpl {
     tokenAddress,
     receiverContract1,
     receiverContract2,
+    serialNumber1,
+    serialNumber2,
     responseCode,
   ) {
     const transferList = {
@@ -267,15 +238,24 @@ class Erc20RelayTestsImpl {
     const tokenTransfers = [
       {
         token: tokenAddress,
-        transfers: [
-          { accountID: transferContract.target, amount: -3, isApproval: false },
-          { accountID: receiverContract1.target, amount: 1, isApproval: false },
-          { accountID: receiverContract2.target, amount: 2, isApproval: false },
+        transfers: [],
+        nftTransfers: [
+          {
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract1.target,
+            serialNumber: serialNumber1,
+            isApproval: false,
+          },
+          {
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract2.target,
+            serialNumber: serialNumber2,
+            isApproval: false,
+          },
         ],
-        nftTransfers: [],
       },
     ];
-    const rc = await (
+    const receipt = await (
       await transferContract.cryptoTransferV2(
         htsAddress,
         transferList,
@@ -283,23 +263,23 @@ class Erc20RelayTestsImpl {
       )
     ).wait();
     console.log(
-      "%s FT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
-      rc.hash,
+      "%s NFT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
+      receipt.hash,
       transferList,
       tokenTransfers,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract1.target,
-        amount: 1,
+        serial: serialNumber1,
       },
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract2.target,
-        amount: 2,
+        serial: serialNumber2,
       },
     ]);
   }
@@ -309,29 +289,34 @@ class Erc20RelayTestsImpl {
     transferContract,
     tokenAddress,
     receiverContract,
+    serialNumber,
     responseCode,
     pendingAirdrops,
   ) {
     const tokenTransfers = [
       {
         token: tokenAddress,
-        transfers: [
-          { accountID: transferContract.target, amount: -1, isApproval: false },
-          { accountID: receiverContract.target, amount: 1, isApproval: false },
+        transfers: [],
+        nftTransfers: [
+          {
+            senderAccountID: transferContract.target,
+            receiverAccountID: receiverContract.target,
+            serialNumber: serialNumber,
+            isApproval: false,
+          },
         ],
-        nftTransfers: [],
       },
     ];
-    const rc = await (
+    const receipt = await (
       await transferContract.airdropTokens(htsAddress, tokenTransfers)
     ).wait();
     console.log(
       "%s FT airdropTokens tokenTransfers:%s",
-      rc.hash,
+      receipt.hash,
       tokenTransfers,
     );
     await validateRcWithErcEvent(
-      rc,
+      receipt,
       responseCode,
       pendingAirdrops
         ? []
@@ -340,7 +325,7 @@ class Erc20RelayTestsImpl {
               address: tokenAddress,
               from: transferContract.target,
               to: receiverContract.target,
-              amount: 1,
+              serial: serialNumber,
             },
           ],
     );
@@ -351,6 +336,7 @@ class Erc20RelayTestsImpl {
     transferContract,
     tokenAddress,
     receiverContract,
+    serialNumber,
     responseCode,
   ) {
     const pendingAirdrops = [
@@ -358,30 +344,29 @@ class Erc20RelayTestsImpl {
         sender: transferContract.target,
         receiver: receiverContract.target,
         token: tokenAddress,
-        serial: 0,
+        serial: serialNumber,
       },
     ];
-    const rc = await (
+    const receipt = await (
       await receiverContract.claimAirdrops(htsAddress, pendingAirdrops)
     ).wait();
     console.log(
       "%s FT claimAirdrops pendingAirdrops:%s",
-      rc.hash,
+      receipt.hash,
       pendingAirdrops,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
         to: receiverContract.target,
-        amount: 1,
+        serial: serialNumber,
       },
     ]);
   }
 }
 
 module.exports = {
-  validateRcWithErcEvent,
-  approveFt,
-  Erc20RelayTestsImpl,
+  approveNft,
+  Erc721RelayTestsImpl,
 };

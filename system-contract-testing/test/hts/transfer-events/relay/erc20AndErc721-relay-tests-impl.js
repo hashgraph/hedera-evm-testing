@@ -36,15 +36,15 @@ class Erc20Erc721RelayTestsImpl {
         ],
       },
     ];
-    const rc = await (
+    const receipt = await (
       await transferContract.cryptoTransferV1(htsAddress, tokenTransfers)
     ).wait();
     console.log(
       "%s FT/NFT cryptoTransferV1 tokenTransfers:%s",
-      rc.hash,
+      receipt.hash,
       tokenTransfers,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: ftTokenAddress,
         from: transferContract.target,
@@ -94,7 +94,7 @@ class Erc20Erc721RelayTestsImpl {
         ],
       },
     ];
-    const rc = await (
+    const receipt = await (
       await transferContract.cryptoTransferV2(
         htsAddress,
         transferList,
@@ -103,11 +103,11 @@ class Erc20Erc721RelayTestsImpl {
     ).wait();
     console.log(
       "%s FT/NFT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
-      rc.hash,
+      receipt.hash,
       transferList,
       tokenTransfers,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: ftTokenAddress,
         from: transferContract.target,
@@ -155,16 +155,16 @@ class Erc20Erc721RelayTestsImpl {
         ],
       },
     ];
-    const rc = await (
+    const receipt = await (
       await transferContract.airdropTokens(htsAddress, tokenTransfers)
     ).wait();
     console.log(
       "%s FT/NFT airdropTokens tokenTransfers:%s",
-      rc.hash,
+      receipt.hash,
       tokenTransfers,
     );
     await validateRcWithErcEvent(
-      rc,
+      receipt,
       responseCode,
       pendingAirdrops
         ? []
@@ -208,15 +208,15 @@ class Erc20Erc721RelayTestsImpl {
         serial: serialNumber,
       },
     ];
-    const rc = await (
+    const receipt = await (
       await receiverContract.claimAirdrops(htsAddress, pendingAirdrops)
     ).wait();
     console.log(
       "%s FT/NFT claimAirdrops pendingAirdrops:%s",
-      rc.hash,
+      receipt.hash,
       pendingAirdrops,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: ftTokenAddress,
         from: transferContract.target,

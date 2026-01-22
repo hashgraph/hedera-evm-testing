@@ -1,16 +1,15 @@
+const { ethers } = require("hardhat");
 const {
   beforeTests,
-  beforeFtTests,
-  beforeNftTests,
-  mintForNftTests,
-} = require("./erc-events-main");
-const { createSDKClient } = require("../../utils/utils");
-const { Interface } = require("@ethersproject/abi");
+  setupFungibleTokenTests,
+  setupNonFungibleTokenTests,
+} = require("./test-engine/transfer-events-setup");
+const { createSDKClient } = require("../../../utils/utils");
 const { readFileSync } = require("node:fs");
-const { HTS_ADDRESS, HTS_ADDRESS_V2 } = require("../../utils/constants");
-const { erc20EventsTests } = require("./setup/erc20");
-const { erc721EventsTests } = require("./setup/erc721");
-const { erc20AndErc721EventsTests } = require("./setup/erc20AndErc721");
+const { HTS_ADDRESS, HTS_ADDRESS_V2 } = require("../../../utils/constants");
+const { erc20EventsTests } = require("./test-engine/erc20");
+const { erc721EventsTests } = require("./test-engine/erc721");
+const { erc20AndErc721EventsTests } = require("./test-engine/erc20AndErc721");
 const { Erc20RelayTestsImpl } = require("./relay/erc20-relay-tests-impl");
 const { Erc721RelayTestsImpl } = require("./relay/erc721-relay-tests-impl");
 const {
@@ -21,36 +20,6 @@ const { Erc721SdkTestsImpl } = require("./sdk/erc721-sdk-tests-impl");
 const {
   Erc20Erc721SdkTestsImpl,
 } = require("./sdk/erc20AndErc721-sdk-tests-impl");
-
-async function initFt(context) {
-  if (!context.ftTokenAddress) {
-    context.ftTokenAddress = await beforeFtTests(
-      context.treasury,
-      context.transferContract,
-      context.receiverContract1,
-      context.receiverContract2,
-    );
-  }
-}
-
-async function initNft(context, mintAmount) {
-  if (!context.nftTokenAddress) {
-    context.nftTokenAddress = await beforeNftTests(
-      context.treasury,
-      context.transferContract,
-      context.receiverContract1,
-      context.receiverContract2,
-    );
-  }
-  context.serialNumbers = context.serialNumbers.concat(
-    await mintForNftTests(
-      context.treasury,
-      context.transferContract,
-      context.nftTokenAddress,
-      mintAmount,
-    ),
-  );
-}
 
 describe("ERC Transfer events", async () => {
   const context = {
@@ -65,18 +34,18 @@ describe("ERC Transfer events", async () => {
 
   before(async () => {
     // Import the ABI for SDK tests and set up an ethers.js interface using the abi
-    context.transferAbiInterface = new Interface(
+    context.transferAbiInterface = new ethers.Interface(
       JSON.parse(
         readFileSync(
-          "./artifacts/contracts/erc-events/ErcEventsContract.sol/ErcEventsContract.json",
+          "./artifacts/contracts/hts/transfer-events/TransferEventsContract.sol/TransferEventsContract.json",
           "utf8",
         ),
       ).abi,
     );
-    context.receiverAbiInterface = new Interface(
+    context.receiverAbiInterface = new ethers.Interface(
       JSON.parse(
         readFileSync(
-          "./artifacts/contracts/erc-events/ErcEventsReceiverContract.sol/ErcEventsReceiverContract.json",
+          "./artifacts/contracts/hts/transfer-events/TransferEventsReceiverContract.sol/TransferEventsReceiverContract.json",
           "utf8",
         ),
       ).abi,
@@ -93,7 +62,7 @@ describe("ERC Transfer events", async () => {
   describe("Relay ERC events", async () => {
     describe("Relay ERC20 events", async () => {
       before(async () => {
-        await initFt(context);
+        await setupFungibleTokenTests(context);
       });
 
       describe("Relay ERC20 HTS 0x167", async () => {
@@ -117,7 +86,7 @@ describe("ERC Transfer events", async () => {
 
     describe("Relay ERC721 events", async () => {
       before(async () => {
-        await initNft(context, 20);
+        await setupNonFungibleTokenTests(context, 20);
       });
 
       describe("Relay ERC721 HTS 0x167", async () => {
@@ -141,8 +110,8 @@ describe("ERC Transfer events", async () => {
 
     describe("Relay ERC20/ERC721 events", async () => {
       before(async () => {
-        await initFt(context);
-        await initNft(context, 10);
+        await setupFungibleTokenTests(context);
+        await setupNonFungibleTokenTests(context, 10);
       });
 
       describe("Relay ERC20/ERC721 HTS 0x167", async () => {
@@ -181,7 +150,7 @@ describe("ERC Transfer events", async () => {
 
     describe("SDK ERC20 events", async () => {
       before(async () => {
-        await initFt(context);
+        await setupFungibleTokenTests(context);
       });
 
       describe("SDK ERC20 HTS 0x167", async () => {
@@ -205,7 +174,7 @@ describe("ERC Transfer events", async () => {
 
     describe("SDK ERC721 events", async () => {
       before(async () => {
-        await initNft(context, 20);
+        await setupNonFungibleTokenTests(context, 20);
       });
 
       describe("SDK ERC721 HTS 0x167", async () => {
@@ -229,8 +198,8 @@ describe("ERC Transfer events", async () => {
 
     describe("SDK ERC20/ERC721 events", async () => {
       before(async () => {
-        await initFt(context);
-        await initNft(context, 10);
+        await setupFungibleTokenTests(context);
+        await setupNonFungibleTokenTests(context, 10);
       });
 
       describe("SDK ERC20/ERC721 HTS 0x167", async () => {

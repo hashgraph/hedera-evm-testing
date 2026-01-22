@@ -1,10 +1,10 @@
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
-const Constants = require("../../../utils/constants");
-const { contractDeployAndFund } = require("../../../utils/contract");
-const { approveNft } = require("../relay/erc721-relay-tests-impl");
+const Constants = require("../../../../utils/constants");
+const { contractDeployAndFund } = require("../../../../utils/contract");
+const { approveFt } = require("../relay/erc20-relay-tests-impl");
 
 /**
- * ERC721 events tests. Using this method to reuse tests for different HTS addresses
+ * ERC20 events tests. Using this method to reuse tests for different HTS addresses
  * @param testsImpl an object with tests implementation
  * @param htsAddress address of the HTS contract
  * @param runProxyTests if we want to run tests with proxy transfers. Because proxy transfers do not use htsAddress,
@@ -12,103 +12,84 @@ const { approveNft } = require("../relay/erc721-relay-tests-impl");
  * @param context test context, holding pre-created data
  * @returns {Promise<void>}
  */
-async function erc721EventsTests(
-  testsImpl,
-  htsAddress,
-  runProxyTests,
-  context,
-) {
+async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
   const displayAddress = htsAddress.replace(/(0)\1+/g, "");
 
+  // ---------------- Tests setup ----------------
   describe(`${testsImpl.engine()}: ${displayAddress} positive cases`, async () => {
-    it(`${displayAddress} NFT transferNFT`, async () => {
-      await testsImpl.transferNFTTest(
+    it(`${displayAddress} FT transferToken`, async () => {
+      await testsImpl.transferTokenTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
-        context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} NFT transferFromNFT`, async () => {
-      // We are minting separate token at treasury because we cant self-approve NFT
-      // mint nft token at treasury
-      const serialNumber = (
-        await (
-          await context.treasury.mintTokenPublic(context.nftTokenAddress, 0, [
-            "0x0101",
-          ])
-        ).wait()
-      ).logs.find((e) => e.fragment.name === Constants.Events.MintedToken).args
-        .serialNumbers[0];
-      // approve minted nft transfer from treasury
-      await approveNft(
-        context.treasury,
-        context.nftTokenAddress,
-        context.transferContract,
-        serialNumber,
-      );
-      // transfer from treasury to receiverContract1
-      await testsImpl.transferFromNFTTest(
+    it(`${testsImpl.engine()}: ${displayAddress} FT transferFrom`, async () => {
+      await approveFt(context.transferContract, context.ftTokenAddress, 1);
+      await testsImpl.transferFromTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
-        context.treasury,
+        context.ftTokenAddress,
         context.receiverContract1,
-        serialNumber,
         ResponseCodeEnum.SUCCESS,
       );
     });
 
     if (runProxyTests) {
-      it(`${testsImpl.engine()}: ${displayAddress} NFT transferFromNft proxy`, async () => {
-        await testsImpl.transferFromNftProxyTest(
+      it(`${testsImpl.engine()}: ${displayAddress} FT transfer proxy`, async () => {
+        await testsImpl.transferFtProxyTest(
           context.transferContract,
-          context.nftTokenAddress,
+          context.ftTokenAddress,
           context.receiverContract1,
-          context.serialNumbers.shift(),
           ResponseCodeEnum.SUCCESS,
         );
       });
     }
 
-    it(`${testsImpl.engine()}: ${displayAddress} NFT transferNFTsTest`, async () => {
-      await testsImpl.transferNFTsTest(
+    if (runProxyTests) {
+      it(`${testsImpl.engine()}: ${displayAddress} FT transferFrom proxy`, async () => {
+        await approveFt(context.transferContract, context.ftTokenAddress, 1);
+        await testsImpl.transferFromFtProxyTest(
+          context.transferContract,
+          context.ftTokenAddress,
+          context.receiverContract1,
+          ResponseCodeEnum.SUCCESS,
+        );
+      });
+    }
+
+    it(`${testsImpl.engine()}: ${displayAddress} FT transferTokens`, async () => {
+      await testsImpl.transferTokensTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverContract2,
-        context.serialNumbers.shift(),
-        context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} NFT cryptoTransferV1`, async () => {
+    it(`${testsImpl.engine()}: ${displayAddress} FT cryptoTransferV1`, async () => {
       await testsImpl.cryptoTransferV1Test(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverContract2,
-        context.serialNumbers.shift(),
-        context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} NFT cryptoTransferV2`, async () => {
+    it(`${testsImpl.engine()}: ${displayAddress} FT cryptoTransferV2`, async () => {
       await testsImpl.cryptoTransferV2Test(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverContract2,
-        context.serialNumbers.shift(),
-        context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
       );
     });
@@ -117,9 +98,8 @@ async function erc721EventsTests(
       await testsImpl.airdropTokensTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
-        context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
         false,
       );
@@ -127,50 +107,55 @@ async function erc721EventsTests(
   });
 
   describe(`${testsImpl.engine()}: ${displayAddress} negative cases`, async () => {
-    it(`${testsImpl.engine()}: ${displayAddress} NFT transferNFT TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await testsImpl.transferNFTTest(
+    it(`${testsImpl.engine()}: ${displayAddress} FT transferToken TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+      await testsImpl.transferTokenTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverNotAssociated,
-        context.serialNumbers[0],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} NFT transferFromNFT SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
-      await testsImpl.transferFromNFTTest(
+    it(`${testsImpl.engine()}: ${displayAddress} FT transferFrom SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
+      await testsImpl.transferFromTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
-        context.transferContract,
+        context.ftTokenAddress,
         context.receiverContract1,
-        context.serialNumbers[0],
         ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
       );
     });
 
     if (runProxyTests) {
-      it(`${testsImpl.engine()}: ${displayAddress} NFT transferFromNft proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-        await testsImpl.transferFromNftProxyTest(
+      it(`${testsImpl.engine()}: ${displayAddress} FT transfer proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+        await testsImpl.transferFtProxyTest(
           context.transferContract,
-          context.nftTokenAddress,
+          context.ftTokenAddress,
           context.receiverNotAssociated,
-          context.serialNumbers[0],
           ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
         );
       });
     }
 
-    it(`${testsImpl.engine()}: ${displayAddress} FT transferNFTsTest TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await testsImpl.transferNFTsTest(
+    if (runProxyTests) {
+      it(`${testsImpl.engine()}: ${displayAddress} FT transferFrom proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+        await testsImpl.transferFromFtProxyTest(
+          context.transferContract,
+          context.ftTokenAddress,
+          context.receiverNotAssociated,
+          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
+        );
+      });
+    }
+
+    it(`${testsImpl.engine()}: ${displayAddress} FT transferTokens TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
+      await testsImpl.transferTokensTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverNotAssociated,
-        context.serialNumbers[0],
-        context.serialNumbers[1],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
@@ -179,11 +164,9 @@ async function erc721EventsTests(
       await testsImpl.cryptoTransferV1Test(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverNotAssociated,
-        context.serialNumbers[0],
-        context.serialNumbers[1],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
@@ -192,28 +175,24 @@ async function erc721EventsTests(
       await testsImpl.cryptoTransferV2Test(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         context.receiverContract1,
         context.receiverNotAssociated,
-        context.serialNumbers[0],
-        context.serialNumbers[1],
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
 
     it(`${testsImpl.engine()}: ${displayAddress} FT claimAirdrops`, async () => {
-      // not associated receiver for pending airdrop
+      // not associated receiver for pending aidrop
       const receiver = await contractDeployAndFund(
-        Constants.Contract.ErcEventsReceiverContract,
+        Constants.Contract.TransferEventsReceiverContract,
       );
-      const serial = context.serialNumbers.shift();
       // send pending airdrop
       await testsImpl.airdropTokensTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         receiver,
-        serial,
         ResponseCodeEnum.SUCCESS,
         true,
       );
@@ -221,9 +200,8 @@ async function erc721EventsTests(
       await testsImpl.claimAirdropsTest(
         htsAddress,
         context.transferContract,
-        context.nftTokenAddress,
+        context.ftTokenAddress,
         receiver,
-        serial,
         ResponseCodeEnum.SUCCESS,
       );
     });
@@ -231,5 +209,5 @@ async function erc721EventsTests(
 }
 
 module.exports = {
-  erc721EventsTests,
+  erc20EventsTests,
 };

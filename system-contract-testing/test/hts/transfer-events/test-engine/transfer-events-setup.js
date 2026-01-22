@@ -1,39 +1,46 @@
-const { contractDeployAndFund } = require("../../utils/contract");
-const Constants = require("../../utils/constants");
+const { contractDeployAndFund } = require("../../../../utils/contract");
+const Constants = require("../../../../utils/constants");
 
+/**
+ * Create test contract, includes token create contract, transfer contract, receiver contracts
+ * @param receivers amount of receiver contracts to create
+ * @returns {Promise<*[]>}
+ */
 async function beforeTests(receivers) {
-  // create test 'transferContract'
+  // create token create contract
   const tokenContract = await contractDeployAndFund(
     Constants.Contract.TokenCreateContract,
   );
   // create test 'transferContract'
   const transferContract = await contractDeployAndFund(
-    Constants.Contract.ErcEventsContract,
+    Constants.Contract.TransferEventsContract,
     20,
   );
   const retval = [tokenContract, transferContract];
   // create receiverContracts
   for (let i = 0; i < receivers; i++) {
     retval.push(
-      await contractDeployAndFund(Constants.Contract.ErcEventsReceiverContract),
+      await contractDeployAndFund(
+        Constants.Contract.TransferEventsReceiverContract,
+      ),
     );
   }
   return retval;
 }
 
-async function beforeFtTests(
+async function createFungibleTokenAndAssociate(
   tokenContract,
   transferContract,
   receiverContract1,
   receiverContract2,
 ) {
   // create test FT token with 'tokenContract' as a 'treasury'
-  const rc = await (
+  const receipt = await (
     await transferContract.createFungibleTokenWithoutKYCPublic(tokenContract, {
       value: Constants.Cost.CREATE_TOKEN_COST,
     })
   ).wait();
-  const tokenAddress = rc.logs.find(
+  const tokenAddress = receipt.logs.find(
     (e) => e.fragment.name === Constants.Events.CreatedToken,
   ).args.tokenAddress;
   console.log(
@@ -47,14 +54,25 @@ async function beforeFtTests(
   return tokenAddress;
 }
 
-async function beforeNftTests(
+async function setupFungibleTokenTests(context) {
+  if (!context.ftTokenAddress) {
+    context.ftTokenAddress = await createFungibleTokenAndAssociate(
+      context.treasury,
+      context.transferContract,
+      context.receiverContract1,
+      context.receiverContract2,
+    );
+  }
+}
+
+async function createNonFungibleTokenAndAssociate(
   tokenContract,
   transferContract,
   receiverContract1,
   receiverContract2,
 ) {
   // create test NFT token with 'tokenContract' as a 'treasury'
-  const rc = await (
+  const receipt = await (
     await transferContract.createNonFungibleTokenWithoutKYCPublic(
       tokenContract,
       {
@@ -62,7 +80,7 @@ async function beforeNftTests(
       },
     )
   ).wait();
-  const tokenAddress = rc.logs.find(
+  const tokenAddress = receipt.logs.find(
     (e) => e.fragment.name === Constants.Events.CreatedToken,
   ).args.tokenAddress;
   console.log(
@@ -76,7 +94,7 @@ async function beforeNftTests(
   return tokenAddress;
 }
 
-async function mintForNftTests(
+async function mintForNonFungibleTokenTests(
   tokenContract,
   transferContract,
   tokenAddress,
@@ -116,9 +134,27 @@ async function mintForNftTests(
   return serialNumbers;
 }
 
+async function setupNonFungibleTokenTests(context, mintAmount) {
+  if (!context.nftTokenAddress) {
+    context.nftTokenAddress = await createNonFungibleTokenAndAssociate(
+      context.treasury,
+      context.transferContract,
+      context.receiverContract1,
+      context.receiverContract2,
+    );
+  }
+  context.serialNumbers = context.serialNumbers.concat(
+    await mintForNonFungibleTokenTests(
+      context.treasury,
+      context.transferContract,
+      context.nftTokenAddress,
+      mintAmount,
+    ),
+  );
+}
+
 module.exports = {
   beforeTests,
-  beforeFtTests,
-  beforeNftTests,
-  mintForNftTests,
+  setupFungibleTokenTests,
+  setupNonFungibleTokenTests,
 };

@@ -1,6 +1,6 @@
 const { validateRcWithErcEvent } = require("../relay/erc20-relay-tests-impl");
-const { getReceiptFromSdkTxResponse } = require("../sdk/erc20-sdk-tests-impl");
-const { encodeFunctionParameters } = require("../sdk/erc20-sdk-tests-impl");
+const { getReceiptFromSdkTxResponse } = require("./erc20-sdk-tests-impl");
+const { encodeFunctionParameters } = require("./erc20-sdk-tests-impl");
 const { ContractExecuteTransaction, ContractId } = require("@hashgraph/sdk");
 
 class Erc20Erc721SdkTestsImpl {
@@ -63,13 +63,13 @@ class Erc20Erc721SdkTestsImpl {
         ),
       );
     const response = await tx.execute(this.sdkClient());
-    const rc = await getReceiptFromSdkTxResponse(response);
+    const receipt = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT/NFT cryptoTransferV1 tokenTransfers:%s",
-      rc.hash,
+      receipt.hash,
       tokenTransfers,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: ftTokenAddress,
         from: transferContract.target,
@@ -130,14 +130,14 @@ class Erc20Erc721SdkTestsImpl {
         ),
       );
     const response = await tx.execute(this.sdkClient());
-    const rc = await getReceiptFromSdkTxResponse(response);
+    const receipt = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT/NFT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
-      rc.hash,
+      receipt.hash,
       transferList,
       tokenTransfers,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: ftTokenAddress,
         from: transferContract.target,
@@ -195,14 +195,14 @@ class Erc20Erc721SdkTestsImpl {
         ]),
       );
     const response = await tx.execute(this.sdkClient());
-    const rc = await getReceiptFromSdkTxResponse(response);
+    const receipt = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT/NFT airdropTokens tokenTransfers:%s",
-      rc.hash,
+      receipt.hash,
       tokenTransfers,
     );
     await validateRcWithErcEvent(
-      rc,
+      receipt,
       responseCode,
       pendingAirdrops
         ? []
@@ -257,13 +257,13 @@ class Erc20Erc721SdkTestsImpl {
         ),
       );
     const response = await tx.execute(this.sdkClient());
-    const rc = await getReceiptFromSdkTxResponse(response);
+    const receipt = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT/NFT claimAirdrops pendingAirdrops:%s",
-      rc.hash,
+      receipt.hash,
       pendingAirdrops,
     );
-    await validateRcWithErcEvent(rc, responseCode, [
+    await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: ftTokenAddress,
         from: transferContract.target,
