@@ -63,7 +63,7 @@ async function erc721EventsTests(
     });
 
     if (runProxyTests) {
-      it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT transferFromNft proxy`, async () => {
+      it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT proxy transferFromNft`, async () => {
         await testsImpl.transferFromNftProxyTest(
           context.transferContract,
           context.nftTokenAddress,

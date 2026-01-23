@@ -39,7 +39,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
     });
 
     if (runProxyTests) {
-      it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT transfer proxy`, async () => {
+      it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT proxy transfer`, async () => {
         await testsImpl.transferFtProxyTest(
           context.transferContract,
           context.ftTokenAddress,
@@ -50,7 +50,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
     }
 
     if (runProxyTests) {
-      it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT transferFrom proxy`, async () => {
+      it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT proxy transferFrom`, async () => {
         await approveFt(context.transferContract, context.ftTokenAddress, 1);
         await testsImpl.transferFromFtProxyTest(
           context.transferContract,
