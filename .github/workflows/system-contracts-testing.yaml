@@ -5,11 +5,15 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**/README.md'
+      - 'system-contract-testing/docs/**'
   pull_request:
     types:
       - opened
       - reopened
       - synchronize
+
 
 defaults:
   run:

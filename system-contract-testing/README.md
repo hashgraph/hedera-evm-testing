@@ -1,5 +1,9 @@
 # Hiero's EVM Functional Testing
 
+## Tests Docs
+- [HIP-1340](docs/hip-1340.md)
+- [HTS Transfer events](docs/hts/transfer-events.md)
+
 ## Requirements
 
 - `node` >= 22

@@ -24,6 +24,21 @@ npx hardhat test --network local --grep "HTS System Contract testing. ERC Transf
 
 ## Testing Scope
 
+The testing scope covers 15+ function signatures, ensuring parity between Fungible (FT) and Non-Fungible (NFT) tokens.
+
+1. Standard & Proxy Transfers (Positive Cases). Verifying that both direct HTS calls and ERC-proxy calls trigger the expected logs.
+   - Proxy `transfer` & `transferFrom`: Verify the caller or approved spender correctly triggers a `Transfer` log.
+   - Classic `transferToken` / `transferNFT`: Confirm these non-ERC functions now emit the standard event.
+2. Batch & Complex Logic. This is the highest-risk area where a single transaction triggers multiple movements.
+   - `cryptoTransfer` (v1 & v2): * Test multi-token lists.
+     - Crucial: Verify HBAR transfers in the same list do not emit a `Transfer` event.
+   - Batch Functions: `transferTokens` and `transferNFTs` must emit a distinct event for every array element.
+   - Airdrops: `airdropTokens`: Verify event emission for Direct Airdrops.
+     - `claimAirdrops`: Verify event is emitted only upon successful claim (movement to claimant).
+3. Negative & Boundary Scenarios
+   - Classic, Proxy, Batch Functions negative cases with `TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`
+
+### Testing Scope Table
 | Type           | HTS              | Scope                  | Token                                  | Function                |
 |----------------|------------------|------------------------|----------------------------------------|-------------------------|
 | `Relay`, `SDK` | `0x167`, `0x16c` | `positive`, `negative` | `Fungable Token`                       | `transferToken`         |
