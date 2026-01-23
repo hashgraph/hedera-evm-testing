@@ -13,8 +13,8 @@ const {
   hasScheduleCapacityCallData,
   payableCallData,
   getExpirySecond,
-  testScheduleCallEvent,
-  testResponseCodeEvent,
+  expectScheduleCallEvent,
+  expectResponseCodeEvent,
   getSignatureMap,
   SUCCESS,
   INSUFFICIENT_PAYER_BALANCE,
@@ -60,7 +60,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
       value,
       callDataFunction(testId, expirySecond)
     );
-    const scheduleAddress = await testScheduleCallEvent(
+    const scheduleAddress = await expectScheduleCallEvent(
       scheduleTx,
       ResponseCodeEnum.SUCCESS.valueOf()
     );
@@ -70,7 +70,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
       scheduleAddress,
       sigMapProtoEncoded
     );
-    await testResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
+    await expectResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
     // execution check in 'after'
     scheduleTxCheck.push({
       id: testId,
@@ -246,13 +246,13 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         addTestCallData(testId)
       );
-      const scheduleAddress = await testScheduleCallEvent(
+      const scheduleAddress = await expectScheduleCallEvent(
         scheduleTx,
         ResponseCodeEnum.SUCCESS.valueOf()
       );
       // sign schedule
       const signTx = await payerContract.authorizeSchedule(scheduleAddress);
-      await testResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
+      await expectResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
       // execution check in 'after'
       scheduleCheck.push({ id: testId, expirySecond: expirySecond });
     });
@@ -268,7 +268,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         addTestCallData("scheduleCallWithPayer fail payer zero address")
       );
-      await testScheduleCallEvent(receipt, ResponseCodeEnum.UNKNOWN.valueOf());
+      await expectScheduleCallEvent(receipt, ResponseCodeEnum.UNKNOWN.valueOf());
     });
 
     it("should fail with gasLimit 0", async () => {
@@ -280,7 +280,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         addTestCallData("scheduleCallWithPayer fail gasLimit 0")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
@@ -295,7 +295,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         addTestCallData("scheduleCallWithPayer fail gasLimit 1000")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
@@ -310,7 +310,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         addTestCallData("scheduleCallWithPayer fail gasLimit uint.maxvalue")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf()
       );
@@ -325,7 +325,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         addTestCallData("scheduleCallWithPayer fail expiry 0")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
@@ -340,7 +340,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         addTestCallData("scheduleCallWithPayer fail expiry current")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
@@ -356,7 +356,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         addTestCallData("scheduleCallWithPayer fail expiry + 1")
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_TOO_FAR_IN_FUTURE.valueOf()
       );
@@ -371,7 +371,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         "0xabc123"
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
@@ -389,7 +389,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         0,
         deployContract.bytecode
       );
-      await testScheduleCallEvent(
+      await expectScheduleCallEvent(
         receipt,
         ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );

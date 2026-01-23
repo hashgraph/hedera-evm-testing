@@ -47,8 +47,8 @@ function payableCallData() {
 }
 // ---------------------------------------------------------------------------
 
-// Test checker functions --------------------------------------------------
-async function testScheduleCallEvent(receipt, responseCode) {
+// Assertion helper functions --------------------------------------------------
+async function expectScheduleCallEvent(receipt, responseCode) {
   const rc = await receipt.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
   expect(log.args[0]).to.equal(responseCode);
@@ -62,14 +62,14 @@ async function testScheduleCallEvent(receipt, responseCode) {
   return address;
 }
 
-async function testResponseCodeEvent(receipt, responseCode) {
+async function expectResponseCodeEvent(receipt, responseCode) {
   const rc = await receipt.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ResponseCode);
   expect(log.args[0]).to.equal(responseCode);
   expect(rc.status).to.equal(ResponseCodeEnum.INVALID_TRANSACTION.valueOf());
 }
 
-async function testHasScheduleCapacityEvent(receipt, hasCapacity) {
+async function expectHasScheduleCapacityEvent(receipt, hasCapacity) {
   const rc = await receipt.wait();
   const log = rc.logs.find(
     (e) => e.fragment.name === Events.HasScheduleCapacity
@@ -284,9 +284,9 @@ module.exports = {
   payableCallData,
   getSignatureMap,
   getExpirySecond,
-  testScheduleCallEvent,
-  testResponseCodeEvent,
-  testHasScheduleCapacityEvent,
+  expectScheduleCallEvent,
+  expectResponseCodeEvent,
+  expectHasScheduleCapacityEvent,
   createMirrorNodeClient,
   getScheduledTxStatus,
   getRecursiveScheduleStatus,
