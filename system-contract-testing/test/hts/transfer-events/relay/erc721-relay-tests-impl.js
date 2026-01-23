@@ -204,7 +204,7 @@ class Erc721RelayTestsImpl {
     console.log(
       "%s NFT cryptoTransferV1 tokenTransfers:%s",
       receipt.hash,
-      tokenTransfers,
+        JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
@@ -266,7 +266,7 @@ class Erc721RelayTestsImpl {
       "%s NFT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
       receipt.hash,
       transferList,
-      tokenTransfers,
+        JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
@@ -313,7 +313,7 @@ class Erc721RelayTestsImpl {
     console.log(
       "%s FT airdropTokens tokenTransfers:%s",
       receipt.hash,
-      tokenTransfers,
+        JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(
       receipt,

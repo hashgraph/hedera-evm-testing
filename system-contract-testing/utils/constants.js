@@ -49,10 +49,14 @@ const Events = {
 const Path = {};
 
 const Contract = {
-  HIP1215Contract: "HIP1215Contract",
+  // --- util contracts
   TokenCreateContract: "TokenCreateContract",
-  TransferEventsContract: "TransferEventsContract",
-  TransferEventsReceiverContract: "TransferEventsReceiverContract",
+  // --- htp-1215 tests
+  HIP1215Contract: "HIP1215Contract",
+  // --- hts transfer events tests
+  HTSSystemContractTransfersExecutorContract:
+    "HTSSystemContractTransfersExecutorContract",
+  AirDropClaimContract: "AirDropClaimContract",
 };
 
 const Cost = {

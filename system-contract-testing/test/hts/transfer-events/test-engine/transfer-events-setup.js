@@ -6,14 +6,14 @@ const Constants = require("../../../../utils/constants");
  * @param receivers amount of receiver contracts to create
  * @returns {Promise<*[]>}
  */
-async function beforeTests(receivers) {
+async function createTestAndReceiverContracts(receivers) {
   // create token create contract
   const tokenContract = await contractDeployAndFund(
     Constants.Contract.TokenCreateContract,
   );
   // create test 'transferContract'
   const transferContract = await contractDeployAndFund(
-    Constants.Contract.TransferEventsContract,
+    Constants.Contract.HTSSystemContractTransfersExecutorContract,
     20,
   );
   const retval = [tokenContract, transferContract];
@@ -21,7 +21,7 @@ async function beforeTests(receivers) {
   for (let i = 0; i < receivers; i++) {
     retval.push(
       await contractDeployAndFund(
-        Constants.Contract.TransferEventsReceiverContract,
+        Constants.Contract.AirDropClaimContract,
       ),
     );
   }
@@ -154,7 +154,7 @@ async function setupNonFungibleTokenTests(context, mintAmount) {
 }
 
 module.exports = {
-  beforeTests,
+  createTestAndReceiverContracts,
   setupFungibleTokenTests,
   setupNonFungibleTokenTests,
 };

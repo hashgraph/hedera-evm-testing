@@ -240,7 +240,7 @@ class Erc721SdkTestsImpl {
     console.log(
       "%s NFT cryptoTransferV1 tokenTransfers:%s",
       receipt.hash,
-      tokenTransfers,
+        JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
@@ -304,10 +304,10 @@ class Erc721SdkTestsImpl {
     const response = await tx.execute(this.sdkClient());
     const receipt = await getReceiptFromSdkTxResponse(response);
     console.log(
-      "%s NFT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
+      "%s NFT cryptoTransferV2 transferList:%s tokenTransfers:%s",
       receipt.hash,
       transferList,
-      tokenTransfers,
+      JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
@@ -352,17 +352,18 @@ class Erc721SdkTestsImpl {
       .setContractId(ContractId.fromEvmAddress(0, 0, transferContract.target))
       .setGas(2 * this.gas)
       .setFunctionParameters(
-        encodeFunctionParameters(this.context.transferAbiInterface, "airdropTokens", [
-          htsAddress,
-          tokenTransfers,
-        ]),
+        encodeFunctionParameters(
+          this.context.transferAbiInterface,
+          "airdropTokens",
+          [htsAddress, tokenTransfers],
+        ),
       );
     const response = await tx.execute(this.sdkClient());
     const receipt = await getReceiptFromSdkTxResponse(response);
     console.log(
       "%s FT airdropTokens tokenTransfers:%s",
       receipt.hash,
-      tokenTransfers,
+        JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(
       receipt,

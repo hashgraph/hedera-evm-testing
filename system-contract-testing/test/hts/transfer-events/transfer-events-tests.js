@@ -1,6 +1,6 @@
 const { ethers } = require("hardhat");
 const {
-  beforeTests,
+  createTestAndReceiverContracts,
   setupFungibleTokenTests,
   setupNonFungibleTokenTests,
 } = require("./test-engine/transfer-events-setup");
@@ -21,7 +21,12 @@ const {
   Erc20Erc721SdkTestsImpl,
 } = require("./sdk/erc20AndErc721-sdk-tests-impl");
 
-describe("ERC Transfer events", async () => {
+// fix JSON.stringify - Do not know how to serialize a BigInt
+BigInt.prototype["toJSON"] = function () {
+  return Number(this);
+};
+
+describe("HTS System Contract testing. ERC Transfer events tests", async () => {
   const context = {
     transferContract: "",
     ftTokenAddress: "",
@@ -37,7 +42,7 @@ describe("ERC Transfer events", async () => {
     context.transferAbiInterface = new ethers.Interface(
       JSON.parse(
         readFileSync(
-          "./artifacts/contracts/hts/transfer-events/TransferEventsContract.sol/TransferEventsContract.json",
+          "./artifacts/contracts/hts/transfer-events/HTSSystemContractTransfersExecutorContract.sol/HTSSystemContractTransfersExecutorContract.json",
           "utf8",
         ),
       ).abi,
@@ -45,7 +50,7 @@ describe("ERC Transfer events", async () => {
     context.receiverAbiInterface = new ethers.Interface(
       JSON.parse(
         readFileSync(
-          "./artifacts/contracts/hts/transfer-events/TransferEventsReceiverContract.sol/TransferEventsReceiverContract.json",
+          "./artifacts/contracts/hts/transfer-events/AirDropClaimContract.sol/AirDropClaimContract.json",
           "utf8",
         ),
       ).abi,
@@ -56,16 +61,16 @@ describe("ERC Transfer events", async () => {
       context.receiverContract1,
       context.receiverContract2,
       context.receiverNotAssociated,
-    ] = await beforeTests(3);
+    ] = await createTestAndReceiverContracts(3);
   });
 
-  describe("Relay ERC events", async () => {
-    describe("Relay ERC20 events", async () => {
+  describe("Relay -> HTS -> ERC events", async () => {
+    describe("Relay -> HTS -> ERC20 events", async () => {
       before(async () => {
         await setupFungibleTokenTests(context);
       });
 
-      describe("Relay ERC20 HTS 0x167", async () => {
+      describe("Relay -> HTS(0x167) -> ERC20 events", async () => {
         await erc20EventsTests(
           new Erc20RelayTestsImpl(),
           HTS_ADDRESS,
@@ -74,7 +79,7 @@ describe("ERC Transfer events", async () => {
         );
       });
 
-      describe("Relay ERC20 HTS 0x16c", async () => {
+      describe("Relay -> HTS(0x16c) -> ERC20 events", async () => {
         await erc20EventsTests(
           new Erc20RelayTestsImpl(),
           HTS_ADDRESS_V2,
@@ -84,12 +89,12 @@ describe("ERC Transfer events", async () => {
       });
     });
 
-    describe("Relay ERC721 events", async () => {
+    describe("Relay -> HTS -> ERC721 events", async () => {
       before(async () => {
-        await setupNonFungibleTokenTests(context, 20);
+        await setupNonFungibleTokenTests(context, 30);
       });
 
-      describe("Relay ERC721 HTS 0x167", async () => {
+      describe("Relay -> HTS(0x167) -> ERC721 events", async () => {
         await erc721EventsTests(
           new Erc721RelayTestsImpl(),
           HTS_ADDRESS,
@@ -98,7 +103,7 @@ describe("ERC Transfer events", async () => {
         );
       });
 
-      describe("Relay ERC721 HTS 0x16c", async () => {
+      describe("Relay -> HTS(0x16c) -> ERC721 events", async () => {
         await erc721EventsTests(
           new Erc721RelayTestsImpl(),
           HTS_ADDRESS_V2,
@@ -108,13 +113,13 @@ describe("ERC Transfer events", async () => {
       });
     });
 
-    describe("Relay ERC20/ERC721 events", async () => {
+    describe("Relay -> HTS -> ERC20 and ERC721 events", async () => {
       before(async () => {
         await setupFungibleTokenTests(context);
         await setupNonFungibleTokenTests(context, 10);
       });
 
-      describe("Relay ERC20/ERC721 HTS 0x167", async () => {
+      describe("Relay -> HTS(0x167) -> ERC20 and ERC721 events", async () => {
         await erc20AndErc721EventsTests(
           new Erc20Erc721RelayTestsImpl(),
           HTS_ADDRESS,
@@ -122,7 +127,7 @@ describe("ERC Transfer events", async () => {
         );
       });
 
-      describe("Relay ERC20/ERC721 HTS 0x16c", async () => {
+      describe("Relay -> HTS(0x16c) -> ERC20 and ERC721 events", async () => {
         await erc20AndErc721EventsTests(
           new Erc20Erc721RelayTestsImpl(),
           HTS_ADDRESS_V2,
@@ -132,7 +137,7 @@ describe("ERC Transfer events", async () => {
     });
   });
 
-  describe("SDK ERC events", async () => {
+  describe("SDK -> HTS -> ERC events", async () => {
     // We are instantiating sdkClient and closing it exactly for 'SDK ERC events'
     // because in case of client inactivity it is failing 'k8s port-forward' with error:
     // E0120 21:23:09.172052   39098 portforward.go:424] "Unhandled Error" err="an error occurred forwarding 50211 -> 50211: error forwarding port 50211 to pod c9f41fb7b0a16561e179d721824d79e8cda557c61d541f5d2bb0a157d7400076, uid : failed to execute portforward in network namespace \"/var/run/netns/cni-7f0d3f76-aa7a-deab-34d6-82ba722243d0\": readfrom tcp4 127.0.0.1:42616->127.0.0.1:50211: write tcp4 127.0.0.1:42616->127.0.0.1:50211: write: broken pipe"
@@ -148,12 +153,12 @@ describe("ERC Transfer events", async () => {
       }
     });
 
-    describe("SDK ERC20 events", async () => {
+    describe("SDK -> HTS -> ERC20 events", async () => {
       before(async () => {
         await setupFungibleTokenTests(context);
       });
 
-      describe("SDK ERC20 HTS 0x167", async () => {
+      describe("SDK -> HTS(0x167) -> ERC20 events", async () => {
         await erc20EventsTests(
           new Erc20SdkTestsImpl(context),
           HTS_ADDRESS,
@@ -162,7 +167,7 @@ describe("ERC Transfer events", async () => {
         );
       });
 
-      describe("SDK ERC20 HTS 0x16c", async () => {
+      describe("SDK -> HTS(0x16c) -> ERC20 events", async () => {
         await erc20EventsTests(
           new Erc20SdkTestsImpl(context),
           HTS_ADDRESS_V2,
@@ -172,12 +177,12 @@ describe("ERC Transfer events", async () => {
       });
     });
 
-    describe("SDK ERC721 events", async () => {
+    describe("SDK -> HTS -> ERC721 events", async () => {
       before(async () => {
-        await setupNonFungibleTokenTests(context, 20);
+        await setupNonFungibleTokenTests(context, 30);
       });
 
-      describe("SDK ERC721 HTS 0x167", async () => {
+      describe("SDK -> HTS(0x167) -> ERC721 events", async () => {
         await erc721EventsTests(
           new Erc721SdkTestsImpl(context),
           HTS_ADDRESS,
@@ -186,7 +191,7 @@ describe("ERC Transfer events", async () => {
         );
       });
 
-      describe("SDK ERC721 HTS 0x16c", async () => {
+      describe("SDK -> HTS(0x16c) -> ERC721 events", async () => {
         await erc721EventsTests(
           new Erc721SdkTestsImpl(context),
           HTS_ADDRESS_V2,
@@ -196,13 +201,13 @@ describe("ERC Transfer events", async () => {
       });
     });
 
-    describe("SDK ERC20/ERC721 events", async () => {
+    describe("SDK -> HTS -> ERC20 and ERC721 events", async () => {
       before(async () => {
         await setupFungibleTokenTests(context);
         await setupNonFungibleTokenTests(context, 10);
       });
 
-      describe("SDK ERC20/ERC721 HTS 0x167", async () => {
+      describe("SDK -> HTS(0x167) -> ERC20 and ERC721 events", async () => {
         await erc20AndErc721EventsTests(
           new Erc20Erc721SdkTestsImpl(context),
           HTS_ADDRESS,
@@ -210,7 +215,7 @@ describe("ERC Transfer events", async () => {
         );
       });
 
-      describe("SDK ERC20/ERC721 HTS 0x16c", async () => {
+      describe("SDK -> HTS(0x16c) -> ERC20 and ERC721 events", async () => {
         await erc20AndErc721EventsTests(
           new Erc20Erc721SdkTestsImpl(context),
           HTS_ADDRESS_V2,

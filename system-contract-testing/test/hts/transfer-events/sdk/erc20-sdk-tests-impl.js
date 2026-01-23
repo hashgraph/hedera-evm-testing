@@ -9,9 +9,9 @@ const {
 
 /**
  * Helper function to encode function name and parameters that can be used to invoke a contract's function
- * @param abiInterface ABI of the contract for this functionName
- * @param functionName the name of the function to invoke
- * @param parameterArray an array of parameters to pass to the function
+ * @param { ethers.Interface } abiInterface ABI of the contract for this functionName
+ * @param { String } functionName the name of the function to invoke
+ * @param { Array } parameterArray an array of parameters to pass to the function
  */
 function encodeFunctionParameters(abiInterface, functionName, parameterArray) {
   // build the call parameters using ethers.js
@@ -25,7 +25,7 @@ function encodeFunctionParameters(abiInterface, functionName, parameterArray) {
 
 /**
  * Getting ether receipt object from Hedera SDK TransactionResponse object. This is used to reuse ERC events validation logic
- * @param response Hedera SDK TransactionResponse
+ * @param { TransactionResponse } response Hedera SDK TransactionResponse
  * @returns {Promise<*|undefined>}
  */
 async function getReceiptFromSdkTxResponse(response) {
@@ -299,7 +299,7 @@ class Erc20SdkTestsImpl {
     console.log(
       "%s FT cryptoTransferV1 tokenTransfers:%s",
       receipt.hash,
-      tokenTransfers,
+        JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
@@ -355,7 +355,7 @@ class Erc20SdkTestsImpl {
       "%s FT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
       receipt.hash,
       transferList,
-      tokenTransfers,
+        JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
@@ -405,7 +405,7 @@ class Erc20SdkTestsImpl {
     console.log(
       "%s FT airdropTokens tokenTransfers:%s",
       receipt.hash,
-      tokenTransfers,
+        JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(
       receipt,

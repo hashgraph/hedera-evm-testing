@@ -1,3 +1,4 @@
+const { ethers } = require("hardhat");
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
 const {
   validateResponseCodeEvent,
@@ -5,15 +6,23 @@ const {
 } = require("../../../../utils/events");
 
 // ---------------- Test util functions ----------------
-async function validateRcWithErcEvent(rc, responseCode, expectedEvents) {
+/**
+ * Validates transaction receipt for expected ERC events
+ *
+ * @param { ethers.ContractTransactionReceipt } receipt receipt of the transaction
+ * @param { Number } responseCode expected response code of function execution
+ * @param { Array<Object> } expectedEvents expected ERC events of function execution
+ * @returns {Promise<void>}
+ */
+async function validateRcWithErcEvent(receipt, responseCode, expectedEvents) {
   // check ContractTransactionReceipt has event with correct ResponseCode
-  await validateResponseCodeEvent(rc, responseCode.valueOf());
+  await validateResponseCodeEvent(receipt, responseCode.valueOf());
   if (responseCode === ResponseCodeEnum.SUCCESS) {
     // check ERC event
-    return validateErcEvent(rc, expectedEvents);
+    return validateErcEvent(receipt, expectedEvents);
   } else {
     // check there is no ERC events
-    return validateErcEvent(rc, []);
+    return validateErcEvent(receipt, []);
   }
 }
 

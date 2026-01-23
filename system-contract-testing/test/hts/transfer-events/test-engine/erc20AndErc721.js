@@ -13,7 +13,7 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
   const displayAddress = htsAddress.replace(/(0)\1+/g, "");
 
   // ---------------- Tests setup ----------------
-  it(`${testsImpl.engine()}: ${displayAddress} FT/NFT cryptoTransferV1 proxy`, async () => {
+  it(`should succeed and contain ERC20 and ERC721 events for HTS(${displayAddress})  FT/NFT cryptoTransferV1 proxy`, async () => {
     await testsImpl.cryptoTransferV1Test(
       htsAddress,
       context.transferContract,
@@ -25,7 +25,7 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
     );
   });
 
-  it(`${testsImpl.engine()}: ${displayAddress} FT/NFT cryptoTransferV2 proxy`, async () => {
+  it(`should succeed and contain ERC20 and ERC721 events for HTS(${displayAddress})  FT/NFT cryptoTransferV2 proxy`, async () => {
     await testsImpl.cryptoTransferV2Test(
       htsAddress,
       context.transferContract,
@@ -37,7 +37,7 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
     );
   });
 
-  it(`${testsImpl.engine()}: ${displayAddress} FT/NFT airdropTokens`, async () => {
+  it(`should succeed and contain ERC20 and ERC721 events for HTS(${displayAddress})  FT/NFT airdropTokens`, async () => {
     await testsImpl.airdropTokensTest(
       htsAddress,
       context.transferContract,
@@ -49,10 +49,10 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
     );
   });
 
-  it(`${testsImpl.engine()}: ${displayAddress} FT/NFT claimAirdrops`, async () => {
+  it(`should succeed and contain ERC20 and ERC721 events for HTS(${displayAddress})  FT/NFT claimAirdrops`, async () => {
     // not associated receiver for pending airdrop
     const receiver = await contractDeployAndFund(
-      Constants.Contract.TransferEventsReceiverContract,
+      Constants.Contract.AirDropClaimContract,
     );
     const serial = context.serialNumbers.shift();
     // send pending airdrop

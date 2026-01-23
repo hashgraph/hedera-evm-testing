@@ -20,8 +20,8 @@ async function erc721EventsTests(
 ) {
   const displayAddress = htsAddress.replace(/(0)\1+/g, "");
 
-  describe(`${testsImpl.engine()}: ${displayAddress} positive cases`, async () => {
-    it(`${displayAddress} NFT transferNFT`, async () => {
+  describe(`positive cases ERC721 events with HTS(${displayAddress}) using ${testsImpl.engine()}`, async () => {
+    it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT transferNFT`, async () => {
       await testsImpl.transferNFTTest(
         htsAddress,
         context.transferContract,
@@ -32,7 +32,7 @@ async function erc721EventsTests(
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} NFT transferFromNFT`, async () => {
+    it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT transferFromNFT`, async () => {
       // We are minting separate token at treasury because we cant self-approve NFT
       // mint nft token at treasury
       const serialNumber = (
@@ -63,7 +63,7 @@ async function erc721EventsTests(
     });
 
     if (runProxyTests) {
-      it(`${testsImpl.engine()}: ${displayAddress} NFT transferFromNft proxy`, async () => {
+      it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT transferFromNft proxy`, async () => {
         await testsImpl.transferFromNftProxyTest(
           context.transferContract,
           context.nftTokenAddress,
@@ -74,7 +74,7 @@ async function erc721EventsTests(
       });
     }
 
-    it(`${testsImpl.engine()}: ${displayAddress} NFT transferNFTsTest`, async () => {
+    it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT transferNFTsTest`, async () => {
       await testsImpl.transferNFTsTest(
         htsAddress,
         context.transferContract,
@@ -87,7 +87,7 @@ async function erc721EventsTests(
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} NFT cryptoTransferV1`, async () => {
+    it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT cryptoTransferV1`, async () => {
       await testsImpl.cryptoTransferV1Test(
         htsAddress,
         context.transferContract,
@@ -100,7 +100,7 @@ async function erc721EventsTests(
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} NFT cryptoTransferV2`, async () => {
+    it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT cryptoTransferV2`, async () => {
       await testsImpl.cryptoTransferV2Test(
         htsAddress,
         context.transferContract,
@@ -113,7 +113,7 @@ async function erc721EventsTests(
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} FT airdropTokens`, async () => {
+    it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT airdropTokens`, async () => {
       await testsImpl.airdropTokensTest(
         htsAddress,
         context.transferContract,
@@ -124,87 +124,11 @@ async function erc721EventsTests(
         false,
       );
     });
-  });
 
-  describe(`${testsImpl.engine()}: ${displayAddress} negative cases`, async () => {
-    it(`${testsImpl.engine()}: ${displayAddress} NFT transferNFT TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await testsImpl.transferNFTTest(
-        htsAddress,
-        context.transferContract,
-        context.nftTokenAddress,
-        context.receiverNotAssociated,
-        context.serialNumbers[0],
-        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
-      );
-    });
-
-    it(`${testsImpl.engine()}: ${displayAddress} NFT transferFromNFT SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
-      await testsImpl.transferFromNFTTest(
-        htsAddress,
-        context.transferContract,
-        context.nftTokenAddress,
-        context.transferContract,
-        context.receiverContract1,
-        context.serialNumbers[0],
-        ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
-      );
-    });
-
-    if (runProxyTests) {
-      it(`${testsImpl.engine()}: ${displayAddress} NFT transferFromNft proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-        await testsImpl.transferFromNftProxyTest(
-          context.transferContract,
-          context.nftTokenAddress,
-          context.receiverNotAssociated,
-          context.serialNumbers[0],
-          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
-        );
-      });
-    }
-
-    it(`${testsImpl.engine()}: ${displayAddress} FT transferNFTsTest TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await testsImpl.transferNFTsTest(
-        htsAddress,
-        context.transferContract,
-        context.nftTokenAddress,
-        context.receiverContract1,
-        context.receiverNotAssociated,
-        context.serialNumbers[0],
-        context.serialNumbers[1],
-        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
-      );
-    });
-
-    it(`${testsImpl.engine()}: ${displayAddress} FT cryptoTransferV1 TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await testsImpl.cryptoTransferV1Test(
-        htsAddress,
-        context.transferContract,
-        context.nftTokenAddress,
-        context.receiverContract1,
-        context.receiverNotAssociated,
-        context.serialNumbers[0],
-        context.serialNumbers[1],
-        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
-      );
-    });
-
-    it(`${testsImpl.engine()}: ${displayAddress} FT cryptoTransferV2 TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await testsImpl.cryptoTransferV2Test(
-        htsAddress,
-        context.transferContract,
-        context.nftTokenAddress,
-        context.receiverContract1,
-        context.receiverNotAssociated,
-        context.serialNumbers[0],
-        context.serialNumbers[1],
-        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
-      );
-    });
-
-    it(`${testsImpl.engine()}: ${displayAddress} FT claimAirdrops`, async () => {
+    it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT claimAirdrops`, async () => {
       // not associated receiver for pending airdrop
       const receiver = await contractDeployAndFund(
-        Constants.Contract.TransferEventsReceiverContract,
+        Constants.Contract.AirDropClaimContract,
       );
       const serial = context.serialNumbers.shift();
       // send pending airdrop
@@ -225,6 +149,82 @@ async function erc721EventsTests(
         receiver,
         serial,
         ResponseCodeEnum.SUCCESS,
+      );
+    });
+  });
+
+  describe(`negative cases ERC721 events with HTS(${displayAddress}) using ${testsImpl.engine()}`, async () => {
+    it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for HTS(${displayAddress}) NFT transferNFT`, async () => {
+      await testsImpl.transferNFTTest(
+        htsAddress,
+        context.transferContract,
+        context.nftTokenAddress,
+        context.receiverNotAssociated,
+        context.serialNumbers[0],
+        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
+      );
+    });
+
+    it(`should fail with SPENDER_DOES_NOT_HAVE_ALLOWANCE and NOT contain ERC20 events for HTS(${displayAddress}) NFT transferFromNFT`, async () => {
+      await testsImpl.transferFromNFTTest(
+        htsAddress,
+        context.transferContract,
+        context.nftTokenAddress,
+        context.transferContract,
+        context.receiverContract1,
+        context.serialNumbers[0],
+        ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
+      );
+    });
+
+    if (runProxyTests) {
+      it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for transferFromNft proxy`, async () => {
+        await testsImpl.transferFromNftProxyTest(
+          context.transferContract,
+          context.nftTokenAddress,
+          context.receiverNotAssociated,
+          context.serialNumbers[0],
+          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
+        );
+      });
+    }
+
+    it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for HTS(${displayAddress}) NFT transferNFTsTest`, async () => {
+      await testsImpl.transferNFTsTest(
+        htsAddress,
+        context.transferContract,
+        context.nftTokenAddress,
+        context.receiverContract1,
+        context.receiverNotAssociated,
+        context.serialNumbers[0],
+        context.serialNumbers[1],
+        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
+      );
+    });
+
+    it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for HTS(${displayAddress}) NFT cryptoTransferV1`, async () => {
+      await testsImpl.cryptoTransferV1Test(
+        htsAddress,
+        context.transferContract,
+        context.nftTokenAddress,
+        context.receiverContract1,
+        context.receiverNotAssociated,
+        context.serialNumbers[0],
+        context.serialNumbers[1],
+        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
+      );
+    });
+
+    it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for HTS(${displayAddress}) NFT cryptoTransferV2`, async () => {
+      await testsImpl.cryptoTransferV2Test(
+        htsAddress,
+        context.transferContract,
+        context.nftTokenAddress,
+        context.receiverContract1,
+        context.receiverNotAssociated,
+        context.serialNumbers[0],
+        context.serialNumbers[1],
+        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
   });

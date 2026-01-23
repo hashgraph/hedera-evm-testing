@@ -7,7 +7,7 @@ import "../../utility-contracts/TokenCreateContract.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-contract TransferEventsContract {
+contract HTSSystemContractTransfersExecutorContract {
 
     address constant HTS = address(0x167);
 

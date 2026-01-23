@@ -16,8 +16,8 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
   const displayAddress = htsAddress.replace(/(0)\1+/g, "");
 
   // ---------------- Tests setup ----------------
-  describe(`${testsImpl.engine()}: ${displayAddress} positive cases`, async () => {
-    it(`${displayAddress} FT transferToken`, async () => {
+  describe(`positive cases ERC20 events with HTS(${displayAddress}) using ${testsImpl.engine()}`, async () => {
+    it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT transferToken`, async () => {
       await testsImpl.transferTokenTest(
         htsAddress,
         context.transferContract,
@@ -27,7 +27,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} FT transferFrom`, async () => {
+    it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT transferFrom`, async () => {
       await approveFt(context.transferContract, context.ftTokenAddress, 1);
       await testsImpl.transferFromTest(
         htsAddress,
@@ -39,7 +39,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
     });
 
     if (runProxyTests) {
-      it(`${testsImpl.engine()}: ${displayAddress} FT transfer proxy`, async () => {
+      it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT transfer proxy`, async () => {
         await testsImpl.transferFtProxyTest(
           context.transferContract,
           context.ftTokenAddress,
@@ -50,7 +50,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
     }
 
     if (runProxyTests) {
-      it(`${testsImpl.engine()}: ${displayAddress} FT transferFrom proxy`, async () => {
+      it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT transferFrom proxy`, async () => {
         await approveFt(context.transferContract, context.ftTokenAddress, 1);
         await testsImpl.transferFromFtProxyTest(
           context.transferContract,
@@ -61,7 +61,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
       });
     }
 
-    it(`${testsImpl.engine()}: ${displayAddress} FT transferTokens`, async () => {
+    it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT transferTokens`, async () => {
       await testsImpl.transferTokensTest(
         htsAddress,
         context.transferContract,
@@ -72,7 +72,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} FT cryptoTransferV1`, async () => {
+    it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT cryptoTransferV1`, async () => {
       await testsImpl.cryptoTransferV1Test(
         htsAddress,
         context.transferContract,
@@ -83,7 +83,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} FT cryptoTransferV2`, async () => {
+    it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT cryptoTransferV2`, async () => {
       await testsImpl.cryptoTransferV2Test(
         htsAddress,
         context.transferContract,
@@ -94,7 +94,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
       );
     });
 
-    it(`${testsImpl.engine()}: ${displayAddress} FT airdropTokens`, async () => {
+    it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT airdropTokens`, async () => {
       await testsImpl.airdropTokensTest(
         htsAddress,
         context.transferContract,
@@ -104,88 +104,11 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         false,
       );
     });
-  });
 
-  describe(`${testsImpl.engine()}: ${displayAddress} negative cases`, async () => {
-    it(`${testsImpl.engine()}: ${displayAddress} FT transferToken TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await testsImpl.transferTokenTest(
-        htsAddress,
-        context.transferContract,
-        context.ftTokenAddress,
-        context.receiverNotAssociated,
-        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
-      );
-    });
-
-    it(`${testsImpl.engine()}: ${displayAddress} FT transferFrom SPENDER_DOES_NOT_HAVE_ALLOWANCE`, async () => {
-      await testsImpl.transferFromTest(
-        htsAddress,
-        context.transferContract,
-        context.ftTokenAddress,
-        context.receiverContract1,
-        ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
-      );
-    });
-
-    if (runProxyTests) {
-      it(`${testsImpl.engine()}: ${displayAddress} FT transfer proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-        await testsImpl.transferFtProxyTest(
-          context.transferContract,
-          context.ftTokenAddress,
-          context.receiverNotAssociated,
-          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
-        );
-      });
-    }
-
-    if (runProxyTests) {
-      it(`${testsImpl.engine()}: ${displayAddress} FT transferFrom proxy TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-        await testsImpl.transferFromFtProxyTest(
-          context.transferContract,
-          context.ftTokenAddress,
-          context.receiverNotAssociated,
-          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
-        );
-      });
-    }
-
-    it(`${testsImpl.engine()}: ${displayAddress} FT transferTokens TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await testsImpl.transferTokensTest(
-        htsAddress,
-        context.transferContract,
-        context.ftTokenAddress,
-        context.receiverContract1,
-        context.receiverNotAssociated,
-        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
-      );
-    });
-
-    it(`${testsImpl.engine()}: ${displayAddress} FT cryptoTransferV1 TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await testsImpl.cryptoTransferV1Test(
-        htsAddress,
-        context.transferContract,
-        context.ftTokenAddress,
-        context.receiverContract1,
-        context.receiverNotAssociated,
-        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
-      );
-    });
-
-    it(`${testsImpl.engine()}: ${displayAddress} FT cryptoTransferV2 TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`, async () => {
-      await testsImpl.cryptoTransferV2Test(
-        htsAddress,
-        context.transferContract,
-        context.ftTokenAddress,
-        context.receiverContract1,
-        context.receiverNotAssociated,
-        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
-      );
-    });
-
-    it(`${testsImpl.engine()}: ${displayAddress} FT claimAirdrops`, async () => {
-      // not associated receiver for pending aidrop
+    it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT claimAirdrops`, async () => {
+      // not associated receiver for pending airdrop
       const receiver = await contractDeployAndFund(
-        Constants.Contract.TransferEventsReceiverContract,
+        Constants.Contract.AirDropClaimContract,
       );
       // send pending airdrop
       await testsImpl.airdropTokensTest(
@@ -203,6 +126,83 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         context.ftTokenAddress,
         receiver,
         ResponseCodeEnum.SUCCESS,
+      );
+    });
+  });
+
+  describe(`negative cases ERC20 events with HTS(${displayAddress}) using ${testsImpl.engine()}`, async () => {
+    it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for HTS(${displayAddress}) FT transferToken`, async () => {
+      await testsImpl.transferTokenTest(
+        htsAddress,
+        context.transferContract,
+        context.ftTokenAddress,
+        context.receiverNotAssociated,
+        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
+      );
+    });
+
+    it(`should fail with SPENDER_DOES_NOT_HAVE_ALLOWANCE and NOT contain ERC20 events for HTS(${displayAddress}) FT transferFrom`, async () => {
+      await testsImpl.transferFromTest(
+        htsAddress,
+        context.transferContract,
+        context.ftTokenAddress,
+        context.receiverContract1,
+        ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
+      );
+    });
+
+    if (runProxyTests) {
+      it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for HTS(${displayAddress}) FT transfer proxy`, async () => {
+        await testsImpl.transferFtProxyTest(
+          context.transferContract,
+          context.ftTokenAddress,
+          context.receiverNotAssociated,
+          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
+        );
+      });
+    }
+
+    if (runProxyTests) {
+      it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for HTS(${displayAddress}) FT transferFrom proxy`, async () => {
+        await testsImpl.transferFromFtProxyTest(
+          context.transferContract,
+          context.ftTokenAddress,
+          context.receiverNotAssociated,
+          ResponseCodeEnum.UNKNOWN, // using UNKNOWN instead of TOKEN_NOT_ASSOCIATED_TO_ACCOUNT because we cant get revertReason tri try/catch
+        );
+      });
+    }
+
+    it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for HTS(${displayAddress}) FT transferTokens`, async () => {
+      await testsImpl.transferTokensTest(
+        htsAddress,
+        context.transferContract,
+        context.ftTokenAddress,
+        context.receiverContract1,
+        context.receiverNotAssociated,
+        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
+      );
+    });
+
+    it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for HTS(${displayAddress}) FT cryptoTransferV1`, async () => {
+      await testsImpl.cryptoTransferV1Test(
+        htsAddress,
+        context.transferContract,
+        context.ftTokenAddress,
+        context.receiverContract1,
+        context.receiverNotAssociated,
+        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
+      );
+    });
+
+    it(`should fail with TOKEN_NOT_ASSOCIATED_TO_ACCOUNT and NOT contain ERC20 events for HTS(${displayAddress}) FT cryptoTransferV2`, async () => {
+      await testsImpl.cryptoTransferV2Test(
+        htsAddress,
+        context.transferContract,
+        context.ftTokenAddress,
+        context.receiverContract1,
+        context.receiverNotAssociated,
+        ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
     });
   });
