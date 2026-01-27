@@ -1,6 +1,6 @@
 const { ethers } = require("hardhat");
 const {
-  createTestAndReceiverContracts,
+  createTestContracts,
   setupFungibleTokenTests,
   setupNonFungibleTokenTests,
 } = require("./test-engine/transfer-events-setup");
@@ -50,7 +50,7 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
     context.receiverAbiInterface = new ethers.Interface(
       JSON.parse(
         readFileSync(
-          "./artifacts/contracts/hts/transfer-events/AirDropClaimContract.sol/AirDropClaimContract.json",
+          "./artifacts/contracts/hts/transfer-events/AirDropClaimAndReceiverContract.sol/AirDropClaimAndReceiverContract.json",
           "utf8",
         ),
       ).abi,
@@ -61,7 +61,7 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
       context.receiverContract1,
       context.receiverContract2,
       context.receiverNotAssociated,
-    ] = await createTestAndReceiverContracts(3);
+    ] = await createTestContracts(3);
   });
 
   describe("Relay -> HTS -> ERC events", async () => {

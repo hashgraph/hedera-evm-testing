@@ -56,7 +56,7 @@ const Contract = {
   // --- hts transfer events tests
   HTSSystemContractTransfersExecutorContract:
     "HTSSystemContractTransfersExecutorContract",
-  AirDropClaimContract: "AirDropClaimContract",
+  AirDropClaimAndReceiverContract: "AirDropClaimAndReceiverContract",
 };
 
 const Cost = {

@@ -128,7 +128,7 @@ async function erc721EventsTests(
     it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT claimAirdrops`, async () => {
       // not associated receiver for pending airdrop
       const receiver = await contractDeployAndFund(
-        Constants.Contract.AirDropClaimContract,
+        Constants.Contract.AirDropClaimAndReceiverContract,
       );
       const serial = context.serialNumbers.shift();
       // send pending airdrop
