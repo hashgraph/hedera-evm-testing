@@ -49,6 +49,7 @@ const Events = {
 const Path = {};
 
 const Contract = {
+  HIP1249Contract: "HIP1249Contract",
   HIP1215Contract: "HIP1215Contract",
   TokenCreateContract: "TokenCreateContract",
 };

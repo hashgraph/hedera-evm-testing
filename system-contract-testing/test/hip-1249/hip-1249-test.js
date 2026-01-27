@@ -1,32 +1,28 @@
 // HIP: https://hips.hedera.com/hip/hip-1249
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { GAS_LIMIT_15M, ONE_HBAR, Contract} = require("../../utils/constants");
+const { GAS_LIMIT_15M, ONE_HBAR, Contract } = require("../../utils/constants");
 const Async = require("../../utils/async");
-const { createMirrorNodeClient } = require("../../utils/mirrorNode");
+const { contractDeployAndFund } = require("../../utils/contract");
 
 describe("HIP-1249 'ops duration throttling' tests", () => {
-  let signers, hip1249
-
- 
-
-;
+  let signers, hip1249;
 
   // preconditions before test run
   before(async () => {
     const provider = ethers.provider;
     signers = await ethers.getSigners();
     // deploy test contract
-    const HIP1249Factory = await ethers.getContractFactory(Contract.HIP1249Contract);
-    hip1249 = await HIP1249Factory.deploy();
-    
-    await hip1249.waitForDeployment();
-    console.log("Deploy hip1249:", hip1249.target);
+    hip1249 = await contractDeployAndFund(Contract.HIP1249Contract);
   });
 
+  /**
+   * Creates a butch of signers for throttling simulation. Each signer used to fill 1 opsDuration bucket (1000 ms)
+   * @param count signers count to create
+   * @param value how much value transfer to create signers
+   * @returns {Promise<*[]>}
+   */
   async function createSigners(count, value) {
- 
-
     const newSigners = [];
     for (let i = 0; i < count; i++) {
       // create new signer
@@ -52,8 +48,6 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
   }
 
   async function simulateThrottling(newSigners, cycles, sleep) {
-
-    
     if (cycles * sleep > 1000) {
       // The idea here is that a single signer can be used to fulfill just 1 OpsDuration bucket (over 1 second)
       // because of the manual nonce tracking problem after the first throttling error.
@@ -69,15 +63,16 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
     for (const [n, signer] of newSigners.entries()) {
       let nonce = 0;
       for (let i = 0; i < cycles; i++) {
-        const tx =   hip1249
+        const tx = hip1249
           .connect(signer)
           .simulateOpsDurationThrottling(62000, {
             gasLimit: GAS_LIMIT_15M.gasLimit,
             nonce: nonce,
-          }).catch(error => {
-            console.log("hi fer " + error) ;
+          })
+          .catch((error) => {
+            console.log("hi fer " + error);
             throw error;
-          });   
+          });
         transactions.push(tx);
         console.log(
           "Transaction:%s signer:%s time:%s, nonce:%s",
@@ -99,15 +94,20 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
     const signers = 2; // each signer used to fill 1 opsDuration bucket (1000 ms)
     const cyclesToThrottling = 4;
     const newSigners = await createSigners(signers, cyclesToThrottling * 11);
-    const transaction = await simulateThrottling(
+    const transactions = await simulateThrottling(
       newSigners,
       cyclesToThrottling,
       20,
     );
-  const responses = await Promise.allSettled(transaction); // wait for all transactions
-  console.log(responses);
-  const throttledCount = responses.filter(r => r.status === "rejected").length;
-  expect(throttledCount).gt(0,"not throttling");
-
+    const responses = await Promise.allSettled(transactions); // wait for all transactions
+    console.log("Tx:", responses);
+    for (let response of responses) {
+      const rc = await response.value.wait();
+      console.log("Rc:", rc);
+    }
+    const throttledCount = responses.filter(
+      (r) => r.status === "rejected",
+    ).length;
+    expect(throttledCount).gt(0, "not throttling");
   }).timeout(600000); // locally increate the timeout
 });
