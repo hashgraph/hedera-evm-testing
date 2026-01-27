@@ -45,6 +45,10 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
     await afterTests();
   });
 
+  describe("mock", () => {
+    expect(true).to.be.true;
+  });
+
   describe("positive cases", () => {
     it("should delete schedule", async () => {
       // create schedule
