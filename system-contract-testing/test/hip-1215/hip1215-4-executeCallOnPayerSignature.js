@@ -2,7 +2,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
-  TINYBAR_TO_WAIBAR_CORF,
+  TINYBAR_TO_WEIBAR_COEF,
   HSS_ADDRESS,
   GAS_LIMIT_1_000_000,
   GAS_LIMIT_1_000,
@@ -14,8 +14,8 @@ const {
   payableCallData,
   hasScheduleCapacityCallData,
   getExpirySecond,
-  testScheduleCallEvent,
-  testResponseCodeEvent,
+  expectScheduleCallEvent,
+  expectResponseCodeEvent,
   getSignatureMap,
   SUCCESS,
   INSUFFICIENT_PAYER_BALANCE,
@@ -50,7 +50,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
     payer,
     value = 0n,
     callDataFunction = (testId) => addTestCallData(testId),
-    executionExpectedResult = SUCCESS,
+    executionExpectedResult = SUCCESS
   ) {
     const expirySecond = getExpirySecond();
     const scheduleTx = await hip1215.executeCallOnPayerSignature(
@@ -60,19 +60,19 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
       GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
       value,
-      callDataFunction(testId, expirySecond),
+      callDataFunction(testId, expirySecond)
     );
-    const scheduleAddress = await testScheduleCallEvent(
+    const scheduleAddress = await expectScheduleCallEvent(
       scheduleTx,
-      ResponseCodeEnum.SUCCESS.valueOf(),
+      ResponseCodeEnum.SUCCESS.valueOf()
     );
     // sign schedule
     const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
     const signTx = await hip1215.signSchedule(
       scheduleAddress,
-      sigMapProtoEncoded,
+      sigMapProtoEncoded
     );
-    await testResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
+    await expectResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
     // execution check in 'after'
     scheduleTxCheck.push({
       id: testId,
@@ -99,13 +99,13 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       const [testId, scheduleTx] = await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature",
         await hip1215.getAddress(),
-        signers[1].address,
+        signers[1].address
       );
       // execution check just after signing
       await Async.wait(1000);
       expect(await hip1215.getTests()).to.contain(
         testId,
-        "Schedule tx:" + scheduleTx.hash,
+        "Schedule tx:" + scheduleTx.hash
       );
     });
 
@@ -113,7 +113,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature eoa",
         signers[0].address,
-        signers[1].address,
+        signers[1].address
       );
     });
 
@@ -121,13 +121,13 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       const [testId, scheduleTx] = await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature address(this)",
         await hip1215.getAddress(),
-        signers[1].address,
+        signers[1].address
       );
       // execution check just after signing
       await Async.wait(1000);
       expect(await hip1215.getTests()).to.contain(
         testId,
-        "Schedule tx:" + scheduleTx.hash,
+        "Schedule tx:" + scheduleTx.hash
       );
     });
 
@@ -140,8 +140,8 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         (testId, expirySecond) =>
           hasScheduleCapacityCallData(
             expirySecond + 10,
-            GAS_LIMIT_1_000_000.gasLimit,
-          ),
+            GAS_LIMIT_1_000_000.gasLimit
+          )
       );
     });
 
@@ -152,7 +152,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         signers[1].address,
         100_000_000n, // 1 HBAR in TINYBARS
         () => payableCallData(),
-        SUCCESS,
+        SUCCESS
       );
     });
 
@@ -162,7 +162,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         await hip1215.getAddress(),
         signers[1].address,
         0n,
-        () => "0x",
+        () => "0x"
       );
     });
 
@@ -173,7 +173,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         signers[1].address,
         0n,
         () => "0xabc123",
-        CONTRACT_REVERT_EXECUTED,
+        CONTRACT_REVERT_EXECUTED
       );
     });
 
@@ -183,13 +183,13 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         await hip1215.getAddress(),
         signers[1].address,
         0n,
-        (testId) => addTestCallData(testId),
+        (testId) => addTestCallData(testId)
       );
       // execution check just after signing
       await Async.wait(1000);
       expect(await hip1215.getTests()).to.contain(
         testId,
-        "Schedule tx:" + scheduleTx.hash,
+        "Schedule tx:" + scheduleTx.hash
       );
     });
 
@@ -201,13 +201,13 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         address,
         signers[1].address,
         value,
-        () => "0x",
+        () => "0x"
       );
       // execution check just after signing
       await Async.wait(1000);
       expect(await signers[0].provider.getBalance(address)).to.equal(
-        value * TINYBAR_TO_WAIBAR_CORF, // converting TINYBAR -> WAIBAR
-        "Schedule tx:" + scheduleTx.hash,
+        value * TINYBAR_TO_WEIBAR_COEF, // converting TINYBAR -> WAIBAR
+        "Schedule tx:" + scheduleTx.hash
       );
     });
 
@@ -220,7 +220,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         signers[1].address,
         value,
         () => "0x",
-        INSUFFICIENT_PAYER_BALANCE,
+        INSUFFICIENT_PAYER_BALANCE
       );
     });
 
@@ -230,8 +230,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
       // create payer contract
       const payerContract = await contractDeployAndFund(
         "HIP1215PayerContract",
-        0,
-        1,
+        1
       );
       // create schedule
       const expirySecond = getExpirySecond();
@@ -241,15 +240,15 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         expirySecond,
         GAS_LIMIT_1_000_000.gasLimit,
         0n,
-        addTestCallData(testId),
+        addTestCallData(testId)
       );
-      const scheduleAddress = await testScheduleCallEvent(
+      const scheduleAddress = await expectScheduleCallEvent(
         scheduleTx,
-        ResponseCodeEnum.SUCCESS.valueOf(),
+        ResponseCodeEnum.SUCCESS.valueOf()
       );
       // sign schedule
       const signTx = await payerContract.authorizeSchedule(scheduleAddress);
-      await testResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
+      await expectResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
       // execution check just after signing
       await Async.wait(1000);
       expect(await hip1215.getTests()).to.contain(testId);
@@ -258,138 +257,138 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
 
   describe("negative cases", () => {
     it("should fail with payer as zero address", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         ethers.ZeroAddress,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("executeCallOnPayerSignature fail payer zero address"),
+        addTestCallData("executeCallOnPayerSignature fail payer zero address")
       );
-      await testScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
+      await expectScheduleCallEvent(receipt, ResponseCodeEnum.UNKNOWN.valueOf());
     });
 
     it("should fail with gasLimit 0", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         getExpirySecond(),
         0,
         0,
-        addTestCallData("executeCallOnPayerSignature fail gasLimit 0"),
+        addTestCallData("executeCallOnPayerSignature fail gasLimit 0")
       );
-      await testScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf(),
+      await expectScheduleCallEvent(
+        receipt,
+        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
     });
 
     it("should fail with gasLimit 1000", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         getExpirySecond(),
         GAS_LIMIT_1_000.gasLimit,
         0,
-        addTestCallData("executeCallOnPayerSignature fail gasLimit 1000"),
+        addTestCallData("executeCallOnPayerSignature fail gasLimit 1000")
       );
-      await testScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf(),
+      await expectScheduleCallEvent(
+        receipt,
+        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
       );
     });
 
     it("should fail with gasLimit uint.maxvalue", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         getExpirySecond(),
         ethers.MaxUint256,
         0,
-        addTestCallData("executeCallOnPayerSignature fail uint.maxvalue"),
+        addTestCallData("executeCallOnPayerSignature fail uint.maxvalue")
       );
-      await testScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf(),
+      await expectScheduleCallEvent(
+        receipt,
+        ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf()
       );
     });
 
     it("should fail with 0 expiry", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         0,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("executeCallOnPayerSignature fail expiry 0"),
+        addTestCallData("executeCallOnPayerSignature fail expiry 0")
       );
-      await testScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf(),
+      await expectScheduleCallEvent(
+        receipt,
+        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
     });
 
     it("should fail with expiry at current time", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         new Date().getUTCSeconds(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("executeCallOnPayerSignature fail expiry current"),
+        addTestCallData("executeCallOnPayerSignature fail expiry current")
       );
-      await testScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf(),
+      await expectScheduleCallEvent(
+        receipt,
+        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
       );
     });
 
     it("should fail with expiry at max expiry + 1", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         await hip1215.getAddress(),
         signers[1].address,
         // adding +100 to exclude consensus time shift
         Math.floor(Date.now() / 1000) + MAX_EXPIRY + 100 + 1,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("executeCallOnPayerSignature fail expiry + 1"),
+        addTestCallData("executeCallOnPayerSignature fail expiry + 1")
       );
-      await testScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_TOO_FAR_IN_FUTURE.valueOf(),
+      await expectScheduleCallEvent(
+        receipt,
+        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_TOO_FAR_IN_FUTURE.valueOf()
       );
     });
 
     it("should fail with zero 'to' address and invalid contract deploy", async () => {
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         ethers.ZeroAddress,
         signers[1].address,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        "0xabc123",
+        "0xabc123"
       );
-      await testScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf(),
+      await expectScheduleCallEvent(
+        receipt,
+        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
     });
 
     it("should fail with zero 'to' address and valid contract deploy", async () => {
       const deployContract = await ethers.getContractFactory(
-        "HIP1215DeployContract",
+        "HIP1215DeployContract"
       );
-      const tx = await hip1215.executeCallOnPayerSignature(
+      const receipt = await hip1215.executeCallOnPayerSignature(
         ethers.ZeroAddress,
         signers[1].address,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        deployContract.bytecode,
+        deployContract.bytecode
       );
-      await testScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf(),
+      await expectScheduleCallEvent(
+        receipt,
+        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
     });
   });

@@ -1,12 +1,19 @@
 {
-  "name": "hashgraph-system-contract-testing",
+  "name": "evm-functional-testing",
   "version": "0.1.0",
-  "description": "Solidity side testing of Hedera's System Contracts",
-  "main": "index.js",
-  "scripts": {
-    "test": "npx hardhat test"
+  "description": "JSON-RPC & Solidity side testing of Hiero's System Contracts and EVM Implementation",
+  "private": true,
+  "type": "commonjs",
+  "exports": {
+    "./config": "./utils/hip-1340/config.js",
+    "./log": "./utils/hip-1340/log.js",
+    "./web3": "./utils/hip-1340/web3.js"
   },
-  "author": "Hedera Smart Contracts Team",
+  "scripts": {
+    "test": "hardhat test"
+  },
+  "keywords": [],
+  "author": "Hashgraph Smart Contracts Team",
   "license": "Apache-2.0",
   "dependencies": {
     "@hashgraph/hedera-wallet-connect": "2.0.3",
@@ -22,6 +29,7 @@
     "solidity-coverage": "0.8.16"
   },
   "devDependencies": {
+    "@account-abstraction/contracts": "^0.8.0",
     "@hashgraph/hedera-local": "2.37.1",
     "@hashgraph/sdk": "2.72.0",
     "@nomicfoundation/hardhat-chai-matchers": "2.1.0",
@@ -29,8 +37,7 @@
     "@openzeppelin/contracts": "5.4.0",
     "@openzeppelin/contracts-upgradeable": "5.4.0",
     "@openzeppelin/hardhat-upgrades": "3.9.1",
-    "hardhat": "^2.27.1",
-    "hardhat-abi-exporter": "2.11.0",
+    "hardhat": "2.26.3",
     "husky": "9.1.7",
     "mocha-junit-reporter": "2.2.1",
     "mocha-multi-reporters": "1.5.1",
@@ -38,13 +45,5 @@
   },
   "directories": {
     "test": "test"
-  },
-  "keywords": [],
-  "type": "commonjs",
-  "exports": {
-    ".": "./index.js",
-    "./*": "./*.js",
-    "./test/*": "./test/*.js",
-    "./contracts/*": "./contracts/*.sol"
   }
 }

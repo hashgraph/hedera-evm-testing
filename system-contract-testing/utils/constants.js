@@ -50,11 +50,10 @@ const Path = {};
 
 const Contract = {
   HIP1215Contract: "HIP1215Contract",
-  HIP1249Contract: "HIP1249Contract",
-  HIP632Contract: "HIP632Contract",
+  TokenCreateContract: "TokenCreateContract",
 };
 
-const TINYBAR_TO_WAIBAR_CORF = 10_000_000_000n;
+const TINYBAR_TO_WEIBAR_COEF = 10_000_000_000n;
 const HTS_ADDRESS = "0x0000000000000000000000000000000000000167";
 const HSS_ADDRESS = "0x000000000000000000000000000000000000016b";
 const CALL_EXCEPTION = "CALL_EXCEPTION";
@@ -86,7 +85,7 @@ module.exports = {
   Events,
   Path,
   Contract,
-  TINYBAR_TO_WAIBAR_CORF,
+  TINYBAR_TO_WEIBAR_COEF,
   HTS_ADDRESS,
   HSS_ADDRESS,
   CALL_EXCEPTION,

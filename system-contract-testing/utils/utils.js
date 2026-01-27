@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
-const hre = require('hardhat');
+const hre = require("hardhat");
 const { ethers } = hre;
-const { expect } = require('chai');
+const { expect } = require("chai");
 const {
   AccountId,
   Client,
@@ -17,16 +17,19 @@ const {
   AccountBalanceQuery,
   ContractInfoQuery,
   AccountDeleteTransaction,
-} = require('@hashgraph/sdk');
-const Constants = require('./constants');
-const axios = require('axios');
-const {
-  getMirrorNodeUrl,
-} = require('./native/utils');
+  TransferTransaction,
+  Hbar,
+  HbarUnit,
+  ScheduleCreateTransaction,
+  Timestamp,
+} = require("@hashgraph/sdk");
+const Constants = require("./constants");
+const axios = require("axios");
+const { getMirrorNodeUrl } = require("./native/utils");
 
 class Utils {
-  static createTokenCost = '50000000000000000000';
-  static createTokenCustomFeesCost = '60000000000000000000';
+  static createTokenCost = "50000000000000000000";
+  static createTokenCustomFeesCost = "60000000000000000000";
   static tinybarToWeibarCoef = 10_000_000_000;
   static tinybarToHbarCoef = 100_000_000;
   static initialSupply = 1000000000000;
@@ -53,7 +56,7 @@ class Utils {
 
   static async deployContract(
     contractPath,
-    gasLimit = Constants.GAS_LIMIT_1_000_000
+    gasLimit = Constants.GAS_LIMIT_5_000_000
   ) {
     const factory = await ethers.getContractFactory(contractPath);
     const contract = await factory.deploy(gasLimit);
@@ -77,11 +80,15 @@ class Utils {
   }
 
   static async deployTokenCreateCustomContract() {
-    return await this.deployContract(Constants.Contract.TokenCreateCustomContract);
+    return await this.deployContract(
+      Constants.Contract.TokenCreateCustomContract
+    );
   }
 
   static async deployTokenManagementContract() {
-    return await this.deployContract(Constants.Contract.TokenManagementContract);
+    return await this.deployContract(
+      Constants.Contract.TokenManagementContract
+    );
   }
 
   static async deployTokenQueryContract() {
@@ -176,7 +183,7 @@ class Utils {
           signerAddress,
           keys,
           {
-            value: '35000000000000000000',
+            value: "35000000000000000000",
             gasLimit: 1_000_000,
           }
         )
@@ -273,9 +280,9 @@ class Utils {
   ) {
     const updateFeesTx = await contract.createFungibleTokenWithCustomFeesPublic(
       treasury,
-      'Hedera Token Fees',
-      'HTF',
-      'Hedera Token With Fees',
+      "Hedera Token Fees",
+      "HTF",
+      "Hedera Token With Fees",
       this.initialSupply,
       this.maxSupply,
       0,
@@ -300,9 +307,9 @@ class Utils {
     return await this.getTokenAddress(
       await contract.createNonFungibleTokenWithCustomFeesPublic(
         treasury,
-        'Non Fungible Token With Custom Fees',
-        'NFTF',
-        'Non Fungible Token With Custom Fees',
+        "Non Fungible Token With Custom Fees",
+        "NFTF",
+        "Non Fungible Token With Custom Fees",
         this.nftMaxSupply,
         fixedFees,
         royaltyFees,
@@ -362,7 +369,7 @@ class Utils {
 
   static hexToASCII(str) {
     const hex = str.toString();
-    let ascii = '';
+    let ascii = "";
     for (let n = 0; n < hex.length; n += 2) {
       ascii += String.fromCharCode(parseInt(hex.substring(n, n + 2), 16));
     }
@@ -376,20 +383,20 @@ class Utils {
    * @param message
    */
   static decodeErrorMessage(message) {
-    const EMPTY_HEX = '0x';
-    if (!message) return '';
+    const EMPTY_HEX = "0x";
+    if (!message) return "";
 
     // If the message does not start with 0x, it is not an error message, return it as is
     if (!message.includes(EMPTY_HEX)) return message;
 
-    message = message.replace(/^0x/, ''); // Remove the starting 0x
+    message = message.replace(/^0x/, ""); // Remove the starting 0x
     const strLen = parseInt(message.slice(8 + 64, 8 + 128), 16); // Get the length of the readable text
     const resultCodeHex = message.slice(8 + 128, 8 + 128 + strLen * 2); // Extract the hex of the text
     return this.hexToASCII(resultCodeHex);
   }
 
   static async getRevertReasonFromReceipt(hash) {
-    const receipt = await ethers.provider.send('eth_getTransactionReceipt', [
+    const receipt = await ethers.provider.send("eth_getTransactionReceipt", [
       hash,
     ]);
 
@@ -397,7 +404,9 @@ class Utils {
   }
 
   static async getHbarBalance(client, address) {
-    const balanceJson = (await this.getAccountBalance(client, address)).toJSON();
+    const balanceJson = (
+      await this.getAccountBalance(client, address)
+    ).toJSON();
     return parseFloat(balanceJson.hbars);
   }
 
@@ -405,11 +414,7 @@ class Utils {
     const accountBalanceJson = (
       await this.getAccountBalance(client, accountAddress)
     ).toJSON();
-    const tokenId = AccountId.fromEvmAddress(
-      0,
-      0,
-      tokenAddress
-    ).toString();
+    const tokenId = AccountId.fromEvmAddress(0, 0, tokenAddress).toString();
     const balance = accountBalanceJson.tokens.find(
       (e) => e.tokenId === tokenId
     );
@@ -442,7 +447,7 @@ class Utils {
     return parseInt(serialNumbers);
   }
 
-  static async mintNFT(contract, nftTokenAddress, data = ['0x01']) {
+  static async mintNFT(contract, nftTokenAddress, data = ["0x01"]) {
     const mintNftTx = await contract.mintTokenPublic(
       nftTokenAddress,
       0,
@@ -453,7 +458,7 @@ class Utils {
     return await this.getSerialNumbers(mintNftTx);
   }
 
-  static async mintNFTToAddress(contract, nftTokenAddress, data = ['0x01']) {
+  static async mintNFTToAddress(contract, nftTokenAddress, data = ["0x01"]) {
     const mintNftTx = await contract.mintTokenToAddressPublic(
       nftTokenAddress,
       0,
@@ -597,16 +602,16 @@ class Utils {
       hre.config.networks[hre.network.name].accounts[index]
     );
     const cpk = prune0x
-      ? wallet.signingKey.compressedPublicKey.replace('0x', '')
+      ? wallet.signingKey.compressedPublicKey.replace("0x", "")
       : wallet.signingKey.compressedPublicKey;
 
-    return asBuffer ? Buffer.from(cpk, 'hex') : cpk;
+    return asBuffer ? Buffer.from(cpk, "hex") : cpk;
   }
 
   static async getHardhatSignersPrivateKeys(add0xPrefix = true) {
     const network = Utils.getCurrentNetwork();
     return hre.config.networks[network].accounts.map((pk) =>
-      add0xPrefix ? pk : pk.replace('0x', '')
+      add0xPrefix ? pk : pk.replace("0x", "")
     );
   }
 
@@ -624,7 +629,7 @@ class Utils {
     }
 
     for (const privateKey of ecdsaPrivateKeys) {
-      const pkSigner = PrivateKey.fromStringECDSA(privateKey.replace('0x', ''));
+      const pkSigner = PrivateKey.fromStringECDSA(privateKey.replace("0x", ""));
       const accountId = await Utils.getAccountId(
         pkSigner.publicKey.toEvmAddress(),
         clientGenesis
@@ -717,7 +722,7 @@ class Utils {
   static convertAccountIdToLongZeroAddress(accountId, prepend0x = false) {
     const address = AccountId.fromString(accountId).toSolidityAddress();
 
-    return prepend0x ? '0x' + address : address;
+    return prepend0x ? "0x" + address : address;
   }
 
   static async associateWithSigner(privateKey, tokenAddress) {
@@ -748,8 +753,8 @@ class Utils {
   static defaultKeyValues = {
     inheritAccountKey: false,
     contractId: ethers.ZeroAddress,
-    ed25519: Buffer.from('', 'hex'),
-    ECDSA_secp256k1: Buffer.from('', 'hex'),
+    ed25519: Buffer.from("", "hex"),
+    ECDSA_secp256k1: Buffer.from("", "hex"),
     delegatableContractId: ethers.ZeroAddress,
   };
 
@@ -769,39 +774,39 @@ class Utils {
   static constructIHederaTokenKey(keyType, keyValueType, value) {
     // sanitize params
     if (
-      keyType !== 'ADMIN' &&
-      keyType !== 'KYC' &&
-      keyType !== 'FREEZE' &&
-      keyType !== 'WIPE' &&
-      keyType !== 'SUPPLY' &&
-      keyType !== 'FEE' &&
-      keyType !== 'PAUSE'
+      keyType !== "ADMIN" &&
+      keyType !== "KYC" &&
+      keyType !== "FREEZE" &&
+      keyType !== "WIPE" &&
+      keyType !== "SUPPLY" &&
+      keyType !== "FEE" &&
+      keyType !== "PAUSE"
     ) {
       return;
     }
 
     switch (keyValueType) {
-      case 'INHERIT_ACCOUNT_KEY':
+      case "INHERIT_ACCOUNT_KEY":
         return {
           keyType: this.KeyType[keyType],
           key: { ...this.defaultKeyValues, inheritAccountKey: value },
         };
-      case 'CONTRACT_ID':
+      case "CONTRACT_ID":
         return {
           keyType: this.KeyType[keyType],
           key: { ...this.defaultKeyValues, contractId: value },
         };
-      case 'ED25519':
+      case "ED25519":
         return {
           keyType: this.KeyType[keyType],
           key: { ...this.defaultKeyValues, ed25519: value },
         };
-      case 'SECP256K1':
+      case "SECP256K1":
         return {
           keyType: this.KeyType[keyType],
           key: { ...this.defaultKeyValues, ECDSA_secp256k1: value },
         };
-      case 'DELEGETABLE_CONTRACT_ID':
+      case "DELEGETABLE_CONTRACT_ID":
         return {
           keyType: this.KeyType[keyType],
           key: { ...this.defaultKeyValues, delegatableContractId: value },
@@ -835,9 +840,7 @@ class Utils {
   static async getTokenInfoByMN(tokenAddress) {
     const network = hre.network.name;
     const mirrorNodeUrl = getMirrorNodeUrl(network);
-    const res = await axios.get(
-        `${mirrorNodeUrl}/tokens/${tokenAddress}`
-    );
+    const res = await axios.get(`${mirrorNodeUrl}/tokens/${tokenAddress}`);
 
     return res.data;
   }
@@ -970,6 +973,50 @@ class Utils {
     return { senders, receivers, tokens, serials, amounts };
   }
 
+  static getRandomInt = (min, max) => {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  };
+
+  static createScheduleTransactionForTransfer = async (
+    senderInfo,
+    receiverInfo,
+    client,
+    adminPrivateKey = null,
+    expiryNs = 0
+  ) => {
+    const transferAmountAsTinybars = this.getRandomInt(1, 100_000_000);
+    const transferAmountAsWeibar =
+      BigInt(transferAmountAsTinybars) * BigInt(Utils.tinybarToWeibarCoef);
+
+    let transferTx = await new TransferTransaction()
+      .addHbarTransfer(
+        senderInfo.accountId,
+        new Hbar(-transferAmountAsTinybars, HbarUnit.Tinybar)
+      )
+      .addHbarTransfer(
+        receiverInfo.accountId,
+        new Hbar(transferAmountAsTinybars, HbarUnit.Tinybar)
+      );
+
+    const tx = new ScheduleCreateTransaction().setScheduledTransaction(
+      transferTx
+    );
+
+    if (expiryNs) {
+      let timestamp = Timestamp.generate().plusNanos(expiryNs);
+      tx.setExpirationTime(timestamp);
+      tx.setWaitForExpiry(true);
+    }
+
+    if (adminPrivateKey) {
+      tx.setAdminKey(adminPrivateKey.publicKey);
+    }
+
+    const { scheduleId } = await (await tx.execute(client)).getReceipt(client);
+
+    return { scheduleId, transferAmountAsWeibar };
+  };
+
   /**
    * Retrieves the maximum number of automatic token associations for an account from the mirror node
    * @param {string} evmAddress - The EVM address of the account to query
@@ -988,7 +1035,7 @@ class Utils {
 
   static decimalToAscii(decimalStr) {
     const hex = BigInt(decimalStr).toString(16);
-    return Buffer.from(hex, 'hex').toString('ascii');
+    return Buffer.from(hex, "hex").toString("ascii");
   }
 }
 

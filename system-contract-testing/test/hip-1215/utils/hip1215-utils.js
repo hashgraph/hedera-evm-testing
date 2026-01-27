@@ -3,6 +3,9 @@ const { ethers } = require("hardhat");
 const { PrivateKey, AccountId, ScheduleId } = require("@hashgraph/sdk");
 const Utils = require("../../../utils/utils");
 const { Events } = require("../../../utils/constants");
+const { getMirrorNodeUrl } = require("../../../utils/native/utils");
+const { Logger, HederaMirrorNode } = require("@hashgraphonline/standards-sdk");
+const hre = require("hardhat");
 const Async = require("../../../utils/async");
 const { ResponseCodeEnum, SignatureMap } = require("@hashgraph/proto").proto;
 
@@ -44,9 +47,9 @@ function payableCallData() {
 }
 // ---------------------------------------------------------------------------
 
-// Test checker functions --------------------------------------------------
-async function testScheduleCallEvent(tx, responseCode) {
-  const rc = await tx.wait();
+// Assertion helper functions --------------------------------------------------
+async function expectScheduleCallEvent(receipt, responseCode) {
+  const rc = await receipt.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
   expect(log.args[0]).to.equal(responseCode);
   const address = log.args[1];
@@ -59,15 +62,15 @@ async function testScheduleCallEvent(tx, responseCode) {
   return address;
 }
 
-async function testResponseCodeEvent(tx, responseCode) {
-  const rc = await tx.wait();
+async function expectResponseCodeEvent(receipt, responseCode) {
+  const rc = await receipt.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ResponseCode);
   expect(log.args[0]).to.equal(responseCode);
   expect(rc.status).to.equal(ResponseCodeEnum.INVALID_TRANSACTION.valueOf());
 }
 
-async function testHasScheduleCapacityEvent(tx, hasCapacity) {
-  const rc = await tx.wait();
+async function expectHasScheduleCapacityEvent(receipt, hasCapacity) {
+  const rc = await receipt.wait();
   const log = rc.logs.find(
     (e) => e.fragment.name === Events.HasScheduleCapacity
   );
@@ -132,6 +135,15 @@ async function getSignatureMap(accountIndex, scheduleAddress) {
 // ---------------------------------------------------------------------------
 
 // Mirror node client functions --------------------------------------------------
+function createMirrorNodeClient() {
+  const logger = new Logger({ module: "test/hip-1215", level: "warn" });
+  const { mirrorNode } =
+    hre.config.networks[Utils.getCurrentNetwork()].sdkClient;
+  return new HederaMirrorNode("local", logger, {
+    customUrl: mirrorNode,
+  });
+}
+
 async function getScheduledTxStatus(
   mnClient,
   scheduleAddress,
@@ -153,6 +165,32 @@ async function getScheduledTxStatus(
     return transactions[0].result;
   } else {
     throw "Cant find scheduled transaction";
+  }
+}
+
+async function getChildTransactionsByScheduleId(
+  mnClient,
+  scheduleAddress,
+  waitStep = 5000,
+  maxAttempts = 10
+) {
+  const scheduleId = ScheduleId.fromSolidityAddress(scheduleAddress).toString();
+  const scheduleObj = await Async.waitForCondition(
+    "child_transaction_execution",
+    () => mnClient.getScheduleInfo(scheduleId),
+    (result) => result.executed_timestamp != null,
+    waitStep,
+    maxAttempts
+  );
+  const transactions = await mnClient.getTransactionByTimestamp(
+    scheduleObj.executed_timestamp
+  );
+  if (transactions.length > 0) {
+    const txId = transactions[0].transaction_id;
+    const query = getMirrorNodeUrl(hre.network.name) + "/transactions/" + txId;
+    const response = await fetch(query);
+    const json = await response.json();
+    return json.transactions.length;
   }
 }
 
@@ -232,7 +270,8 @@ async function findNewScheduleAddress(
   if (contractCallLogs != null && contractCallLogs.length > 0) {
     const log = contractCallLogs[0].data;
     // We already now that the execution was successful so we only get the last 20 bytes
-    return "0x" + log.slice(-40);
+    const nextScheduleAddress = "0x" + log.slice(-40);
+    return nextScheduleAddress;
   }
 
   return null;
@@ -246,11 +285,13 @@ module.exports = {
   payableCallData,
   getSignatureMap,
   getExpirySecond,
-  testScheduleCallEvent,
-  testResponseCodeEvent,
-  testHasScheduleCapacityEvent,
+  expectScheduleCallEvent,
+  expectResponseCodeEvent,
+  expectHasScheduleCapacityEvent,
+  createMirrorNodeClient,
   getScheduledTxStatus,
   getRecursiveScheduleStatus,
+  getChildTransactionsByScheduleId,
   SUCCESS,
   INVALID_ETHEREUM_TRANSACTION,
   INSUFFICIENT_PAYER_BALANCE,
