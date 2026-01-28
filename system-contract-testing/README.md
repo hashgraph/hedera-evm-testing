@@ -21,6 +21,11 @@ The folder contains:
 - [HIP-632 isAuthorizedRaw](https://hips.hedera.com/hip/hip-632#isauthorizedrawaddress-messagehash-signatureblob-function-usage)
 - [HIP-1215](https://hips.hedera.com/hip/hip-1215)
 - [HIP-1249](https://hips.hedera.com/hip/hip-1249)
+- [HIP-1340 (Pectra support)](https://hips.hedera.com/hip/hip-1340)
+
+### Tests Docs
+- [HIP-1340](docs/hip-1340.md)
+- [HTS Transfer events](docs/hts/transfer-events.md)
 
 ## Run tests
 
