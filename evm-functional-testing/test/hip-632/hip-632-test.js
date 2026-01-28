@@ -1,3 +1,4 @@
+// HIP: https://hips.hedera.com/hip/hip-632#isauthorizedrawaddress-messagehash-signatureblob-function-usage
 const { ethers } = require("hardhat");
 const {
   Wallet,
@@ -11,15 +12,15 @@ const {
   hedera_signMessage,
 } = require("./utils/hip-632-utils");
 const { createSDKClient } = require("../../utils/utils");
+const {Contract} = require("../../utils/constants");
 
-// https://hips.hedera.com/hip/hip-632#isauthorizedrawaddress-messagehash-signatureblob-function-usage
 describe("HIP-632 'isAuthorizedRaw' tests", () => {
   let hip632, sdkClient, edPK, edSignerAccount, wallet;
 
   // preconditions before test run
   before(async () => {
     // deploy test contract
-    const HIP632Factory = await ethers.getContractFactory("HIP632Contract");
+    const HIP632Factory = await ethers.getContractFactory(Contract.HIP632Contract);
     hip632 = await HIP632Factory.deploy();
     await hip632.waitForDeployment();
     console.log("Deploy hip632:", hip632.target);

@@ -6,6 +6,9 @@
 /artifacts/
 /test-results.*
 
+# Hardhat
+abi/
+
 # Dotenv file
 /.env
 

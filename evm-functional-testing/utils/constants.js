@@ -51,8 +51,12 @@ const Path = {};
 const Contract = {
   // --- util contracts
   TokenCreateContract: "TokenCreateContract",
+  // --- htp-632 tests
+  HIP632Contract: "HIP632Contract",
   // --- htp-1215 tests
   HIP1215Contract: "HIP1215Contract",
+  // --- htp-1249 deployment tests
+  HIP1249Contract: "HIP1249Contract",
   // --- hts transfer events tests
   HTSSystemContractTransfersExecutorContract:
     "HTSSystemContractTransfersExecutorContract",

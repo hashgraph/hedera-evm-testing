@@ -9,6 +9,7 @@ set -e
 WORK_DIR="$(pwd)"
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
 APP_PROPERTIES_PATH="local/application.properties"
+RELAY_YAML_PATH="local/values.yaml"
 
 export SOLO_BASE_NAME=hedera
 export SOLO_CLUSTER_NAME="solo-${SOLO_BASE_NAME}"
@@ -58,7 +59,7 @@ solo_start() {
   solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
   solo consensus node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
   solo mirror node add --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
-  solo relay node add --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+  solo relay node add --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   solo explorer node add --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # add test accounts to the network

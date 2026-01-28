@@ -1,0 +1,7 @@
+relay:
+  config:
+    USE_ASYNC_TX_PROCESSING: "false"
+    RATE_LIMIT_DISABLED: "true"
+    BAR_RATE_LIMIT_TINYBAR: "0"
+    DEBUG_API_ENABLED: "true"
+    LOG_LEVEL: "trace"
