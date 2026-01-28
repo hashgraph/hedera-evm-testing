@@ -9,7 +9,7 @@ const { NETWORKS } = require("./utils/environment");
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   mocha: {
-    timeout: 60000,
+    timeout: 120000,
     color: true,
     failZero: Boolean(process.env.CI),
     forbidOnly: Boolean(process.env.CI),

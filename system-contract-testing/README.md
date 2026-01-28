@@ -1,5 +1,9 @@
 # Hiero's EVM Functional Testing
 
+## Tests Docs
+- [HIP-1340](docs/hip-1340.md)
+- [HTS Transfer events](docs/hts/transfer-events.md)
+
 ## Requirements
 
 - `node` >= 22
@@ -27,18 +31,18 @@ npx hardhat test --network local
 
 ### Requirements
 
-- Software <https://solo.hiero.org/v0.48.0/docs/step-by-step-guide/#required-software>
-- Solo <https://solo.hiero.org/v0.48.0/docs/step-by-step-guide/#1-installing-solo>
+- Software <https://solo.hiero.org/v0.52.0/docs/step-by-step-guide/#required-software>
+- Solo <https://solo.hiero.org/v0.52.0/docs/step-by-step-guide/#1-installing-solo>
 
 ### Documentation
 
-- Doc: <https://solo.hiero.org/v0.48.0/docs/step-by-step-guide/>
-- Doc with local consensus node build: <https://solo.hiero.org/v0.48.0/docs/platform-developer/>
+- Doc: <https://solo.hiero.org/v0.52.0/docs/step-by-step-guide/>
+- Doc with local consensus node build: <https://solo.hiero.org/v0.52.0/docs/platform-developer/>
 
 ### Specific Solo version install
 
 ```sh
-npm install -g @hashgraph/solo@0.48.0
+npm install -g @hashgraph/solo@0.52.0
 ```
 
 ### Deploy manual

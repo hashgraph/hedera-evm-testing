@@ -27,7 +27,6 @@ const Utils = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
 const { expect } = require("chai");
-const { sleep } = require("@hashgraphonline/standards-sdk");
 const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
 
 describe("HIP-1215 System Contract testing. scheduleCall()", () => {
