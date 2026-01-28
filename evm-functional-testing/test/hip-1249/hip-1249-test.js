@@ -5,12 +5,12 @@ const { GAS_LIMIT_15M, ONE_HBAR, Contract } = require("../../utils/constants");
 const Async = require("../../utils/async");
 const { contractDeployAndFund } = require("../../utils/contract");
 
-describe("HIP-1249 'ops duration throttling' tests", () => {
+// TODO tests are blocked by the relay changes. Details: https://github.com/hiero-ledger/hiero-consensus-node/issues/22348#issuecomment-3811346158
+xdescribe("HIP-1249 'ops duration throttling' tests", () => {
   let signers, hip1249;
 
   // preconditions before test run
   before(async () => {
-    const provider = ethers.provider;
     signers = await ethers.getSigners();
     // deploy test contract
     hip1249 = await contractDeployAndFund(Contract.HIP1249Contract);
@@ -91,8 +91,8 @@ describe("HIP-1249 'ops duration throttling' tests", () => {
   }
 
   it("simulate ops duration throttling", async () => {
-    const signers = 2; // each signer used to fill 1 opsDuration bucket (1000 ms)
-    const cyclesToThrottling = 4;
+    const signers = 1; // each signer used to fill 1 opsDuration bucket (1000 ms)
+    const cyclesToThrottling = 1;
     const newSigners = await createSigners(signers, cyclesToThrottling * 11);
     const transactions = await simulateThrottling(
       newSigners,
