@@ -15,11 +15,10 @@ const { createSDKClient } = require("../../utils/utils");
 const {Contract} = require("../../utils/constants");
 
 describe("HIP-632 'isAuthorizedRaw' tests", () => {
-  let signers, hip632, sdkClient, edPK, edSignerAccount, wallet;
+  let hip632, sdkClient, edPK, edSignerAccount, wallet;
 
   // preconditions before test run
   before(async () => {
-    signers = await ethers.getSigners();
     // deploy test contract
     const HIP632Factory = await ethers.getContractFactory(Contract.HIP632Contract);
     hip632 = await HIP632Factory.deploy();
