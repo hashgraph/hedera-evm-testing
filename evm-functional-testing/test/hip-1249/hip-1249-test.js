@@ -5,48 +5,56 @@ const { GAS_LIMIT_15M, ONE_HBAR, Contract } = require("../../utils/constants");
 const Async = require("../../utils/async");
 const { contractDeployAndFund } = require("../../utils/contract");
 
+/**
+ * Creates a butch of signers for throttling simulation. Each signer used to fill 1 opsDuration bucket (1000 ms)
+ * @param count { Number } signers count to create
+ * @param value { Number } how much value transfer to create signers
+ * @returns {Promise<*[]>}
+ */
+async function createSigners(count, value) {
+  const newSigners = [];
+  for (let i = 0; i < count; i++) {
+    // create new signer and connect to provider
+    const newSigner = ethers.Wallet.createRandom(ethers.provider);
+    newSigners.push(newSigner);
+    // transfer funds to new signer
+    if (value > 0) {
+      await (
+        await ethers.getSigners()
+      )[0].sendTransaction({
+        to: newSigner.address,
+        value: ONE_HBAR * BigInt(value),
+      });
+    }
+    console.log(
+      "Signer:%s '%s' balance:%s HBAR",
+      i + 1,
+      newSigner.address,
+      value,
+    );
+  }
+  return newSigners;
+}
+
 // TODO tests are blocked by the relay changes. Details: https://github.com/hiero-ledger/hiero-consensus-node/issues/22348#issuecomment-3811346158
 xdescribe("HIP-1249 'ops duration throttling' tests", () => {
-  let signers, hip1249;
+  let hip1249;
 
   // preconditions before test run
   before(async () => {
-    signers = await ethers.getSigners();
     // deploy test contract
     hip1249 = await contractDeployAndFund(Contract.HIP1249Contract);
   });
 
   /**
-   * Creates a butch of signers for throttling simulation. Each signer used to fill 1 opsDuration bucket (1000 ms)
-   * @param count signers count to create
-   * @param value how much value transfer to create signers
+   * Simulates OpsDuration throttling (CONSENSUS_GAS_EXHAUSTED) by executing `simulateOpsDurationThrottling`
+   *
+   * @param newSigners { Array<ethers.HDNodeWallet> } signers for transactions execution.
+   * Using separate signer in each opsDuration bucket (1 sec) for predictable nonce control
+   * @param cycles { Number } amount of expected cycles of `simulateOpsDurationThrottling` execution before throttling
+   * @param sleep { Number } sleep between transaction execution in one opsDuration bucket (1 sec)
    * @returns {Promise<*[]>}
    */
-  async function createSigners(count, value) {
-    const newSigners = [];
-    for (let i = 0; i < count; i++) {
-      // create new signer
-      const newWallet = ethers.Wallet.createRandom();
-      // connect new signer to provider
-      const newSigner = await newWallet.connect(ethers.provider);
-      newSigners.push(newSigner);
-      // transfer funds to new signer
-      if (value > 0) {
-        await signers[0].sendTransaction({
-          to: newSigner.address,
-          value: ONE_HBAR * BigInt(value),
-        });
-      }
-      console.log(
-        "Signer:%s '%s' balance:%s HBAR",
-        i + 1,
-        newSigner.address,
-        value,
-      );
-    }
-    return newSigners;
-  }
-
   async function simulateThrottling(newSigners, cycles, sleep) {
     if (cycles * sleep > 1000) {
       // The idea here is that a single signer can be used to fulfill just 1 OpsDuration bucket (over 1 second)
@@ -91,8 +99,8 @@ xdescribe("HIP-1249 'ops duration throttling' tests", () => {
   }
 
   it("simulate ops duration throttling", async () => {
-    const signers = 1; // each signer used to fill 1 opsDuration bucket (1000 ms)
-    const cyclesToThrottling = 1;
+    const signers = 2; // each signer used to fill 1 opsDuration bucket (1000 ms)
+    const cyclesToThrottling = 4;
     const newSigners = await createSigners(signers, cyclesToThrottling * 11);
     const transactions = await simulateThrottling(
       newSigners,
@@ -101,10 +109,6 @@ xdescribe("HIP-1249 'ops duration throttling' tests", () => {
     );
     const responses = await Promise.allSettled(transactions); // wait for all transactions
     console.log("Tx:", responses);
-    for (let response of responses) {
-      const rc = await response.value.wait();
-      console.log("Rc:", rc);
-    }
     const throttledCount = responses.filter(
       (r) => r.status === "rejected",
     ).length;
