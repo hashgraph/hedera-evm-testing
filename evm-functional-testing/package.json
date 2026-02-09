@@ -16,21 +16,15 @@
   "author": "Hashgraph Smart Contracts Team",
   "license": "Apache-2.0",
   "dependencies": {
-    "@hashgraph/hedera-wallet-connect": "2.0.3",
-    "@hiero-ledger/proto": "2.22.0",
     "@hashgraphonline/standards-sdk": "0.1.106",
+    "@hiero-ledger/proto": "2.22.0",
     "@nomicfoundation/solidity-analyzer": "0.1.2",
-    "bn.js": "5.2.2",
     "chai": "4.5.0",
     "dotenv": "17.2.0",
-    "elliptic": "6.6.1",
-    "mcl-wasm": "2.0.0",
-    "protobufjs": "7.5.3",
     "solidity-coverage": "0.8.16"
   },
   "devDependencies": {
     "@account-abstraction/contracts": "^0.8.0",
-    "@hashgraph/hedera-local": "2.37.1",
     "@hiero-ledger/sdk": "2.72.0",
     "@nomicfoundation/hardhat-chai-matchers": "2.1.0",
     "@nomicfoundation/hardhat-ethers": "3.1.0",
@@ -38,12 +32,8 @@
     "@openzeppelin/contracts-upgradeable": "5.4.0",
     "@openzeppelin/hardhat-upgrades": "3.9.1",
     "hardhat": "2.26.3",
-    "husky": "9.1.7",
     "mocha-junit-reporter": "2.2.1",
     "mocha-multi-reporters": "1.5.1",
     "prettier": "3.6.2"
-  },
-  "directories": {
-    "test": "test"
   }
 }

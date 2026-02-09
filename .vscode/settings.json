@@ -1,7 +1,0 @@
-{
-    "solidity.telemetry": false,
-    "[javascript]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "editor.formatOnSave": true
-    }
-}
