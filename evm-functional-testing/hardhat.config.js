@@ -19,15 +19,6 @@ module.exports = {
     color: true,
     failZero: Boolean(process.env.CI),
     forbidOnly: Boolean(process.env.CI),
-    reporter: "mocha-multi-reporters",
-    reporterOption: {
-      reporterEnabled: "spec, mocha-junit-reporter",
-      mochaJunitReporterReporterOptions: {
-        mochaFile: "test-results.[hash].xml",
-        includePending: true,
-        outputs: true,
-      },
-    },
   },
   solidity: {
     version: "0.8.30",
