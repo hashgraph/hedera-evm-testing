@@ -16,7 +16,6 @@
   "author": "Hashgraph Smart Contracts Team",
   "license": "Apache-2.0",
   "dependencies": {
-    "@hiero-ledger/proto": "2.22.0",
     "@nomicfoundation/solidity-analyzer": "0.1.2",
     "chai": "4.5.0",
     "dotenv": "17.2.0",
@@ -24,7 +23,8 @@
   },
   "devDependencies": {
     "@account-abstraction/contracts": "^0.8.0",
-    "@hiero-ledger/sdk": "2.72.0",
+    "@hiero-ledger/proto": "^2.25.0",
+    "@hiero-ledger/sdk": "^2.80.0",
     "@nomicfoundation/hardhat-chai-matchers": "2.1.0",
     "@nomicfoundation/hardhat-ethers": "3.1.0",
     "@openzeppelin/contracts": "5.4.0",
@@ -32,5 +32,8 @@
     "@openzeppelin/hardhat-upgrades": "3.9.1",
     "hardhat": "2.26.3",
     "prettier": "3.6.2"
+  },
+  "overrides": {
+    "react-native-get-random-values": "file:./null"
   }
 }
