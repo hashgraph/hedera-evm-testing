@@ -9,7 +9,7 @@ const {
   expectScheduleCallEvent,
   expectResponseCodeEvent,
 } = require("./utils/hip1215-utils");
-const { beforeTests, afterTests } = require("./hip1215-1-main");
+const { beforeTests, afterTests } = require("./utils/hip1215-setup");
 const Async = require("../../utils/async");
 const Utils = require("../../utils/utils");
 const { getMirrorNodeUrl } = require("../../utils/native/utils");

@@ -26,7 +26,7 @@ const {
 } = require("./utils/hip1215-utils");
 const Utils = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
-const { beforeTests, afterTests } = require("./hip1215-1-main");
+const { beforeTests, afterTests } = require("./utils/hip1215-setup");
 const { expect } = require("chai");
 const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 
