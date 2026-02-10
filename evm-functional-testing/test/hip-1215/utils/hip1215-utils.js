@@ -199,7 +199,7 @@ async function getRecursiveScheduleStatus(
     maxAttempts
   );
 
-  const transactions = await mnClient.getTransactionByTimestamp(
+  const { transactions } = await mnClient.getTransactionByTimestamp(
     scheduleObj.executed_timestamp
   );
 
@@ -249,7 +249,7 @@ async function findNewScheduleAddress(
   // Query MN for contract call logs
   const contractCallLogs = await Async.waitForCondition(
     "contract_call_logs",
-    () => mnClient.getContractLogs({ limit, timestamp, transactionHash }),
+    () => mnClient.getContractLogs({ limit, timestamp, transactionHash }).then(result => result.logs),
     (result) => result != null,
     waitStep,
     maxAttempts
