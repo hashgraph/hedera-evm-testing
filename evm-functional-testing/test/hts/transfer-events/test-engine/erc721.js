@@ -1,4 +1,4 @@
-const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
+const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 const Constants = require("../../../../utils/constants");
 const { contractDeployAndFund } = require("../../../../utils/contract");
 const { approveNft } = require("../relay/erc721-relay-tests-impl");

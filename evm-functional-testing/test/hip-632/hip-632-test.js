@@ -5,8 +5,8 @@ const {
   PrivateKey,
   AccountCreateTransaction,
   Hbar,
-} = require("@hashgraph/sdk");
-const { proto } = require("@hashgraph/proto");
+} = require("@hiero-ledger/sdk");
+const { proto } = require("@hiero-ledger/proto");
 const {
   testAccountAuthorization,
   hedera_signMessage,

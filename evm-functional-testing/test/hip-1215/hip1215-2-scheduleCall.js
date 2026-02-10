@@ -28,7 +28,7 @@ const Utils = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
 const { beforeTests, afterTests } = require("./hip1215-1-main");
 const { expect } = require("chai");
-const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
+const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 
 describe("HIP-1215 System Contract testing. scheduleCall()", () => {
   let hip1215, impl1215, signers, mnClient;

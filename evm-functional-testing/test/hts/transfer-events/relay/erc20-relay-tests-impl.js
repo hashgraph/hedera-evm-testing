@@ -1,5 +1,5 @@
 const { ethers } = require("hardhat");
-const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
+const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 const {
   validateResponseCodeEvent,
   validateErcEvent,
