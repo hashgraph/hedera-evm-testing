@@ -1,0 +1,4 @@
+relay:
+  config:
+    # Using this to 'blocking' eth_sendRawTransaction execution to see the execution error, if there is one.
+    USE_ASYNC_TX_PROCESSING: "false"
