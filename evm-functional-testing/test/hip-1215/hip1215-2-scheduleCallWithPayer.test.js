@@ -218,7 +218,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
 
     it("should succeed schedule but fail execution for value more than balance", async () => {
       const address = randomAddress(); // hollow account creation
-      const value = 100_000_000_000_000n; // 1_000_000 HBAR in TINYBARS, more than contact balance
+      const value = 2_000_000_000_0000_0000n; // 2_000_000_000 HBAR in TINYBARS, more than contact balance
       await testScheduleCallWithPayerAndSign(
         "scheduleCallWithPayer balance",
         address,

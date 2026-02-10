@@ -171,7 +171,7 @@ async function getChildTransactionsByScheduleId(
     waitStep,
     maxAttempts
   );
-  const transactions = await mnClient.getTransactionByTimestamp(
+  const { transactions } = await mnClient.getTransactionByTimestamp(
     scheduleObj.executed_timestamp
   );
   if (transactions.length > 0) {
