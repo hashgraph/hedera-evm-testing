@@ -5,7 +5,7 @@ const {
   ContractExecuteTransaction,
   ContractId,
   ContractFunctionParameters,
-} = require("@hashgraph/sdk");
+} = require("@hiero-ledger/sdk");
 
 // ---------------- Test util functions ----------------
 class Erc721SdkTestsImpl {

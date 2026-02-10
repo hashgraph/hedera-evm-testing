@@ -4,12 +4,8 @@ const { ONE_HBAR } = require("../../utils/constants");
 const Async = require("../../utils/async");
 const { expect } = require("chai");
 const { contractDeployAndFund } = require("../../utils/contract");
-const {
-  getScheduledTxStatus,
-} = require("./utils/hip1215-utils");
-const {
-  createMirrorNodeClient,
-} = require("../../utils/mirrorNode");
+const { getScheduledTxStatus } = require("./utils/hip1215-utils");
+const { MirrorNode } = require("../../utils/mirrorNode");
 
 const WAIT_STEP = 2000;
 let hip1215, impl1215, signers, mnClient;
@@ -30,7 +26,7 @@ async function beforeTests() {
     value: ONE_HBAR * 10n,
   });
   // sdkClient = await Utils.createSDKClient();
-  mnClient = createMirrorNodeClient();
+  mnClient = new MirrorNode();
   console.log("Done hip1215:", hip1215.target);
   return [hip1215, impl1215, signers, mnClient];
 }

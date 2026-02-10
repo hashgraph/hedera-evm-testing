@@ -22,7 +22,7 @@ const {
   HbarUnit,
   ScheduleCreateTransaction,
   Timestamp,
-} = require("@hashgraph/sdk");
+} = require("@hiero-ledger/sdk");
 const Constants = require("./constants");
 const axios = require("axios");
 const { getMirrorNodeUrl } = require("./native/utils");

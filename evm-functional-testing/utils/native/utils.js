@@ -8,7 +8,7 @@ const {
   ContractCallQuery,
   ContractFunctionParameters,
   AccountUpdateTransaction,
-} = require("@hashgraph/sdk");
+} = require("@hiero-ledger/sdk");
 const hre = require("hardhat");
 const { ethers } = hre;
 const htsUtils = require("../utils");

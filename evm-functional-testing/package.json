@@ -16,7 +16,6 @@
   "author": "Hashgraph Smart Contracts Team",
   "license": "Apache-2.0",
   "dependencies": {
-    "@hashgraphonline/standards-sdk": "0.1.106",
     "@hiero-ledger/proto": "2.22.0",
     "@nomicfoundation/solidity-analyzer": "0.1.2",
     "chai": "4.5.0",

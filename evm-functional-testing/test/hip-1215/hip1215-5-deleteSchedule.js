@@ -19,10 +19,10 @@ const {
   Timestamp,
   Hbar,
   PrivateKey,
-} = require("@hashgraph/sdk");
+} = require("@hiero-ledger/sdk");
 const axios = require("axios");
 const { expect } = require("chai");
-const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
+const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 
 const getScheduleInfoFromMN = async (scheduleAddress) => {
   const url =
