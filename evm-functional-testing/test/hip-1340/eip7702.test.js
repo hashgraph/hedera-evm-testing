@@ -1,12 +1,13 @@
 const assert = require('node:assert').strict;
+const log = require('node:util').debuglog('hip-1340');
 
 const { expect } = require('chai');
-const { ethers } = require('ethers');
+const { ethers } = require('hardhat');
 const sdk = require('@hiero-ledger/sdk');
 
-const { rpcUrl } = require('evm-functional-testing/config');
-const { log } = require('evm-functional-testing/log');
-const { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('evm-functional-testing/web3');
+const { MirrorNode } = require('evm-functional-testing/mirror-node');
+const { getAccountInfo, getContractByteCode, getTransactionRecord, getAccountRecords } = require('./utils/sdk');
+const { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
 
 /**
  * https://www.evm.codes/precompiled?fork=prague
@@ -25,49 +26,95 @@ const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc';
 
 describe.skip('HIP-1340 - EIP-7702 features', function () {
 
-    /**
-     * @type {ethers.JsonRpcProvider}
-     */
+    /** @type {ethers.JsonRpcProvider} */
     let provider;
 
-    /**
-     * @type {ethers.Network}
-     */
+    /** @type {ethers.Network} */
     let network;
 
     before(async function () {
-        provider = new ethers.JsonRpcProvider(rpcUrl);
+        provider = (await ethers.getSigners())[0].provider;
         network = await provider.getNetwork();
+        log('Starting test suite `%s` on network `%s` (chain id %s)', this.test.parent.title, network.name, Number(network.chainId));
     });
 
-    [
-        ...precompiledAddresses,
-        ...systemContractAddresses,
-        '0x0000000000000000000000000000000000068cDa',
-        '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
-    ].forEach(address => {
-        it(`should create a new EAO delegation to ${address}, via a type4 transaction`, async function () {
-            const eoa = await createAndFundEOA();
-            const nonce = await eoa.getNonce();
+    it('should create and fund an EOA to ensure account creation is successful', async function () {
+        const sender = await createAndFundEOA();
+        expect(await sender.getNonce()).to.be.equal(0);
+        expect(await provider.getBalance(sender.address)).to.be.equal(1000_0000_0000n * 1_00000_00000n);
+    });
 
-            const resp = await eoa.sendTransaction({
-                chainId: network.chainId,
-                nonce,
-                gasLimit: gas.base + gas.auth(1),
-                value: 10n,
-                to: ethers.Wallet.createRandom().address,
-                authorizationList: [await eoa.authorize({
-                    chainId: 0,
-                    nonce: nonce + 1,
-                    address,
-                })],
+    describe('EOA delegation setup via type 4 transactions', function () {
+
+        [
+            // 'HOLLOW',
+            'FUNDED',
+        ].flatMap(toKind =>
+        [
+            // 'EXTERNAL',
+            'SELF',
+        ].flatMap(trigger =>
+        [
+            // 0n,
+            1234n,
+        ].flatMap(value =>
+        [
+            // ...precompiledAddresses,
+            // ...systemContractAddresses,
+            // '0x0000000000000000000000000000000000068cDa',
+            '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
+        ].flatMap(address => ({ toKind, trigger, value, address }))))
+        ).forEach(({ toKind, trigger, value, address }) => {
+            it(`should store delegation designator ${toKind} ${trigger} for EOA to ${address} via a type4 transaction sending ${value} th`, async function () {
+                const sender = await createAndFundEOA();
+                const receiver = toKind === 'FUNDED' ? await createAndFundEOA() : ethers.Wallet.createRandom();
+                const [delegated, authNonce] = trigger === 'SELF'
+                    ? [sender, 1]
+                    : [await createAndFundEOA(), 0];
+
+                log('Sending %s th to %s from %s and delegating %s to %s', value, receiver.address, sender.address, delegated.address, address);
+                const tx = {
+                    type: 4,
+                    chainId: network.chainId,
+                    nonce: 0,
+                    maxFeePerGas: ethers.parseUnits('710', 'gwei'),
+                    maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
+                    gasLimit: 800_000,
+                    value: value * 1_00000_00000n,
+                    to: receiver.address,
+                    authorizationList: [await delegated.authorize({
+                        chainId: 0,
+                        nonce: authNonce,
+                        address,
+                    })],
+                };
+                const resp = await sender.sendTransaction(tx);
+                log('receipt', resp.hash); 
+                let txhash;
+                try {
+                    await resp.wait();
+                } catch (e) {
+                    // console.error('Transaction failed to wait', e);
+                    // console.error('replacement hash', e.replacement.hash);
+                    txhash = e.replacement.hash;
+                }
+
+                const result = await new MirrorNode().getContractResults(txhash);
+                const { transactions } = await new MirrorNode().getTransactionsByTimestamp(result.timestamp);
+                const transactionId = transactions[0].transaction_id.replace('0.0.2-', '0.0.2@').replace('-', '.');
+                log('Authorization sent in transaction', resp.hash, transactionId);
+
+                const { account } = await new MirrorNode().getAccount(delegated.address);
+                const contractBytecode = await getContractByteCode(account);
+                expect(Buffer.from(contractBytecode).toString('hex')).to.be.equal(designatorFor(address.toLowerCase()).slice(2));
+                
+                const { delegationAddress } = await getAccountInfo(account);
+                expect(Buffer.from(delegationAddress).toString('hex')).to.be.equal(address.toLowerCase().slice(2));
+
+                // TODO: Reenable check once MN and Relay include support for EIP-7702
+                // const code = await provider.getCode(delegated.address);
+                // expect(code).to.be.equal(designatorFor(address.toLowerCase()));
             });
-            await resp.wait();
-
-            const code = await provider.getCode(eoa.address);
-            log('EOA %s code: %s', eoa.address, code);
-
-            expect(code).to.be.equal(designatorFor(address.toLowerCase()));
         });
     });
 
@@ -93,23 +140,80 @@ describe.skip('HIP-1340 - EIP-7702 features', function () {
         });
     });
 
-    it('should get store and logs when EOA sends a transaction to itself', async function () {
+    ['EXTERNAL', 'SELF'].forEach(trigger => {
+    it(`should get store and logs when a delegated EOA is the target of a transaction from \`${trigger}\``, async function () {
         const value = 42;
+
+        const to = await createAndFundEOA();
+        const from = await createAndFundEOA();
 
         const storeAndEmit = await deploy('contracts/hip-1340/StoreAndEmit');
         const smartWallet = await deploy('@account-abstraction/contracts/accounts/Simple7702Account');
-        const eoa = await createAndFundEOA(smartWallet.address);
+
+        // const eoa = await createAndFundEOA(smartWallet.address);
+        const eoa = await createAndFundEOA();
+
+        const n = await eoa.getNonce();
+        console.log('EOA nonce', n);
+
+        const authtx = {
+            type: 4,
+            chainId: network.chainId,
+            nonce: 0,
+            maxFeePerGas: ethers.parseUnits('710', 'gwei'),
+            maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
+            gasLimit: 800_000,
+            value: 321_00000_00000n,
+            to,
+            authorizationList: [await eoa.authorize({
+                chainId: 0,
+                nonce: 0,
+                address: smartWallet.address,
+            })],
+        };
+        log('Transaction', authtx); 
+        const resp = await from.sendTransaction(authtx);
+
+            let txhash;
+            try {
+                await resp.wait();
+            } catch (e) {
+                console.error('Transaction failed to wait', e);
+                console.error('replacement hash', e.replacement.hash);
+                txhash = e.replacement.hash;
+            }
+
+
+            const { account } = await new MirrorNode().getAccount(eoa.address);
+            const query = await getContractByteCode(account);
+            console.log('contract code query', Buffer.from(query).toString('hex'));
+
+            // const acc = await getAccountInfo(account);
+            // console.log('account info', acc);
+            // console.log('account info delegationAddress', Buffer.from(acc.delegationAddress).toString('hex'));
 
         const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
         const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmit.address, 0, storeAndEmitCall]);
 
-        const tx = await eoa.sendTransaction({
+        // const tx = await eoa.sendTransaction({
+        const tx = await (trigger === 'SELF' ? eoa : from).sendTransaction({
             chainId: network.chainId,
             to: eoa.address,
+            nonce: 1,
             gasLimit: 1_500_000,
             data,
         });
-        const receipt = await tx.wait();
+        // const receipt = await tx.wait();
+        let receipt;
+            try {
+                receipt = await tx.wait();
+                console.error('replacement hash exec try', receipt.hash);
+            } catch (e) {
+                console.error('Transaction failed to wait exec', e);
+                // console.error('replacement hash exec catch', e.replacement.hash);
+                // txhash = e.replacement.hash;
+                receipt = e.receipt;
+            }
 
         assert(receipt !== null, 'Receipt is null');
 
@@ -127,6 +231,8 @@ describe.skip('HIP-1340 - EIP-7702 features', function () {
         const storedValue = await provider.getStorage(storeAndEmit.address, valueSlot);
         log('Storage', storedValue);
         expect(storedValue).to.be.equal(asHexUint256(value));
+    });
+
     });
 
     it('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {

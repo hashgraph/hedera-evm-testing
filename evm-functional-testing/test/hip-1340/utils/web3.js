@@ -1,10 +1,11 @@
-const assert = require('node:assert').strict;
+const { strict: assert, strictEqual: assertEq } = require('node:assert');
 const { readFileSync } = require('node:fs');
+const log = require('node:util').debuglog('hip-1340:web3');
 
-const { ethers } = require('ethers');
+const { ethers } = require('hardhat');
 
-const { operatorEcdsaKey, rpcUrl } = require('./config.js');
-const { log } = require('./log.js');
+const { MirrorNode } = require('evm-functional-testing/mirror-node');
+const { getAccountInfo } = require('./sdk.js');
 
 /**
  * Gas cost constants and functions.
@@ -42,6 +43,46 @@ function asAddress(n) {
 }
 
 /**
+ * @type {ethers.BaseWallet}
+ */
+let seedEOA = undefined;
+
+async function getSeedEOA(tinyBarBalance = 1_000_000_0000_0000n) {
+    if (seedEOA !== undefined) {
+        return seedEOA;
+    }
+
+    const provider = ethers.provider;
+    const network = await provider.getNetwork();
+
+    const operator = (await ethers.getSigners())[0];
+    const nonce = await operator.getNonce();
+
+    const account = await new MirrorNode().getAccount(operator.address);
+    const accountInfo = await getAccountInfo(account.account);
+    log('Using operator EOA `%s:%s` (nonce CN%s:MN%s:RN%s)', account.account, operator.address, accountInfo.ethereumNonce, account.ethereum_nonce, nonce);
+    assertEq(account.evm_address, operator.address.toLowerCase(), 'Seed account EVM address sanity check');
+    assertEq(account.ethereum_nonce, accountInfo.ethereumNonce.toNumber(), 'Nonce mismatch between Mirror Node and SDK');
+    assertEq(nonce, account.ethereum_nonce, 'Nonce mismatch between JSON-RPC Relay and Mirror Node');
+
+    seedEOA = ethers.Wallet.createRandom(provider);
+    const response = await operator.sendTransaction({
+        type: 2,
+        chainId: network.chainId,
+        nonce: nonce,
+        maxFeePerGas: ethers.parseUnits('710', 'gwei'),
+        maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
+        gasLimit: 21_000 + 800_000,
+        value: tinyBarBalance * 10_000_000_000n,
+        to: seedEOA.address,
+    });
+    await response.wait();
+    log('Seed EOA `%s` created at transanction %s', seedEOA.address, response.hash);
+
+    return seedEOA;
+}
+
+/**
  * Creates and funds a new Externally Owned Account (EOA) on the connected network.
  * Optionally, the EOA can be set up to delegate to a given address using EIP-7702.
  *
@@ -49,18 +90,27 @@ function asAddress(n) {
  * @param {bigint} [tinyBarBalance=100_000_000n]
  * @returns {Promise<ethers.BaseWallet>} The funded EOA wallet
  */
-async function createAndFundEOA(delegation, tinyBarBalance = 100_000_000n) {
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
+async function createAndFundEOA(delegation, tinyBarBalance = 1000_0000_0000n) {
+    const provider = ethers.provider;
     const network = await provider.getNetwork();
 
-    const operator = new ethers.Wallet(operatorEcdsaKey, provider);
-    const eoa = ethers.Wallet.createRandom(provider);
+    const seed = await getSeedEOA();
+    let nonce = await seed.getNonce();
 
+    const account = await new MirrorNode().getAccount(seed.address);
+    const accountInfo = await getAccountInfo(account.account);
+    log('Using seed EOA `%s:%s` (nonce CN%s:MN%s:RN%s)', account.account, seed.address, accountInfo.ethereumNonce, account.ethereum_nonce, nonce);
+    assertEq(account.evm_address, seed.address.toLowerCase(), 'Seed account EVM address sanity check');
+    assertEq(account.ethereum_nonce, accountInfo.ethereumNonce.toNumber(), 'Nonce mismatch between Mirror Node and SDK');
+    assertEq(nonce, account.ethereum_nonce, 'Nonce mismatch between JSON-RPC Relay and Mirror Node');
+
+    const eoa = ethers.Wallet.createRandom(provider);
     const [type, gasLimit, authorizationList, verifyDelegation] = delegation === undefined
-        ? [2, 21_000, null, () => undefined]
+        ? [2, 21_000 + 800_000, undefined, () => undefined]
         : [
             4,
-            146_000,
+            // 146_000,
+            800_000,
             [await eoa.authorize({ chainId: 0, nonce: 0, address: delegation })],
             async () => {
                 const code = await provider.getCode(eoa.address);
@@ -69,20 +119,37 @@ async function createAndFundEOA(delegation, tinyBarBalance = 100_000_000n) {
             }
         ];
 
-    const tx = ethers.Transaction.from({
+    if (authorizationList !== undefined) {
+        const resp = await seed.sendTransaction({
+            type: 2,
+            chainId: network.chainId,
+            nonce: nonce,
+            maxFeePerGas: ethers.parseUnits('710', 'gwei'),
+            maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
+            // gasPrice: ethers.parseUnits('710', 'gwei'),
+            gasLimit,
+            value: 543210_000_000_000n,
+            to: eoa.address,
+        });
+        await resp.wait();
+        log('EOA `%s` created and funded at transanction %s', eoa.address, resp.hash);
+        nonce++;
+    }
+
+    const response = await seed.sendTransaction({
         type,
         chainId: network.chainId,
-        nonce: await operator.getNonce(),
-        maxFeePerGas: ethers.parseUnits('10', 'gwei'),
-        maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'),
+        nonce: nonce,
+        maxFeePerGas: ethers.parseUnits('710', 'gwei'),
+        maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
+        // gasPrice: ethers.parseUnits('710', 'gwei'),
         gasLimit,
-        value: tinyBarBalance * 10_000_000_000n,
-        to: eoa.address,
+        value: authorizationList === undefined ? tinyBarBalance * 10_000_000_000n : 0n,
+        to: authorizationList === undefined ? eoa.address : ethers.ZeroAddress,
         authorizationList,
     });
-    const response = await operator.sendTransaction(tx);
-    const receipt = await response.wait();
-    log('EOA %s created at transanction %s', eoa.address, response.hash, receipt);
+    await response.wait();
+    log('EOA `%s` created at transanction %s', eoa.address, response.hash);
 
     await verifyDelegation();
     return eoa;
@@ -123,13 +190,13 @@ async function deploy(contractName, args, deployer, gasLimit = 5_000_000){
     }
 
     log('Deploying contract `%s` from EOA %s', contractName, deployer.address);
-    const resp = await deployer.sendTransaction(ethers.Transaction.from({
+    const resp = await deployer.sendTransaction({
         chainId: network.chainId,
         nonce: await deployer.getNonce(),
-        gasPrice: ethers.parseUnits('10', 'gwei'),
+        gasPrice: ethers.parseUnits('710', 'gwei'),
         gasLimit,
         data: bytecode + consArgs,
-    }));
+    });
     const receipt = await resp.wait();
     log('Contract `%s` deployed at %s in transanction %s', contractName, receipt?.contractAddress, resp.hash);
 
