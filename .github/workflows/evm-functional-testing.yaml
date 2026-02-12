@@ -128,14 +128,15 @@ jobs:
         run: npm ci
         working-directory: relay
 
-      - name: Run custom JSON-RPC Relay
+      - name: Build and run JSON-RPC Relay from source
         run: |
+          npm run build
           npm run start &
           sleep 5s
         working-directory: relay
         env:
           SERVER_PORT: 7547
-          CHAIN_ID: 0x12a
+          CHAIN_ID: '0x12a'
           MIRROR_NODE_URL: http://localhost:8081
           HEDERA_NETWORK: '{"127.0.0.1:50211":"0.0.3"}'
           OPERATOR_ID_MAIN: 0.0.2
