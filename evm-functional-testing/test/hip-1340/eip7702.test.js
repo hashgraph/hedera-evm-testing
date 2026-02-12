@@ -24,7 +24,7 @@ const systemContractAddresses = [0x167, 0x168, 0x169, 0x16a, 0x16b, 0x16c].map(a
  */
 const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc';
 
-describe.skip('HIP-1340 - EIP-7702 features', function () {
+describe('HIP-1340 - EIP-7702 features', function () {
 
     /** @type {ethers.JsonRpcProvider} */
     let provider;
@@ -65,7 +65,7 @@ describe.skip('HIP-1340 - EIP-7702 features', function () {
             '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
         ].flatMap(address => ({ toKind, trigger, value, address }))))
         ).forEach(({ toKind, trigger, value, address }) => {
-            it(`should store delegation designator ${toKind} ${trigger} for EOA to ${address} via a type4 transaction sending ${value} th`, async function () {
+            it.only(`should store delegation designator ${toKind} ${trigger} for EOA to ${address} via a type4 transaction sending ${value} th`, async function () {
                 const sender = await createAndFundEOA();
                 const receiver = toKind === 'FUNDED' ? await createAndFundEOA() : ethers.Wallet.createRandom();
                 const [delegated, authNonce] = trigger === 'SELF'
