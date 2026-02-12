@@ -1,13 +1,12 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { PrivateKey, AccountId, ScheduleId } = require("@hashgraph/sdk");
+const { PrivateKey, AccountId, ScheduleId } = require("@hiero-ledger/sdk");
 const Utils = require("../../../utils/utils");
 const { Events } = require("../../../utils/constants");
 const { getMirrorNodeUrl } = require("../../../utils/native/utils");
-const { Logger, HederaMirrorNode } = require("@hashgraphonline/standards-sdk");
 const hre = require("hardhat");
 const Async = require("../../../utils/async");
-const { ResponseCodeEnum, SignatureMap } = require("@hashgraph/proto").proto;
+const { ResponseCodeEnum, SignatureMap } = require("@hiero-ledger/proto").proto;
 
 const SUCCESS = ResponseCodeEnum[ResponseCodeEnum.SUCCESS];
 const INVALID_ETHEREUM_TRANSACTION =
@@ -134,16 +133,6 @@ async function getSignatureMap(accountIndex, scheduleAddress) {
 // }
 // ---------------------------------------------------------------------------
 
-// Mirror node client functions --------------------------------------------------
-function createMirrorNodeClient() {
-  const logger = new Logger({ module: "test/hip-1215", level: "warn" });
-  const { mirrorNode } =
-    hre.config.networks[Utils.getCurrentNetwork()].sdkClient;
-  return new HederaMirrorNode("local", logger, {
-    customUrl: mirrorNode,
-  });
-}
-
 async function getScheduledTxStatus(
   mnClient,
   scheduleAddress,
@@ -158,7 +147,7 @@ async function getScheduledTxStatus(
     waitStep,
     maxAttempts
   );
-  const transactions = await mnClient.getTransactionByTimestamp(
+  const { transactions } = await mnClient.getTransactionByTimestamp(
     scheduleObj.executed_timestamp
   );
   if (transactions.length > 0) {
@@ -182,7 +171,7 @@ async function getChildTransactionsByScheduleId(
     waitStep,
     maxAttempts
   );
-  const transactions = await mnClient.getTransactionByTimestamp(
+  const { transactions } = await mnClient.getTransactionByTimestamp(
     scheduleObj.executed_timestamp
   );
   if (transactions.length > 0) {
@@ -210,7 +199,7 @@ async function getRecursiveScheduleStatus(
     maxAttempts
   );
 
-  const transactions = await mnClient.getTransactionByTimestamp(
+  const { transactions } = await mnClient.getTransactionByTimestamp(
     scheduleObj.executed_timestamp
   );
 
@@ -260,7 +249,7 @@ async function findNewScheduleAddress(
   // Query MN for contract call logs
   const contractCallLogs = await Async.waitForCondition(
     "contract_call_logs",
-    () => mnClient.getContractLogs({ limit, timestamp, transactionHash }),
+    () => mnClient.getContractLogs({ limit, timestamp, transactionHash }).then(result => result.logs),
     (result) => result != null,
     waitStep,
     maxAttempts
@@ -287,7 +276,6 @@ module.exports = {
   expectScheduleCallEvent,
   expectResponseCodeEvent,
   expectHasScheduleCapacityEvent,
-  createMirrorNodeClient,
   getScheduledTxStatus,
   getRecursiveScheduleStatus,
   getChildTransactionsByScheduleId,

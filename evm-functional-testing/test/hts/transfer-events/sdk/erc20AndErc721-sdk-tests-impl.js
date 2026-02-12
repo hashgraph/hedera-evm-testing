@@ -1,7 +1,7 @@
 const { validateRcWithErcEvent } = require("../relay/erc20-relay-tests-impl");
 const { getReceiptFromSdkTxResponse } = require("./erc20-sdk-tests-impl");
 const { encodeFunctionParameters } = require("./erc20-sdk-tests-impl");
-const { ContractExecuteTransaction, ContractId } = require("@hashgraph/sdk");
+const { ContractExecuteTransaction, ContractId } = require("@hiero-ledger/sdk");
 
 class Erc20Erc721SdkTestsImpl {
   constructor(context) {

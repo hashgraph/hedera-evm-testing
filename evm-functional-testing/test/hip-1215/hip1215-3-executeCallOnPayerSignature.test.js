@@ -21,10 +21,10 @@ const {
   INSUFFICIENT_PAYER_BALANCE,
   CONTRACT_REVERT_EXECUTED,
 } = require("./utils/hip1215-utils");
-const { beforeTests, afterTests } = require("./hip1215-1-main");
+const { beforeTests, afterTests } = require("./utils/hip1215-setup");
 const Async = require("../../utils/async");
 const { contractDeployAndFund } = require("../../utils/contract");
-const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
+const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 
 describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () => {
   let hip1215, impl1215, signers;
@@ -213,7 +213,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
 
     it("should succeed schedule but fail execution for value more than balance", async () => {
       const address = randomAddress(); // hollow account creation
-      const value = 100_000_000_000_000n; // 1_000_000 HBAR in TINYBARS, more than contact balance
+      const value = 2_000_000_000_0000_0000n; // 2_000_000_000 HBAR in TINYBARS, more than contact balance
       await testExecuteCallOnPayerSignatureAndSign(
         "executeCallOnPayerSignature balance",
         address,

@@ -1,11 +1,10 @@
 // HIP: https://hips.hedera.com/hip/hip-1215
+const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const {
   TINYBAR_TO_WEIBAR_COEF,
   HSS_ADDRESS,
   GAS_LIMIT_1_000_000,
-  GAS_LIMIT_2_000_000,
-  GAS_LIMIT_5_000_000,
   GAS_LIMIT_1_000,
   MAX_EXPIRY,
 } = require("../../utils/constants");
@@ -17,21 +16,17 @@ const {
   getExpirySecond,
   expectScheduleCallEvent,
   expectResponseCodeEvent,
-  getRecursiveScheduleStatus,
-  getChildTransactionsByScheduleId,
   getSignatureMap,
   SUCCESS,
   INSUFFICIENT_PAYER_BALANCE,
   CONTRACT_REVERT_EXECUTED,
 } = require("./utils/hip1215-utils");
-const Utils = require("../../utils/utils");
+const { beforeTests, afterTests } = require("./utils/hip1215-setup");
 const { contractDeployAndFund } = require("../../utils/contract");
-const { beforeTests, afterTests } = require("./hip1215-1-main");
-const { expect } = require("chai");
-const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
+const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 
-describe("HIP-1215 System Contract testing. scheduleCall()", () => {
-  let hip1215, impl1215, signers, mnClient;
+describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
+  let hip1215, impl1215, signers;
   let gasIncrement = 0;
   const scheduleCheck = [];
   const balanceCheck = [];
@@ -42,34 +37,40 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
    * check the result of the 'schedule execution' in tests 'after' function
    * @param testId unique identifier of the test
    * @param to 'to' param of the scheduleCall
+   * @param payer 'payer' param of the scheduleCall
    * @param value 'value' param of the scheduleCall
    * @param callDataFunction function that returns 'callData' param of the scheduleCall
    * @param executionExpectedResult result of the 'schedule execution' transaction
    * @returns {Promise<*[]>} [testId, expirySecond, schedule transaction object]
    */
-  async function testScheduleCallAndSign(
+  async function testScheduleCallWithPayerAndSign(
     testId,
     to,
+    payer,
     value = 0n,
     callDataFunction = (testId) => addTestCallData(testId),
     executionExpectedResult = SUCCESS
   ) {
     const expirySecond = getExpirySecond();
-    const scheduleTx = await hip1215.scheduleCall(
+    const scheduleTx = await hip1215.scheduleCallWithPayer(
       to,
+      payer,
       getExpirySecond(),
       // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
       GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
       value,
       callDataFunction(testId, expirySecond)
     );
-
     const scheduleAddress = await expectScheduleCallEvent(
       scheduleTx,
       ResponseCodeEnum.SUCCESS.valueOf()
     );
     // sign schedule
-    const signTx = await hip1215.authorizeSchedule(scheduleAddress);
+    const sigMapProtoEncoded = await getSignatureMap(1, scheduleAddress);
+    const signTx = await hip1215.signSchedule(
+      scheduleAddress,
+      sigMapProtoEncoded
+    );
     await expectResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
     // execution check in 'after'
     scheduleTxCheck.push({
@@ -84,20 +85,22 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
   // ----------------- Tests
   before(async () => {
-    [hip1215, impl1215, signers, mnClient] = await beforeTests();
+    [hip1215, impl1215, signers] = await beforeTests();
   });
 
-  // Check the results of the scheduled calls after the test execution to save time
+  // schedules result check ofter tests passes to save the time
   after(async () => {
     await afterTests(scheduleCheck, balanceCheck, scheduleTxCheck);
   });
 
-  describe("positive cases", async () => {
-    it("should schedule a call", async () => {
-      const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
-        "scheduleCall",
-        await hip1215.getAddress()
-      );
+  describe("positive cases", () => {
+    it("should schedule a call with payer", async () => {
+      const [testId, expirySecond, scheduleTx] =
+        await testScheduleCallWithPayerAndSign(
+          "scheduleCallWithPayer",
+          await hip1215.getAddress(),
+          signers[1].address
+        );
       // execution check in 'after'
       scheduleCheck.push({
         id: testId,
@@ -107,14 +110,20 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should succeed with eoa address for to", async () => {
-      await testScheduleCallAndSign("scheduleCall eoa", signers[0].address);
+      await testScheduleCallWithPayerAndSign(
+        "scheduleCallWithPayer eoa",
+        signers[0].address,
+        signers[1].address
+      );
     });
 
     it("should succeed with address(this) for to", async () => {
-      const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
-        "scheduleCall address(this)",
-        await hip1215.getAddress()
-      );
+      const [testId, expirySecond, scheduleTx] =
+        await testScheduleCallWithPayerAndSign(
+          "scheduleCallWithPayer address(this)",
+          await hip1215.getAddress(),
+          signers[1].address
+        );
       // execution check in 'after'
       scheduleCheck.push({
         id: testId,
@@ -124,9 +133,10 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should succeed with system contract for to", async () => {
-      await testScheduleCallAndSign(
-        "scheduleCall system contract",
+      await testScheduleCallWithPayerAndSign(
+        "scheduleCallWithPayer system contract",
         HSS_ADDRESS,
+        signers[1].address,
         0n,
         (testId, expirySecond) =>
           hasScheduleCapacityCallData(
@@ -137,9 +147,10 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should succeed with amount sent to contract", async () => {
-      await testScheduleCallAndSign(
-        "scheduleCall amount",
+      await testScheduleCallWithPayerAndSign(
+        "scheduleCallWithPayer amount",
         await hip1215.getAddress(),
+        signers[1].address,
         100_000_000n, // 1 HBAR in TINYBARS
         () => payableCallData(),
         SUCCESS
@@ -147,18 +158,20 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should succeed with empty callData", async () => {
-      await testScheduleCallAndSign(
-        "scheduleCall empty callData",
+      await testScheduleCallWithPayerAndSign(
+        "scheduleCallWithPayer empty callData",
         await hip1215.getAddress(),
+        signers[1].address,
         0n,
         () => "0x"
       );
     });
 
     it("should succeed schedule but fail execution with invalid callData", async () => {
-      await testScheduleCallAndSign(
-        "scheduleCall invalid callData",
+      await testScheduleCallWithPayerAndSign(
+        "scheduleCallWithPayer invalid callData",
         await hip1215.getAddress(),
+        signers[1].address,
         0n,
         () => "0xabc123",
         CONTRACT_REVERT_EXECUTED
@@ -166,12 +179,14 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should change the state after schedule executed", async () => {
-      const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
-        "scheduleCall state",
-        await hip1215.getAddress(),
-        0n,
-        (testId) => addTestCallData(testId)
-      );
+      const [testId, expirySecond, scheduleTx] =
+        await testScheduleCallWithPayerAndSign(
+          "scheduleCallWithPayer state",
+          await hip1215.getAddress(),
+          signers[1].address,
+          0n,
+          (testId) => addTestCallData(testId)
+        );
       // execution check in 'after'
       scheduleCheck.push({
         id: testId,
@@ -183,12 +198,14 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     it("should create account with balance change after schedule executed", async () => {
       const address = randomAddress(); // hollow account creation
       const value = 100_000_000n; // 1 HBAR in TINYBARS
-      const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
-        "scheduleCall balance",
-        address,
-        value,
-        () => "0x"
-      );
+      const [testId, expirySecond, scheduleTx] =
+        await testScheduleCallWithPayerAndSign(
+          "scheduleCallWithPayer balance",
+          address,
+          signers[1].address,
+          value,
+          () => "0x"
+        );
       // balance check in 'after'
       balanceCheck.push({
         id: testId,
@@ -201,25 +218,68 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
     it("should succeed schedule but fail execution for value more than balance", async () => {
       const address = randomAddress(); // hollow account creation
-      const value = 100_000_000_000_000n; // 1_000_000 HBAR in TINYBARS, more than contact balance
-      await testScheduleCallAndSign(
-        "scheduleCall balance",
+      const value = 2_000_000_000_0000_0000n; // 2_000_000_000 HBAR in TINYBARS, more than contact balance
+      await testScheduleCallWithPayerAndSign(
+        "scheduleCallWithPayer balance",
         address,
+        signers[1].address,
         value,
         () => "0x",
         INSUFFICIENT_PAYER_BALANCE
       );
     });
+
+    it("should succeed with contract as a payer", async () => {
+      const testId = "scheduleCallWithPayer payer contract";
+      expect(await hip1215.getTests()).to.not.contain(testId);
+      // create payer contract
+      const payerContract = await contractDeployAndFund(
+        "HIP1215PayerContract",
+        1
+      );
+      // create schedule
+      const expirySecond = getExpirySecond();
+      const scheduleTx = await hip1215.scheduleCallWithPayer(
+        await hip1215.getAddress(),
+        await payerContract.getAddress(),
+        expirySecond,
+        GAS_LIMIT_1_000_000.gasLimit,
+        0,
+        addTestCallData(testId)
+      );
+      const scheduleAddress = await expectScheduleCallEvent(
+        scheduleTx,
+        ResponseCodeEnum.SUCCESS.valueOf()
+      );
+      // sign schedule
+      const signTx = await payerContract.authorizeSchedule(scheduleAddress);
+      await expectResponseCodeEvent(signTx, ResponseCodeEnum.SUCCESS.valueOf());
+      // execution check in 'after'
+      scheduleCheck.push({ id: testId, expirySecond: expirySecond });
+    });
   });
 
   describe("negative cases", () => {
-    it("should fail with gasLimit 0", async () => {
-      const receipt = await hip1215.scheduleCall(
+    it("should fail with payer as zero address", async () => {
+      const receipt = await hip1215.scheduleCallWithPayer(
         await hip1215.getAddress(),
+        ethers.ZeroAddress,
+        getExpirySecond(),
+        GAS_LIMIT_1_000_000.gasLimit,
+        0,
+        addTestCallData("scheduleCallWithPayer fail payer zero address")
+      );
+      await expectScheduleCallEvent(receipt, ResponseCodeEnum.UNKNOWN.valueOf());
+    });
+
+    it("should fail with gasLimit 0", async () => {
+      const receipt = await hip1215.scheduleCallWithPayer(
+        await hip1215.getAddress(),
+        signers[1].address,
         getExpirySecond(),
         0,
         0,
-        addTestCallData("scheduleCall fail gasLimit 0")
+        addTestCallData("scheduleCallWithPayer fail gasLimit 0")
       );
       await expectScheduleCallEvent(
         receipt,
@@ -228,12 +288,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with gasLimit 1000", async () => {
-      const receipt = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCallWithPayer(
         await hip1215.getAddress(),
+        signers[1].address,
         getExpirySecond(),
         GAS_LIMIT_1_000.gasLimit,
         0,
-        addTestCallData("scheduleCall fail gasLimit 1000")
+        addTestCallData("scheduleCallWithPayer fail gasLimit 1000")
       );
       await expectScheduleCallEvent(
         receipt,
@@ -242,12 +303,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with gasLimit uint.maxvalue", async () => {
-      const receipt = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCallWithPayer(
         await hip1215.getAddress(),
+        signers[1].address,
         getExpirySecond(),
         ethers.MaxUint256,
         0,
-        addTestCallData("scheduleCall fail uint.maxvalue")
+        addTestCallData("scheduleCallWithPayer fail gasLimit uint.maxvalue")
       );
       await expectScheduleCallEvent(
         receipt,
@@ -256,12 +318,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with 0 expiry", async () => {
-      const receipt = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCallWithPayer(
         await hip1215.getAddress(),
+        signers[1].address,
         0,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCall fail expiry 0")
+        addTestCallData("scheduleCallWithPayer fail expiry 0")
       );
       await expectScheduleCallEvent(
         receipt,
@@ -270,12 +333,13 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with expiry at current time", async () => {
-      const receipt = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCallWithPayer(
         await hip1215.getAddress(),
+        signers[1].address,
         new Date().getUTCSeconds(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCall fail expiry current")
+        addTestCallData("scheduleCallWithPayer fail expiry current")
       );
       await expectScheduleCallEvent(
         receipt,
@@ -284,13 +348,14 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with expiry at max expiry + 1", async () => {
-      const receipt = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCallWithPayer(
         await hip1215.getAddress(),
+        signers[1].address,
         // adding +100 to exclude consensus time shift
-        Math.floor(Date.now() / 1000) + MAX_EXPIRY + 100 + 1,
+        Math.floor(Date.now() / 1000) + MAX_EXPIRY + 100 + 1, // +10 is a shift in case of some delay
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCall fail expiry + 1")
+        addTestCallData("scheduleCallWithPayer fail expiry + 1")
       );
       await expectScheduleCallEvent(
         receipt,
@@ -299,8 +364,9 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     });
 
     it("should fail with zero 'to' address and invalid contract deploy", async () => {
-      const receipt = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCallWithPayer(
         ethers.ZeroAddress,
+        signers[1].address,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
@@ -316,8 +382,9 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       const deployContract = await ethers.getContractFactory(
         "HIP1215DeployContract"
       );
-      const receipt = await hip1215.scheduleCall(
+      const receipt = await hip1215.scheduleCallWithPayer(
         ethers.ZeroAddress,
+        signers[1].address,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
@@ -327,107 +394,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         receipt,
         ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
       );
-    });
-
-    it("should fail for delegatecall schedule create", async () => {
-      const tx = await hip1215.scheduleCallDelegateCall(
-        await hip1215.getAddress(),
-        getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
-        0,
-        addTestCallData("scheduleCall fail gasLimit 0"),
-      );
-      console.log("scheduleCallDelegateCall tx.hash:", tx.hash);
-      await expectScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.UNKNOWN.valueOf(),
-      );
-    });
-  });
-
-  describe("Recursive scheduling test", () => {
-    it("should create recursive schedules until payer runs out of funds", async () => {
-      const contractAddress = await hip1215.getAddress();
-      const expirySecond = getExpirySecond();
-      const contractBalance =
-        (await ethers.provider.getBalance(contractAddress)) /
-        TINYBAR_TO_WEIBAR_COEF;
-      const expectedGasUsed = await hip1215.recursiveScheduleCall.estimateGas(
-        contractAddress,
-        expirySecond,
-        GAS_LIMIT_2_000_000.gasLimit,
-        0
-      );
-      console.debug("Estimated gas for call: " + expectedGasUsed);
-      // 1_438_769n; // ~ gas usage for used schedule create operation
-      const expectedFee = expectedGasUsed * 71n; // ~ fee for schedule create operation
-      const expectedHasCapacityFee = 2_000_000n * 71n; // max fee for schedule create operation, calculated based on schedule gasLimit
-      const expectedCalls =
-        (contractBalance - expectedHasCapacityFee) / expectedFee + 1n;
-      const receipt = await hip1215.recursiveScheduleCall(
-        contractAddress,
-        expirySecond,
-        GAS_LIMIT_2_000_000.gasLimit,
-        0
-      );
-
-      const scheduleAddress = await expectScheduleCallEvent(
-        receipt,
-        ResponseCodeEnum.SUCCESS.valueOf()
-      );
-      // Validate execution and recursive behaviour
-      const { finalResponse, recursiveCounter } =
-        await getRecursiveScheduleStatus(mnClient, scheduleAddress);
-      expect(finalResponse).to.not.be.null;
-      expect(finalResponse).to.not.eq(SUCCESS);
-      expect(recursiveCounter).to.eq(expectedCalls);
-    }).timeout(300_000); // We are recursively querying MN so we need more time for execution of the test
-  });
-
-  describe("Schedule generating child records", () => {
-    it("should schedule a call that produces child transactions", async () => {
-      const tokenContract = await Utils.deployTokenCreateContract();
-
-      const transferContract = await contractDeployAndFund(
-        "HIP1215TransferContract",
-        55
-      );
-      console.log("Contract deployed. Trying to schedule.");
-      const receipt = await transferContract.scheduleCallForTransfer(
-        getExpirySecond(5),
-        GAS_LIMIT_5_000_000.gasLimit,
-        3_500_000_000n, // 35 HBAR in TINYBARS
-        tokenContract,
-        signers[2]
-      );
-      console.log("Schedule created. Trying to get schedule logs");
-      const schedule = await expectScheduleCallEvent(
-        receipt,
-        ResponseCodeEnum.SUCCESS.valueOf()
-      );
-      console.log("Prepare signature map for signing");
-      const sigMap = getSignatureMap(2, schedule);
-      console.log("Signing...");
-      await hip1215.signSchedule(schedule, sigMap);
-      console.log("Now sleep to allow the calls to process.");
-      // Allow some time for all child transactions
-      console.log("Try to get the child records.");
-      const childrenCount = await getChildTransactionsByScheduleId(
-        mnClient,
-        schedule
-      );
-      console.log("Now assert all is as expected...");
-      expect(childrenCount).not.to.be.null;
-      expect(childrenCount).not.to.eq(0);
-      //Scheduled transaction contract call
-      //-> Eth transaction
-      //   -> Schedule Create
-      //   -> call to token create contract
-      //      -> call to HTS create fungible
-      //   -> call to HTS associate
-      //   -> call to HTS transferToken
-      // Expecting 6 transactions
-      expect(childrenCount).to.eq(6);
     });
   });
 });

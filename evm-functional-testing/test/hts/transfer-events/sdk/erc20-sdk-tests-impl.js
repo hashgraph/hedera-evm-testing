@@ -5,7 +5,7 @@ const {
   ContractExecuteTransaction,
   ContractId,
   ContractFunctionParameters,
-} = require("@hashgraph/sdk");
+} = require("@hiero-ledger/sdk");
 
 /**
  * Helper function to encode function name and parameters that can be used to invoke a contract's function

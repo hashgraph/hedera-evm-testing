@@ -9,7 +9,7 @@ const {
   expectScheduleCallEvent,
   expectResponseCodeEvent,
 } = require("./utils/hip1215-utils");
-const { beforeTests, afterTests } = require("./hip1215-1-main");
+const { beforeTests, afterTests } = require("./utils/hip1215-setup");
 const Async = require("../../utils/async");
 const Utils = require("../../utils/utils");
 const { getMirrorNodeUrl } = require("../../utils/native/utils");
@@ -19,10 +19,10 @@ const {
   Timestamp,
   Hbar,
   PrivateKey,
-} = require("@hashgraph/sdk");
+} = require("@hiero-ledger/sdk");
 const axios = require("axios");
 const { expect } = require("chai");
-const { ResponseCodeEnum } = require("@hashgraph/proto").proto;
+const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 
 const getScheduleInfoFromMN = async (scheduleAddress) => {
   const url =

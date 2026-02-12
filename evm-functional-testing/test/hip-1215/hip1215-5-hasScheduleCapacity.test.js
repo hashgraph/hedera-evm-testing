@@ -5,7 +5,7 @@ const {
   expectHasScheduleCapacityEvent,
 } = require("./utils/hip1215-utils");
 const { expect } = require("chai");
-const { beforeTests, afterTests } = require("./hip1215-1-main");
+const { beforeTests, afterTests } = require("./utils/hip1215-setup");
 
 describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
   let hip1215, impl1215, signers;

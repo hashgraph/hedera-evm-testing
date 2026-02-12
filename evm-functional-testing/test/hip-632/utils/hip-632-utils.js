@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { proto } = require("@hashgraph/proto");
+const { proto } = require("@hiero-ledger/proto");
 
 async function testAccountAuthorization(receipt, responseCode, isAuthorized) {
   const rc = await receipt.wait();
