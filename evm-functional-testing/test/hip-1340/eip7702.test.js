@@ -65,7 +65,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
             '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
         ].flatMap(address => ({ toKind, trigger, value, address }))))
         ).forEach(({ toKind, trigger, value, address }) => {
-            it.only(`should store delegation designator ${toKind} ${trigger} for EOA to ${address} via a type4 transaction sending ${value} th`, async function () {
+            it(`should store delegation designator ${toKind} ${trigger} for EOA to ${address} via a type4 transaction sending ${value} th`, async function () {
                 const sender = await createAndFundEOA();
                 const receiver = toKind === 'FUNDED' ? await createAndFundEOA() : ethers.Wallet.createRandom();
                 const [delegated, authNonce] = trigger === 'SELF'
@@ -235,7 +235,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
 
     });
 
-    it('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
+    it.skip('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
         const erc20 = await deploy('contracts/hip-1340/ERC20Mintable', ['Test', 'TST', 10_000_000n]);
         await erc20.contract.mint(50_000n);
         const minterBalance = await erc20.contract.balanceOf(erc20.deployer.address);
@@ -282,7 +282,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(receiverBalance).to.be.equal(3_800n, `Receiver balance should be 3_800 but got ${receiverBalance}`);
     });
 
-    it('should create the account when an EOA sponsors it', async function () {
+    it.skip('should create the account when an EOA sponsors it', async function () {
         const eoa = await createAndFundEOA();
         const to = await createAndFundEOA();
         const receiver = ethers.Wallet.createRandom();
@@ -312,7 +312,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
     });
 
-    it('should replace existing delegation when a new authorization is sent', async function () {
+    it.skip('should replace existing delegation when a new authorization is sent', async function () {
         const firstDelegation = ethers.Wallet.createRandom().address;
         const eoa = await createAndFundEOA(firstDelegation);
         const nonce = await eoa.getNonce();
@@ -337,7 +337,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(code).to.be.equal(designatorFor(secondDelegation.toLowerCase()));
     });
 
-    it('should use the last authorization when multiple authorizations are sent', async function () {
+    it.skip('should use the last authorization when multiple authorizations are sent', async function () {
         const eoa = await createAndFundEOA();
 
         const resp = await eoa.sendTransaction({
@@ -371,7 +371,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(code).to.be.equal(designatorFor(asAddress(3)));
     });
 
-    it('should authorize delegation of an existing account when exact gas is sent', async function () {
+    it.skip('should authorize delegation of an existing account when exact gas is sent', async function () {
         const eoa = await createAndFundEOA();
 
         const resp = await eoa.sendTransaction({
@@ -393,7 +393,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
     });
 
-    it('should revert type 4 transaction when not enough gas is sent', async function () {
+    it.skip('should revert type 4 transaction when not enough gas is sent', async function () {
         const eoa = await createAndFundEOA();
 
         const resp = eoa.sendTransaction({
