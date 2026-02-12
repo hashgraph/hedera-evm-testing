@@ -5,9 +5,7 @@
   "private": true,
   "type": "commonjs",
   "exports": {
-    "./config": "./utils/hip-1340/config.js",
-    "./log": "./utils/hip-1340/log.js",
-    "./web3": "./utils/hip-1340/web3.js"
+    "./mirror-node": "./utils/mirror-node.js"
   },
   "scripts": {
     "test": "hardhat test"

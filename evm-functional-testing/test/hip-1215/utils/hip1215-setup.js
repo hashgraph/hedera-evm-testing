@@ -5,7 +5,7 @@ const Async = require("../../../utils/async");
 const { expect } = require("chai");
 const { contractDeployAndFund } = require("../../../utils/contract");
 const { getScheduledTxStatus } = require("./hip1215-utils");
-const { MirrorNode } = require("../../../utils/mirrorNode");
+const { MirrorNode } = require("evm-functional-testing/mirror-node");
 
 const WAIT_STEP = 2000;
 let hip1215, impl1215, signers, mnClient;
