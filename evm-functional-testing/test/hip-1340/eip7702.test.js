@@ -108,8 +108,8 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 const contractBytecode = await getContractByteCode(account);
                 expect(Buffer.from(contractBytecode).toString('hex')).to.be.equal(designatorFor(address.toLowerCase()).slice(2));
                 
-                // const { delegationAddress } = await getAccountInfo(account);
-                // expect(Buffer.from(delegationAddress).toString('hex')).to.be.equal(address.toLowerCase().slice(2));
+                const { delegationAddress } = await getAccountInfo(account);
+                expect(Buffer.from(delegationAddress).toString('hex')).to.be.equal(address.toLowerCase().slice(2));
 
                 // TODO: Reenable check once MN and Relay include support for EIP-7702
                 // const code = await provider.getCode(delegated.address);
