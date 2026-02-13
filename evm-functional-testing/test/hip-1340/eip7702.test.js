@@ -47,22 +47,22 @@ describe('HIP-1340 - EIP-7702 features', function () {
     describe('EOA delegation setup via type 4 transactions', function () {
 
         [
-            // 'HOLLOW',
+            'HOLLOW',
             'FUNDED',
         ].flatMap(toKind =>
         [
-            // 'EXTERNAL',
+            'EXTERNAL',
             'SELF',
         ].flatMap(trigger =>
         [
-            // 0n,
+            0n,
             1234n,
         ].flatMap(value =>
         [
-            // ...precompiledAddresses,
-            // ...systemContractAddresses,
-            // '0x0000000000000000000000000000000000068cDa',
-            '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
+            asAddress(1), // Precompile addresses
+            asAddress(0x167), // System Contract address
+            '0x0000000000000000000000000000000000068cDa', // Long-zero address
+            '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
         ].flatMap(address => ({ toKind, trigger, value, address }))))
         ).forEach(({ toKind, trigger, value, address }) => {
             it(`should store delegation designator ${toKind} ${trigger} for EOA to ${address} via a type4 transaction sending ${value} th`, async function () {
