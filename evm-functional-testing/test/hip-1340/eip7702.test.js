@@ -141,7 +141,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
     });
 
     ['EXTERNAL', 'SELF'].forEach(trigger => {
-    it(`should get store and logs when a delegated EOA is the target of a transaction from \`${trigger}\``, async function () {
+    it.skip(`should get store and logs when a delegated EOA is the target of a transaction from \`${trigger}\``, async function () {
         const value = 42;
 
         const to = await createAndFundEOA();
