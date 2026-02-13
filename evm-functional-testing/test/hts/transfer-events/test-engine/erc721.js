@@ -1,7 +1,7 @@
 const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 const Constants = require("../../../../utils/constants");
-const { contractDeployAndFund } = require("../../../../utils/contract");
 const { approveNft } = require("../relay/erc721-relay-tests-impl");
+const { createReceiver } = require("./transfer-events-setup");
 
 /**
  * ERC721 events tests. Using this method to reuse tests for different HTS addresses
@@ -26,7 +26,7 @@ async function erc721EventsTests(
         htsAddress,
         context.transferContract,
         context.nftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
       );
@@ -50,13 +50,13 @@ async function erc721EventsTests(
         context.transferContract,
         serialNumber,
       );
-      // transfer from treasury to receiverContract1
+      // transfer from treasury to receiverWallet1
       await testsImpl.transferFromNFTTest(
         htsAddress,
         context.transferContract,
         context.nftTokenAddress,
         context.treasury,
-        context.receiverContract1,
+        context.receiverWallet1,
         serialNumber,
         ResponseCodeEnum.SUCCESS,
       );
@@ -67,7 +67,7 @@ async function erc721EventsTests(
         await testsImpl.transferFromNftProxyTest(
           context.transferContract,
           context.nftTokenAddress,
-          context.receiverContract1,
+          context.receiverWallet1,
           context.serialNumbers.shift(),
           ResponseCodeEnum.SUCCESS,
         );
@@ -79,8 +79,8 @@ async function erc721EventsTests(
         htsAddress,
         context.transferContract,
         context.nftTokenAddress,
-        context.receiverContract1,
-        context.receiverContract2,
+        context.receiverWallet1,
+        context.receiverWallet2,
         context.serialNumbers.shift(),
         context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
@@ -92,8 +92,8 @@ async function erc721EventsTests(
         htsAddress,
         context.transferContract,
         context.nftTokenAddress,
-        context.receiverContract1,
-        context.receiverContract2,
+        context.receiverWallet1,
+        context.receiverWallet2,
         context.serialNumbers.shift(),
         context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
@@ -105,8 +105,8 @@ async function erc721EventsTests(
         htsAddress,
         context.transferContract,
         context.nftTokenAddress,
-        context.receiverContract1,
-        context.receiverContract2,
+        context.receiverWallet1,
+        context.receiverWallet2,
         context.serialNumbers.shift(),
         context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
@@ -118,7 +118,7 @@ async function erc721EventsTests(
         htsAddress,
         context.transferContract,
         context.nftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         context.serialNumbers.shift(),
         ResponseCodeEnum.SUCCESS,
         false,
@@ -127,9 +127,7 @@ async function erc721EventsTests(
 
     it(`should succeed and contain ERC721 events for HTS(${displayAddress}) NFT claimAirdrops`, async () => {
       // not associated receiver for pending airdrop
-      const receiver = await contractDeployAndFund(
-        Constants.Contract.AirDropClaimAndReceiverContract,
-      );
+      const receiver = await createReceiver(2, context.IHRC904AccountFacade);
       const serial = context.serialNumbers.shift();
       // send pending airdrop
       await testsImpl.airdropTokensTest(
@@ -149,6 +147,7 @@ async function erc721EventsTests(
         receiver,
         serial,
         ResponseCodeEnum.SUCCESS,
+        context.IHederaTokenService,
       );
     });
   });
@@ -171,7 +170,7 @@ async function erc721EventsTests(
         context.transferContract,
         context.nftTokenAddress,
         context.transferContract,
-        context.receiverContract1,
+        context.receiverWallet1,
         context.serialNumbers[0],
         ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
       );
@@ -194,7 +193,7 @@ async function erc721EventsTests(
         htsAddress,
         context.transferContract,
         context.nftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         context.receiverNotAssociated,
         context.serialNumbers[0],
         context.serialNumbers[1],
@@ -207,7 +206,7 @@ async function erc721EventsTests(
         htsAddress,
         context.transferContract,
         context.nftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         context.receiverNotAssociated,
         context.serialNumbers[0],
         context.serialNumbers[1],
@@ -220,7 +219,7 @@ async function erc721EventsTests(
         htsAddress,
         context.transferContract,
         context.nftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         context.receiverNotAssociated,
         context.serialNumbers[0],
         context.serialNumbers[1],

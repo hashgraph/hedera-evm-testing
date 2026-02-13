@@ -1,3 +1,4 @@
+const { ethers } = require("hardhat");
 const { contractDeployAndFund } = require("../../../../utils/contract");
 const Constants = require("../../../../utils/constants");
 
@@ -5,10 +6,12 @@ const Constants = require("../../../../utils/constants");
  * Create test contracts, includes token create contract ('TokenCreateContract'),
  * transfer contract ('HTSSystemContractTransfersExecutorContract') and few
  * 'AirDropClaimAndReceiverContract' contracts.
- * @param receivers amount of receiver ('AirDropClaimAndReceiverContract') contracts to create
+ * @param { Number } receivers amount of receiver ('AirDropClaimAndReceiverContract') contracts to create
+ * @param { Number } receiversBalance amount of HBAR to transfer to each receiver
+ * @param { ethers.Interface } IHRC904AccountFacade IHRC904 facade for account
  * @returns {Promise<*[]>}
  */
-async function createTestContracts(receivers) {
+async function createTestContracts(receivers, receiversBalance, IHRC904AccountFacade) {
   // create token create contract
   const tokenContract = await contractDeployAndFund(
     Constants.Contract.TokenCreateContract,
@@ -19,22 +22,43 @@ async function createTestContracts(receivers) {
     20,
   );
   const retval = [tokenContract, transferContract];
-  // create receiverContracts
+  // create receiverWallets
   for (let i = 0; i < receivers; i++) {
-    retval.push(
-      await contractDeployAndFund(
-        Constants.Contract.AirDropClaimAndReceiverContract,
-      ),
-    );
+    retval.push(await createReceiver(receiversBalance, IHRC904AccountFacade));
   }
   return retval;
+}
+
+async function createReceiver(receiversBalance, IHRC904AccountFacade) {
+  const signers = await ethers.getSigners();
+  // create new receiver account
+  const receiver = ethers.Wallet.createRandom(ethers.provider);
+  await signers[0].sendTransaction({
+    to: receiver.address,
+    value: Constants.ONE_HBAR * BigInt(receiversBalance),
+  });
+  // wrap new receiver account to receiverAbiInterface facade
+  const receiverFacade = new ethers.Contract(
+    receiver.address,
+    IHRC904AccountFacade,
+    receiver,
+  );
+  // disable Unlimited Automatic Associations
+  await (await receiverFacade.setUnlimitedAutomaticAssociations(false)).wait();
+  console.log(
+    "Created receiver account address:%s balance:%s HBAR",
+    receiver.address,
+    receiversBalance,
+  );
+  return receiver;
 }
 
 async function createFungibleTokenAndAssociate(
   tokenContract,
   transferContract,
-  receiverContract1,
-  receiverContract2,
+  receiverWallet1,
+  receiverWallet2,
+  IHRC719TokenFacade,
 ) {
   // create test FT token with 'tokenContract' as a 'treasury'
   const receipt = await (
@@ -50,9 +74,27 @@ async function createFungibleTokenAndAssociate(
     tokenAddress,
     transferContract.target,
   );
-  // associated for receiverContracts
-  await (await receiverContract1.associateToken(tokenAddress)).wait();
-  await (await receiverContract2.associateToken(tokenAddress)).wait();
+  // associated for receiverWallets
+  const receiverFacade1 = new ethers.Contract(
+    tokenAddress,
+    IHRC719TokenFacade,
+    receiverWallet1,
+  );
+  await (
+    await receiverFacade1.associate({
+      gasLimit: 1_000_000, //TODO can we do it w/o gas?
+    })
+  ).wait();
+  const receiverFacade2 = new ethers.Contract(
+    tokenAddress,
+    IHRC719TokenFacade,
+    receiverWallet2,
+  );
+  await (
+    await receiverFacade2.associate({
+      gasLimit: 1_000_000, //TODO can we do it w/o gas?
+    })
+  ).wait();
   return tokenAddress;
 }
 
@@ -61,8 +103,9 @@ async function setupFungibleTokenTests(context) {
     context.ftTokenAddress = await createFungibleTokenAndAssociate(
       context.treasury,
       context.transferContract,
-      context.receiverContract1,
-      context.receiverContract2,
+      context.receiverWallet1,
+      context.receiverWallet2,
+      context.IHRC719TokenFacade,
     );
   }
 }
@@ -70,8 +113,9 @@ async function setupFungibleTokenTests(context) {
 async function createNonFungibleTokenAndAssociate(
   tokenContract,
   transferContract,
-  receiverContract1,
-  receiverContract2,
+  receiverWallet1,
+  receiverWallet2,
+  IHRC719TokenFacade,
 ) {
   // create test NFT token with 'tokenContract' as a 'treasury'
   const receipt = await (
@@ -90,9 +134,27 @@ async function createNonFungibleTokenAndAssociate(
     tokenAddress,
     transferContract.target,
   );
-  // associated for receiverContracts
-  await (await receiverContract1.associateToken(tokenAddress)).wait();
-  await (await receiverContract2.associateToken(tokenAddress)).wait();
+  // associated for receiverWallets
+  const receiverFacade1 = new ethers.Contract(
+    tokenAddress,
+    IHRC719TokenFacade,
+    receiverWallet1,
+  );
+  await (
+    await receiverFacade1.associate({
+      gasLimit: 1_000_000, //TODO can we do it w/o gas?
+    })
+  ).wait();
+  const receiverFacade2 = new ethers.Contract(
+    tokenAddress,
+    IHRC719TokenFacade,
+    receiverWallet2,
+  );
+  await (
+    await receiverFacade2.associate({
+      gasLimit: 1_000_000, //TODO can we do it w/o gas?
+    })
+  ).wait();
   return tokenAddress;
 }
 
@@ -141,8 +203,9 @@ async function setupNonFungibleTokenTests(context, mintAmount) {
     context.nftTokenAddress = await createNonFungibleTokenAndAssociate(
       context.treasury,
       context.transferContract,
-      context.receiverContract1,
-      context.receiverContract2,
+      context.receiverWallet1,
+      context.receiverWallet2,
+      context.IHRC719TokenFacade,
     );
   }
   context.serialNumbers = context.serialNumbers.concat(
@@ -157,6 +220,7 @@ async function setupNonFungibleTokenTests(context, mintAmount) {
 
 module.exports = {
   createTestContracts,
+  createReceiver,
   setupFungibleTokenTests,
   setupNonFungibleTokenTests,
 };

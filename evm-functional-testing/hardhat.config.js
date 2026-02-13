@@ -1,12 +1,13 @@
 /** @type import('hardhat/config').HardhatUserConfig */
 
+require("dotenv").config();
 require("@openzeppelin/hardhat-upgrades");
 require("@nomicfoundation/hardhat-chai-matchers");
 require("solidity-coverage");
 
 const PREVIEWNET_PRIVATE_KEYS = process.env.PREVIEWNET_PRIVATE_KEYS
-    ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
-    : [];
+  ? process.env.PREVIEWNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
+  : [];
 
 const TESTNET_PRIVATE_KEYS = process.env.TESTNET_PRIVATE_KEYS
     ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
@@ -34,7 +35,7 @@ module.exports = {
   defaultNetwork: "local",
   // see https://v2.hardhat.org/hardhat-runner/docs/config
   networks: {
-    hardhat: {loggingEnabled:false},
+    hardhat: { loggingEnabled: false },
     local: {
       url: "http://localhost:7546",
       chainId: 298,
@@ -49,8 +50,8 @@ module.exports = {
       sdkClient: {
         operatorId: "0.0.1002",
         operatorKey:
-        // private key of SOLO local network. Configured at 'test.sh' file of this folder
-            "3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68",
+          // private key of SOLO local network. Configured at 'test.sh' file of this folder
+          "3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68",
         networkNodeUrl: "127.0.0.1:50211",
         nodeId: "3",
         mirrorNode: "http://127.0.0.1:8081",

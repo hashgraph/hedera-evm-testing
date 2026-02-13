@@ -1,4 +1,6 @@
 const { validateRcWithErcEvent } = require("./erc20-relay-tests-impl");
+const {ethers} = require("hardhat");
+const {validateErcEvent} = require("../../../../utils/events");
 
 // ---------------- Test util functions ----------------
 async function approveNft(treasury, tokenAddress, sender, serialNumber) {
@@ -24,7 +26,7 @@ class Erc721RelayTestsImpl {
     htsAddress,
     transferContract,
     tokenAddress,
-    receiverContract,
+    receiverWallet,
     serialNumber,
     responseCode,
   ) {
@@ -33,7 +35,7 @@ class Erc721RelayTestsImpl {
         htsAddress,
         tokenAddress,
         transferContract,
-        receiverContract,
+        receiverWallet,
         serialNumber,
       )
     ).wait();
@@ -42,14 +44,14 @@ class Erc721RelayTestsImpl {
       receipt.hash,
       tokenAddress,
       transferContract.target,
-      receiverContract.target,
+      receiverWallet.address,
       serialNumber,
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
-        to: receiverContract.target,
+        to: receiverWallet.address,
         serial: serialNumber,
       },
     ]);
@@ -60,7 +62,7 @@ class Erc721RelayTestsImpl {
     transferContract,
     tokenAddress,
     senderContract,
-    receiverContract,
+    receiverWallet,
     serialNumber,
     responseCode,
   ) {
@@ -69,7 +71,7 @@ class Erc721RelayTestsImpl {
         htsAddress,
         tokenAddress,
         senderContract,
-        receiverContract,
+        receiverWallet,
         serialNumber,
       )
     ).wait();
@@ -78,14 +80,14 @@ class Erc721RelayTestsImpl {
       receipt.hash,
       tokenAddress,
       transferContract.target,
-      receiverContract.target,
+      receiverWallet.address,
       serialNumber,
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: senderContract.target,
-        to: receiverContract.target,
+        to: receiverWallet.address,
         serial: serialNumber,
       },
     ]);
@@ -94,7 +96,7 @@ class Erc721RelayTestsImpl {
   async transferFromNftProxyTest(
     transferContract,
     tokenAddress,
-    receiverContract,
+    receiverWallet,
     serialNumber,
     responseCode,
   ) {
@@ -102,7 +104,7 @@ class Erc721RelayTestsImpl {
       await transferContract.transferFromNftProxy(
         tokenAddress,
         transferContract,
-        receiverContract,
+        receiverWallet,
         serialNumber,
       )
     ).wait();
@@ -111,14 +113,14 @@ class Erc721RelayTestsImpl {
       receipt.hash,
       tokenAddress,
       transferContract.target,
-      receiverContract.target,
+      receiverWallet.address,
       serialNumber,
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
-        to: receiverContract.target,
+        to: receiverWallet.address,
         serial: serialNumber,
       },
     ]);
@@ -128,14 +130,14 @@ class Erc721RelayTestsImpl {
     htsAddress,
     transferContract,
     tokenAddress,
-    receiverContract1,
-    receiverContract2,
+    receiverWallet1,
+    receiverWallet2,
     serialNumber1,
     serialNumber2,
     responseCode,
   ) {
     const senders = [transferContract.target, transferContract.target];
-    const receivers = [receiverContract1.target, receiverContract2.target];
+    const receivers = [receiverWallet1.address, receiverWallet2.address];
     const serialNumbers = [serialNumber1, serialNumber2];
     const receipt = await (
       await transferContract.transferNFTs(
@@ -158,13 +160,13 @@ class Erc721RelayTestsImpl {
       {
         address: tokenAddress,
         from: transferContract.target,
-        to: receiverContract1.target,
+        to: receiverWallet1.address,
         serial: serialNumber1,
       },
       {
         address: tokenAddress,
         from: transferContract.target,
-        to: receiverContract2.target,
+        to: receiverWallet2.address,
         serial: serialNumber2,
       },
     ]);
@@ -174,8 +176,8 @@ class Erc721RelayTestsImpl {
     htsAddress,
     transferContract,
     tokenAddress,
-    receiverContract1,
-    receiverContract2,
+    receiverWallet1,
+    receiverWallet2,
     serialNumber1,
     serialNumber2,
     responseCode,
@@ -187,12 +189,12 @@ class Erc721RelayTestsImpl {
         nftTransfers: [
           {
             senderAccountID: transferContract.target,
-            receiverAccountID: receiverContract1.target,
+            receiverAccountID: receiverWallet1.address,
             serialNumber: serialNumber1,
           },
           {
             senderAccountID: transferContract.target,
-            receiverAccountID: receiverContract2.target,
+            receiverAccountID: receiverWallet2.address,
             serialNumber: serialNumber2,
           },
         ],
@@ -204,19 +206,19 @@ class Erc721RelayTestsImpl {
     console.log(
       "%s NFT cryptoTransferV1 tokenTransfers:%s",
       receipt.hash,
-        JSON.stringify(tokenTransfers),
+      JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
-        to: receiverContract1.target,
+        to: receiverWallet1.address,
         serial: serialNumber1,
       },
       {
         address: tokenAddress,
         from: transferContract.target,
-        to: receiverContract2.target,
+        to: receiverWallet2.address,
         serial: serialNumber2,
       },
     ]);
@@ -226,8 +228,8 @@ class Erc721RelayTestsImpl {
     htsAddress,
     transferContract,
     tokenAddress,
-    receiverContract1,
-    receiverContract2,
+    receiverWallet1,
+    receiverWallet2,
     serialNumber1,
     serialNumber2,
     responseCode,
@@ -242,13 +244,13 @@ class Erc721RelayTestsImpl {
         nftTransfers: [
           {
             senderAccountID: transferContract.target,
-            receiverAccountID: receiverContract1.target,
+            receiverAccountID: receiverWallet1.address,
             serialNumber: serialNumber1,
             isApproval: false,
           },
           {
             senderAccountID: transferContract.target,
-            receiverAccountID: receiverContract2.target,
+            receiverAccountID: receiverWallet2.address,
             serialNumber: serialNumber2,
             isApproval: false,
           },
@@ -266,19 +268,19 @@ class Erc721RelayTestsImpl {
       "%s NFT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
       receipt.hash,
       transferList,
-        JSON.stringify(tokenTransfers),
+      JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: tokenAddress,
         from: transferContract.target,
-        to: receiverContract1.target,
+        to: receiverWallet1.address,
         serial: serialNumber1,
       },
       {
         address: tokenAddress,
         from: transferContract.target,
-        to: receiverContract2.target,
+        to: receiverWallet2.address,
         serial: serialNumber2,
       },
     ]);
@@ -288,7 +290,7 @@ class Erc721RelayTestsImpl {
     htsAddress,
     transferContract,
     tokenAddress,
-    receiverContract,
+    receiverWallet,
     serialNumber,
     responseCode,
     pendingAirdrops,
@@ -300,7 +302,7 @@ class Erc721RelayTestsImpl {
         nftTransfers: [
           {
             senderAccountID: transferContract.target,
-            receiverAccountID: receiverContract.target,
+            receiverAccountID: receiverWallet.address,
             serialNumber: serialNumber,
             isApproval: false,
           },
@@ -313,7 +315,7 @@ class Erc721RelayTestsImpl {
     console.log(
       "%s FT airdropTokens tokenTransfers:%s",
       receipt.hash,
-        JSON.stringify(tokenTransfers),
+      JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(
       receipt,
@@ -324,7 +326,7 @@ class Erc721RelayTestsImpl {
             {
               address: tokenAddress,
               from: transferContract.target,
-              to: receiverContract.target,
+              to: receiverWallet.address,
               serial: serialNumber,
             },
           ],
@@ -335,31 +337,38 @@ class Erc721RelayTestsImpl {
     htsAddress,
     transferContract,
     tokenAddress,
-    receiverContract,
+    receiverWallet,
     serialNumber,
     responseCode,
+    IHederaTokenService,
   ) {
+    const htsContract = new ethers.Contract(
+      htsAddress,
+      IHederaTokenService,
+      receiverWallet,
+    );
     const pendingAirdrops = [
       {
         sender: transferContract.target,
-        receiver: receiverContract.target,
+        receiver: receiverWallet.address,
         token: tokenAddress,
         serial: serialNumber,
       },
     ];
     const receipt = await (
-      await receiverContract.claimAirdrops(htsAddress, pendingAirdrops)
+      await htsContract.claimAirdrops(pendingAirdrops)
     ).wait();
     console.log(
       "%s FT claimAirdrops pendingAirdrops:%s",
       receipt.hash,
-      pendingAirdrops,
+      JSON.stringify(pendingAirdrops),
     );
-    await validateRcWithErcEvent(receipt, responseCode, [
+    // we are validation just ERC event, without ResponseCode event, because we are requesting htsContract directly
+    await validateErcEvent(receipt, [
       {
         address: tokenAddress,
         from: transferContract.target,
-        to: receiverContract.target,
+        to: receiverWallet.address,
         serial: serialNumber,
       },
     ]);

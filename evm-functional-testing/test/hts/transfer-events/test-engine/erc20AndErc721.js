@@ -1,6 +1,5 @@
 const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
-const { contractDeployAndFund } = require("../../../../utils/contract");
-const Constants = require("../../../../utils/constants");
+const { createReceiver } = require("./transfer-events-setup");
 
 /**
  * ERC20/ERC721 events tests. Using this method to reuse tests for different HTS addresses
@@ -19,7 +18,7 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
       context.transferContract,
       context.ftTokenAddress,
       context.nftTokenAddress,
-      context.receiverContract1,
+      context.receiverWallet1,
       context.serialNumbers.shift(),
       ResponseCodeEnum.SUCCESS,
     );
@@ -31,7 +30,7 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
       context.transferContract,
       context.ftTokenAddress,
       context.nftTokenAddress,
-      context.receiverContract1,
+      context.receiverWallet1,
       context.serialNumbers.shift(),
       ResponseCodeEnum.SUCCESS,
     );
@@ -43,7 +42,7 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
       context.transferContract,
       context.ftTokenAddress,
       context.nftTokenAddress,
-      context.receiverContract1,
+      context.receiverWallet1,
       context.serialNumbers.shift(),
       ResponseCodeEnum.SUCCESS,
     );
@@ -51,9 +50,7 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
 
   it(`should succeed and contain ERC20 and ERC721 events for HTS(${displayAddress}) FT/NFT claimAirdrops`, async () => {
     // not associated receiver for pending airdrop
-    const receiver = await contractDeployAndFund(
-      Constants.Contract.AirDropClaimAndReceiverContract,
-    );
+    const receiver = await createReceiver(2, context.IHRC904AccountFacade);
     const serial = context.serialNumbers.shift();
     // send pending airdrop
     await testsImpl.airdropTokensTest(
@@ -75,6 +72,7 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
       receiver,
       serial,
       ResponseCodeEnum.SUCCESS,
+      context.IHederaTokenService,
     );
   });
 }

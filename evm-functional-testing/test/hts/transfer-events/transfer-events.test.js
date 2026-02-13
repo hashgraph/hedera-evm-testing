@@ -1,3 +1,4 @@
+const hre = require("hardhat");
 const { ethers } = require("hardhat");
 const {
   createTestContracts,
@@ -5,7 +6,6 @@ const {
   setupNonFungibleTokenTests,
 } = require("./test-engine/transfer-events-setup");
 const { createSDKClient } = require("../../../utils/utils");
-const { readFileSync } = require("node:fs");
 const { HTS_ADDRESS, HTS_ADDRESS_V2 } = require("../../../utils/constants");
 const { erc20EventsTests } = require("./test-engine/erc20");
 const { erc721EventsTests } = require("./test-engine/erc721");
@@ -20,6 +20,7 @@ const { Erc721SdkTestsImpl } = require("./sdk/erc721-sdk-tests-impl");
 const {
   Erc20Erc721SdkTestsImpl,
 } = require("./sdk/erc20AndErc721-sdk-tests-impl");
+const Constants = require("../../../utils/constants");
 
 // fix JSON.stringify - Do not know how to serialize a BigInt
 BigInt.prototype["toJSON"] = function () {
@@ -32,36 +33,44 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
     ftTokenAddress: "",
     nftTokenAddress: "",
     serialNumbers: [],
-    receiverContract1: "",
-    receiverContract2: "",
+    receiverWallet1: "",
+    receiverWallet2: "",
     receiverNotAssociated: "",
   }; // using this object to pass 'before' results to tests in other files
 
   before(async () => {
     // Import the ABI for SDK tests and set up an ethers.js interface using the abi
     context.transferAbiInterface = new ethers.Interface(
-      JSON.parse(
-        readFileSync(
-          "./artifacts/contracts/hts/transfer-events/HTSSystemContractTransfersExecutorContract.sol/HTSSystemContractTransfersExecutorContract.json",
-          "utf8",
-        ),
+      (
+        await hre.artifacts.readArtifact(
+            Constants.Contract.HTSSystemContractTransfersExecutorContract,
+        )
       ).abi,
     );
-    context.receiverAbiInterface = new ethers.Interface(
-      JSON.parse(
-        readFileSync(
-          "./artifacts/contracts/hts/transfer-events/AirDropClaimAndReceiverContract.sol/AirDropClaimAndReceiverContract.json",
-          "utf8",
-        ),
+    context.IHRC904AccountFacade = new ethers.Interface(
+      (
+        await hre.artifacts.readArtifact(
+          Constants.Contract.IHRC904AccountFacade,
+        )
+      ).abi,
+    );
+    context.IHRC719TokenFacade = new ethers.Interface(
+      (
+        await hre.artifacts.readArtifact(Constants.Contract.IHRC719TokenFacade)
+      ).abi,
+    );
+    context.IHederaTokenService = new ethers.Interface(
+      (
+        await hre.artifacts.readArtifact(Constants.Contract.IHederaTokenService)
       ).abi,
     );
     [
       context.treasury,
       context.transferContract,
-      context.receiverContract1,
-      context.receiverContract2,
+      context.receiverWallet1,
+      context.receiverWallet2,
       context.receiverNotAssociated,
-    ] = await createTestContracts(3);
+    ] = await createTestContracts(3, 2, context.IHRC904AccountFacade);
   });
 
   describe("Relay -> HTS -> ERC events", async () => {

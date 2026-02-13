@@ -1,4 +1,6 @@
 const { validateRcWithErcEvent } = require("./erc20-relay-tests-impl");
+const {ethers} = require("hardhat");
+const {validateErcEvent} = require("../../../../utils/events");
 
 class Erc20Erc721RelayTestsImpl {
   engine() {
@@ -11,7 +13,7 @@ class Erc20Erc721RelayTestsImpl {
     transferContract,
     ftTokenAddress,
     nftTokenAddress,
-    receiverContract,
+    receiverWallet,
     serialNumber,
     responseCode,
   ) {
@@ -20,7 +22,7 @@ class Erc20Erc721RelayTestsImpl {
         token: ftTokenAddress,
         transfers: [
           { accountID: transferContract.target, amount: -1 },
-          { accountID: receiverContract.target, amount: 1 },
+          { accountID: receiverWallet.address, amount: 1 },
         ],
         nftTransfers: [],
       },
@@ -30,7 +32,7 @@ class Erc20Erc721RelayTestsImpl {
         nftTransfers: [
           {
             senderAccountID: transferContract.target,
-            receiverAccountID: receiverContract.target,
+            receiverAccountID: receiverWallet.address,
             serialNumber: serialNumber,
           },
         ],
@@ -42,19 +44,19 @@ class Erc20Erc721RelayTestsImpl {
     console.log(
       "%s FT/NFT cryptoTransferV1 tokenTransfers:%s",
       receipt.hash,
-        JSON.stringify(tokenTransfers),
+      JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: ftTokenAddress,
         from: transferContract.target,
-        to: receiverContract.target,
+        to: receiverWallet.address,
         amount: 1,
       },
       {
         address: nftTokenAddress,
         from: transferContract.target,
-        to: receiverContract.target,
+        to: receiverWallet.address,
         serial: serialNumber,
       },
     ]);
@@ -65,7 +67,7 @@ class Erc20Erc721RelayTestsImpl {
     transferContract,
     ftTokenAddress,
     nftTokenAddress,
-    receiverContract,
+    receiverWallet,
     serialNumber,
     responseCode,
   ) {
@@ -77,7 +79,7 @@ class Erc20Erc721RelayTestsImpl {
         token: ftTokenAddress,
         transfers: [
           { accountID: transferContract.target, amount: -1, isApproval: false },
-          { accountID: receiverContract.target, amount: 1, isApproval: false },
+          { accountID: receiverWallet.address, amount: 1, isApproval: false },
         ],
         nftTransfers: [],
       },
@@ -87,7 +89,7 @@ class Erc20Erc721RelayTestsImpl {
         nftTransfers: [
           {
             senderAccountID: transferContract.target,
-            receiverAccountID: receiverContract.target,
+            receiverAccountID: receiverWallet.address,
             serialNumber: serialNumber,
             isApproval: false,
           },
@@ -105,19 +107,19 @@ class Erc20Erc721RelayTestsImpl {
       "%s FT/NFT cryptoTransferV2 TransferList:%s tokenTransfers:%s",
       receipt.hash,
       transferList,
-        JSON.stringify(tokenTransfers),
+      JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(receipt, responseCode, [
       {
         address: ftTokenAddress,
         from: transferContract.target,
-        to: receiverContract.target,
+        to: receiverWallet.address,
         amount: 1,
       },
       {
         address: nftTokenAddress,
         from: transferContract.target,
-        to: receiverContract.target,
+        to: receiverWallet.address,
         serial: serialNumber,
       },
     ]);
@@ -128,7 +130,7 @@ class Erc20Erc721RelayTestsImpl {
     transferContract,
     ftTokenAddress,
     nftTokenAddress,
-    receiverContract,
+    receiverWallet,
     serialNumber,
     responseCode,
     pendingAirdrops,
@@ -138,7 +140,7 @@ class Erc20Erc721RelayTestsImpl {
         token: ftTokenAddress,
         transfers: [
           { accountID: transferContract.target, amount: -1, isApproval: false },
-          { accountID: receiverContract.target, amount: 1, isApproval: false },
+          { accountID: receiverWallet.address, amount: 1, isApproval: false },
         ],
         nftTransfers: [],
       },
@@ -148,7 +150,7 @@ class Erc20Erc721RelayTestsImpl {
         nftTransfers: [
           {
             senderAccountID: transferContract.target,
-            receiverAccountID: receiverContract.target,
+            receiverAccountID: receiverWallet.address,
             serialNumber: serialNumber,
             isApproval: false,
           },
@@ -161,7 +163,7 @@ class Erc20Erc721RelayTestsImpl {
     console.log(
       "%s FT/NFT airdropTokens tokenTransfers:%s",
       receipt.hash,
-        JSON.stringify(tokenTransfers),
+      JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(
       receipt,
@@ -172,13 +174,13 @@ class Erc20Erc721RelayTestsImpl {
             {
               address: ftTokenAddress,
               from: transferContract.target,
-              to: receiverContract.target,
+              to: receiverWallet.address,
               amount: 1,
             },
             {
               address: nftTokenAddress,
               from: transferContract.target,
-              to: receiverContract.target,
+              to: receiverWallet.address,
               serial: serialNumber,
             },
           ],
@@ -190,43 +192,50 @@ class Erc20Erc721RelayTestsImpl {
     transferContract,
     ftTokenAddress,
     nftTokenAddress,
-    receiverContract,
+    receiverWallet,
     serialNumber,
     responseCode,
+    IHederaTokenService,
   ) {
+    const htsContract = new ethers.Contract(
+      htsAddress,
+      IHederaTokenService,
+      receiverWallet,
+    );
     const pendingAirdrops = [
       {
         sender: transferContract.target,
-        receiver: receiverContract.target,
+        receiver: receiverWallet.address,
         token: ftTokenAddress,
         serial: 0,
       },
       {
         sender: transferContract.target,
-        receiver: receiverContract.target,
+        receiver: receiverWallet.address,
         token: nftTokenAddress,
         serial: serialNumber,
       },
     ];
     const receipt = await (
-      await receiverContract.claimAirdrops(htsAddress, pendingAirdrops)
+      await htsContract.claimAirdrops(pendingAirdrops)
     ).wait();
     console.log(
       "%s FT/NFT claimAirdrops pendingAirdrops:%s",
       receipt.hash,
-      pendingAirdrops,
+      JSON.stringify(pendingAirdrops),
     );
-    await validateRcWithErcEvent(receipt, responseCode, [
+    // we are validation just ERC event, without ResponseCode event, because we are requesting htsContract directly
+    await validateErcEvent(receipt, [
       {
         address: ftTokenAddress,
         from: transferContract.target,
-        to: receiverContract.target,
+        to: receiverWallet.address,
         amount: 1,
       },
       {
         address: nftTokenAddress,
         from: transferContract.target,
-        to: receiverContract.target,
+        to: receiverWallet.address,
         serial: serialNumber,
       },
     ]);

@@ -1,7 +1,6 @@
 const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
-const Constants = require("../../../../utils/constants");
-const { contractDeployAndFund } = require("../../../../utils/contract");
 const { approveFt } = require("../relay/erc20-relay-tests-impl");
+const { createReceiver } = require("./transfer-events-setup");
 
 /**
  * ERC20 events tests. Using this method to reuse tests for different HTS addresses
@@ -22,7 +21,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         ResponseCodeEnum.SUCCESS,
       );
     });
@@ -33,7 +32,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         ResponseCodeEnum.SUCCESS,
       );
     });
@@ -43,7 +42,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         await testsImpl.transferFtProxyTest(
           context.transferContract,
           context.ftTokenAddress,
-          context.receiverContract1,
+          context.receiverWallet1,
           ResponseCodeEnum.SUCCESS,
         );
       });
@@ -55,7 +54,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         await testsImpl.transferFromFtProxyTest(
           context.transferContract,
           context.ftTokenAddress,
-          context.receiverContract1,
+          context.receiverWallet1,
           ResponseCodeEnum.SUCCESS,
         );
       });
@@ -66,8 +65,8 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
-        context.receiverContract1,
-        context.receiverContract2,
+        context.receiverWallet1,
+        context.receiverWallet2,
         ResponseCodeEnum.SUCCESS,
       );
     });
@@ -77,8 +76,8 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
-        context.receiverContract1,
-        context.receiverContract2,
+        context.receiverWallet1,
+        context.receiverWallet2,
         ResponseCodeEnum.SUCCESS,
       );
     });
@@ -88,8 +87,8 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
-        context.receiverContract1,
-        context.receiverContract2,
+        context.receiverWallet1,
+        context.receiverWallet2,
         ResponseCodeEnum.SUCCESS,
       );
     });
@@ -99,7 +98,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         ResponseCodeEnum.SUCCESS,
         false,
       );
@@ -107,9 +106,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
 
     it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT claimAirdrops`, async () => {
       // not associated receiver for pending airdrop
-      const receiver = await contractDeployAndFund(
-        Constants.Contract.AirDropClaimAndReceiverContract,
-      );
+      const receiver = await createReceiver(2, context.IHRC904AccountFacade);
       // send pending airdrop
       await testsImpl.airdropTokensTest(
         htsAddress,
@@ -126,6 +123,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         context.ftTokenAddress,
         receiver,
         ResponseCodeEnum.SUCCESS,
+        context.IHederaTokenService,
       );
     });
   });
@@ -146,7 +144,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         ResponseCodeEnum.SPENDER_DOES_NOT_HAVE_ALLOWANCE,
       );
     });
@@ -178,7 +176,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         context.receiverNotAssociated,
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
@@ -189,7 +187,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         context.receiverNotAssociated,
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
@@ -200,7 +198,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         htsAddress,
         context.transferContract,
         context.ftTokenAddress,
-        context.receiverContract1,
+        context.receiverWallet1,
         context.receiverNotAssociated,
         ResponseCodeEnum.TOKEN_NOT_ASSOCIATED_TO_ACCOUNT,
       );
