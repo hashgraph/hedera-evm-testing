@@ -17,6 +17,9 @@ defaults:
 permissions:
   contents: read
 
+env:
+  SOLO_CLUSTER_NAME: solo-evm-e2e
+
 jobs:
   evm-functional-regression:
     name: Standard
@@ -101,7 +104,6 @@ jobs:
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
         env:
-          SOLO_CLUSTER_NAME: solo-evm-e2e
           SOLO_NAMESPACE: solo-evm-e2e
           SOLO_DEPLOYMENT: solo-evm-deployment
           SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup
