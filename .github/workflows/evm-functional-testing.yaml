@@ -18,21 +18,7 @@ permissions:
   contents: read
 
 env:
-  SOLO_VERSION: 0.54.0
   SOLO_CLUSTER_NAME: solo-evm-e2e
-  SOLO_NAMESPACE: solo-evm-e2e
-  SOLO_DEPLOYMENT: solo-evm-deployment
-  SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup
-  GRADLE_EXEC: ionice -c 2 -n 2 nice -n 19 ./gradlew
-  CONSENSUS_NODE_DIR: "../../hiero-consensus-node"
-  APP_PROPERTIES_PATH: "evm-testing/evm-functional-testing/local/application.properties"
-  # alias f70febf7420398c3892ce79fdc393c1a5487ad27
-  TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1: 3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68
-  # alias dbe82db504ca6701fbe59e638ceaddbdb691067b
-  TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2: 3030020100300706052b8104000a04220420748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04
-  # alias 84b4d82e6ed64102d0faa6c29bf4e9f541db442f
-  TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3: 3030020100300706052b8104000a042204203bcb2fbd18610f44eda2bfd58df63d053e2a6b165617a2ef5e5cca079e0c588a
-  TEST_ACCOUNT_HBAR_AMOUNT: 10000
 
 jobs:
   evm-functional-regression:
@@ -45,13 +31,6 @@ jobs:
         with:
           egress-policy: audit
 
-      - name: Checkout Consensus Node
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          repository: hiero-ledger/hiero-consensus-node
-          ref: main
-          fetch-depth: 0
-
       - name: Setup Java
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00  # v4.7.1
         with:
@@ -63,13 +42,22 @@ jobs:
         with:
           cache-read-only: false
 
-      - name: Build hiero-consensus-node
-        run: '${GRADLE_EXEC} assemble'
-
       - name: Setup NodeJS Environment
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
+
+      - name: Checkout Consensus Node
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: hiero-ledger/hiero-consensus-node
+          ref: feature/pectra-luis-testing
+          fetch-depth: 0
+
+      - name: Build hiero-consensus-node
+        run: '${GRADLE_EXEC} assemble'
+        env:
+          GRADLE_EXEC: ionice -c 2 -n 2 nice -n 19 ./gradlew
 
       - name: Checkout Code
         id: checkout-code
@@ -82,7 +70,9 @@ jobs:
         working-directory: evm-testing/evm-functional-testing
 
       - name: Install Solo
-        run: npm install -g @hashgraph/solo@${SOLO_VERSION}
+        run: npm install --global @hashgraph/solo@${SOLO_VERSION}
+        env:
+          SOLO_VERSION: 0.54.0
 
       - name: Setup Kind
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
@@ -113,6 +103,49 @@ jobs:
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
+        env:
+          SOLO_NAMESPACE: solo-evm-e2e
+          SOLO_DEPLOYMENT: solo-evm-deployment
+          SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup
+          APP_PROPERTIES_PATH: "evm-testing/evm-functional-testing/local/application.properties"
+          # alias f70febf7420398c3892ce79fdc393c1a5487ad27
+          TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1: 3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68
+          # alias dbe82db504ca6701fbe59e638ceaddbdb691067b
+          TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2: 3030020100300706052b8104000a04220420748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04
+          # alias 84b4d82e6ed64102d0faa6c29bf4e9f541db442f
+          TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3: 3030020100300706052b8104000a042204203bcb2fbd18610f44eda2bfd58df63d053e2a6b165617a2ef5e5cca079e0c588a
+          TEST_ACCOUNT_HBAR_AMOUNT: 1000000000
+
+
+      # --- Until a new JSON-RPC Relay version is released ---
+      - name: Checkout JSON-RPC Relay
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: hiero-ledger/hiero-json-rpc-relay
+          ref: main
+          fetch-depth: 0
+          path: relay
+
+      - name: Install Relay's npm dependencies
+        run: npm ci
+        working-directory: relay
+
+      - name: Build and run JSON-RPC Relay from source
+        run: |
+          npm run build
+          npm run start &
+          sleep 5s
+        working-directory: relay
+        env:
+          SERVER_PORT: 7547
+          CHAIN_ID: '0x12a'
+          MIRROR_NODE_URL: http://localhost:8081
+          HEDERA_NETWORK: '{"127.0.0.1:50211":"0.0.3"}'
+          OPERATOR_ID_MAIN: 0.0.2
+          OPERATOR_KEY_MAIN: 302e020100300506032b65700422042091132178e72057a1d7528025956fe39b0b847f200ab59b2fdd367017f3087137
+          REDIS_ENABLED: false
+
+      # ---
 
       - name: Run the tests
         if: ${{ steps.run_solo.outcome == 'success' }}

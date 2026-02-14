@@ -5,9 +5,7 @@
   "private": true,
   "type": "commonjs",
   "exports": {
-    "./config": "./utils/hip-1340/config.js",
-    "./log": "./utils/hip-1340/log.js",
-    "./web3": "./utils/hip-1340/web3.js"
+    "./mirror-node": "./utils/mirror-node.js"
   },
   "scripts": {
     "test": "hardhat test"
@@ -23,8 +21,8 @@
   },
   "devDependencies": {
     "@account-abstraction/contracts": "^0.8.0",
-    "@hiero-ledger/proto": "^2.25.0",
-    "@hiero-ledger/sdk": "^2.80.0",
+    "@hiero-ledger/proto": "file:hiero-ledger-proto-2.26.1-pectra.0.tgz",
+    "@hiero-ledger/sdk": "file:hiero-ledger-sdk-2.81.0-pectra.0.tgz",
     "@nomicfoundation/hardhat-chai-matchers": "2.1.0",
     "@nomicfoundation/hardhat-ethers": "3.1.0",
     "@openzeppelin/contracts": "5.4.0",

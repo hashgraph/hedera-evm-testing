@@ -7,4 +7,6 @@ import "@account-abstraction/contracts/accounts/Simple7702Account.sol";
  * The sole purpose of this contract is to `import` contracts that are used
  * directly in tests as artifacts.
  */
-contract _Unused { }
+contract CustomSimple7702Account is Simple7702Account {
+    function _requireForExecute() internal view virtual override { }
+}

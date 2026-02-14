@@ -36,7 +36,7 @@ module.exports = {
   networks: {
     hardhat: {loggingEnabled:false},
     local: {
-      url: "http://localhost:7546",
+      url: "http://localhost:7547",
       chainId: 298,
       gas: 15_000_000,
       timeout: 60_000,
