@@ -50,20 +50,20 @@ describe('HIP-1340 - EIP-7702 features', function () {
             'HOLLOW',
             'FUNDED',
         ].flatMap(toKind =>
-        [
-            'EXTERNAL',
-            'SELF',
-        ].flatMap(trigger =>
-        [
-            0n,
-            1234n,
-        ].flatMap(value =>
-        [
-            asAddress(1), // Precompile addresses
-            asAddress(0x167), // System Contract address
-            '0x0000000000000000000000000000000000068cDa', // Long-zero address
-            '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
-        ].flatMap(address => ({ toKind, trigger, value, address }))))
+            [
+                'EXTERNAL',
+                'SELF',
+            ].flatMap(trigger =>
+                [
+                    0n,
+                    1234n,
+                ].flatMap(value =>
+                    [
+                        asAddress(1), // Precompile addresses
+                        asAddress(0x167), // System Contract address
+                        '0x0000000000000000000000000000000000068cDa', // Long-zero address
+                        '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
+                    ].flatMap(address => ({ toKind, trigger, value, address }))))
         ).forEach(({ toKind, trigger, value, address }) => {
             it(`should store delegation designator ${toKind} ${trigger} for EOA to ${address} via a type4 transaction sending ${value} th`, async function () {
                 const sender = await createAndFundEOA();
@@ -89,7 +89,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     })],
                 };
                 const resp = await sender.sendTransaction(tx);
-                log('receipt', resp.hash); 
+                log('receipt', resp.hash);
                 let txhash;
                 try {
                     await resp.wait();
@@ -107,11 +107,11 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 const { account } = await new MirrorNode().getAccount(delegated.address);
                 const contractBytecode = await getContractByteCode(account);
                 expect(Buffer.from(contractBytecode).toString('hex')).to.be.equal(designatorFor(address.toLowerCase()).slice(2));
-                
+
                 const { delegationAddress } = await getAccountInfo(account);
                 expect(Buffer.from(delegationAddress).toString('hex')).to.be.equal(address.toLowerCase().slice(2));
 
-                // TODO: Reenable check once MN and Relay include support for EIP-7702
+                // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
                 // const code = await provider.getCode(delegated.address);
                 // expect(code).to.be.equal(designatorFor(address.toLowerCase()));
             });
@@ -140,39 +140,38 @@ describe('HIP-1340 - EIP-7702 features', function () {
         });
     });
 
-    ['EXTERNAL', 'SELF'].forEach(trigger => {
-    it.skip(`should get store and logs when a delegated EOA is the target of a transaction from \`${trigger}\``, async function () {
-        const value = 42;
+    [
+        'EXTERNAL',
+        'SELF',
+    ].forEach(trigger => {
+        it(`should get store and logs when a delegated EOA is the target of a transaction from \`${trigger}\``, async function () {
+            const value = 42;
 
-        const to = await createAndFundEOA();
-        const from = await createAndFundEOA();
+            const to = await createAndFundEOA();
+            const from = await createAndFundEOA();
 
-        const storeAndEmit = await deploy('contracts/hip-1340/StoreAndEmit');
-        const smartWallet = await deploy('@account-abstraction/contracts/accounts/Simple7702Account');
+            const storeAndEmit = await deploy('contracts/hip-1340/StoreAndEmit');
+            const smartWallet = await deploy('contracts/hip-1340/CustomSimple7702Account');
+            const eoa = await createAndFundEOA();
 
-        // const eoa = await createAndFundEOA(smartWallet.address);
-        const eoa = await createAndFundEOA();
-
-        const n = await eoa.getNonce();
-        console.log('EOA nonce', n);
-
-        const authtx = {
-            type: 4,
-            chainId: network.chainId,
-            nonce: 0,
-            maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-            maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
-            gasLimit: 800_000,
-            value: 321_00000_00000n,
-            to,
-            authorizationList: [await eoa.authorize({
-                chainId: 0,
+            // Delegation
+            const authtx = {
+                type: 4,
+                chainId: network.chainId,
                 nonce: 0,
-                address: smartWallet.address,
-            })],
-        };
-        log('Transaction', authtx); 
-        const resp = await from.sendTransaction(authtx);
+                maxFeePerGas: ethers.parseUnits('710', 'gwei'),
+                maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
+                gasLimit: 800_000,
+                value: 321_00000_00000n,
+                to,
+                authorizationList: [await eoa.authorize({
+                    chainId: 0,
+                    nonce: 0,
+                    address: smartWallet.address,
+                })],
+            };
+            log('Transaction', authtx);
+            const resp = await from.sendTransaction(authtx);
 
             let txhash;
             try {
@@ -183,55 +182,42 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 txhash = e.replacement.hash;
             }
 
-
             const { account } = await new MirrorNode().getAccount(eoa.address);
-            const query = await getContractByteCode(account);
-            console.log('contract code query', Buffer.from(query).toString('hex'));
+            const contractBytecode = await getContractByteCode(account);
+            expect(Buffer.from(contractBytecode).toString('hex')).to.be.equal(designatorFor(smartWallet.address.toLowerCase()).slice(2));
 
-            // const acc = await getAccountInfo(account);
-            // console.log('account info', acc);
-            // console.log('account info delegationAddress', Buffer.from(acc.delegationAddress).toString('hex'));
+            const { delegationAddress } = await getAccountInfo(account);
+            expect(Buffer.from(delegationAddress).toString('hex')).to.be.equal(smartWallet.address.toLowerCase().slice(2));
 
-        const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
-        const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmit.address, 0, storeAndEmitCall]);
+            // Execution
+            const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
+            const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmit.address, 0, storeAndEmitCall]);
 
-        // const tx = await eoa.sendTransaction({
-        const tx = await (trigger === 'SELF' ? eoa : from).sendTransaction({
-            chainId: network.chainId,
-            to: eoa.address,
-            nonce: 1,
-            gasLimit: 1_500_000,
-            data,
+            const tx = await (trigger === 'SELF' ? eoa : from).sendTransaction({
+                chainId: network.chainId,
+                to: eoa.address,
+                nonce: 1,
+                gasLimit: 1_500_000,
+                data,
+            });
+            const receipt = await tx.wait();
+            assert(receipt !== null, 'Receipt is null');
+
+            log('Logs', receipt.logs);
+            expect(receipt.logs.length).to.be.equal(1);
+            expect(receipt.logs[0]).to.deep.include({
+                address: storeAndEmit.address,
+                topics: [
+                    ethers.id('StoreAndEmitEvent(uint256)'),
+                    asHexUint256(value),
+                ],
+            });
+
+            const valueSlot = 0;
+            const storedValue = await provider.getStorage(storeAndEmit.address, valueSlot);
+            log('Storage', storedValue);
+            expect(storedValue).to.be.equal(asHexUint256(value));
         });
-        // const receipt = await tx.wait();
-        let receipt;
-            try {
-                receipt = await tx.wait();
-                console.error('replacement hash exec try', receipt.hash);
-            } catch (e) {
-                console.error('Transaction failed to wait exec', e);
-                // console.error('replacement hash exec catch', e.replacement.hash);
-                // txhash = e.replacement.hash;
-                receipt = e.receipt;
-            }
-
-        assert(receipt !== null, 'Receipt is null');
-
-        log('Logs', receipt.logs);
-        expect(receipt.logs.length).to.be.equal(1);
-        expect(receipt.logs[0]).to.deep.include({
-            address: storeAndEmit.address,
-            topics: [
-                ethers.id('StoreAndEmitEvent(uint256)'),
-                asHexUint256(value),
-            ],
-        });
-
-        const valueSlot = 0;
-        const storedValue = await provider.getStorage(storeAndEmit.address, valueSlot);
-        log('Storage', storedValue);
-        expect(storedValue).to.be.equal(asHexUint256(value));
-    });
 
     });
 
