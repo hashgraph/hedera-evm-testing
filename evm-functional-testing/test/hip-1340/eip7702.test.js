@@ -215,7 +215,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
 
             const valueSlot = 0;
             const storedValue = await provider.getStorage(storeAndEmit.address, valueSlot);
-            log('Storage', storedValue);
+            log('Stored value at %s:%s is %s', storeAndEmit.address, valueSlot, storedValue);
             expect(storedValue).to.be.equal(asHexUint256(value));
         });
 
