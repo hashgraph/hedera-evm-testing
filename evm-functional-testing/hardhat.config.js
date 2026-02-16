@@ -73,3 +73,5 @@ module.exports = {
     },
   },
 };
+
+// npx hardhat test --network previewnet --grep "Relay -> HTS\(0x167\) -> ERC20 events"
