@@ -31,7 +31,6 @@ module.exports = {
       evmVersion: "cancun",
     },
   },
-  // defaultNetwork: 'hardhat',
   defaultNetwork: "local",
   // see https://v2.hardhat.org/hardhat-runner/docs/config
   networks: {
@@ -73,5 +72,3 @@ module.exports = {
     },
   },
 };
-
-// npx hardhat test --network previewnet --grep "Relay -> HTS\(0x167\) -> ERC20 events"

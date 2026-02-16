@@ -40,6 +40,11 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
 
   before(async () => {
     // Import the ABI for SDK tests and set up an ethers.js interface using the abi
+    context.tokenCreateAbiInterface = new ethers.Interface(
+      (
+        await hre.artifacts.readArtifact(Constants.Contract.TokenCreateContract)
+      ).abi,
+    );
     context.transferAbiInterface = new ethers.Interface(
       (
         await hre.artifacts.readArtifact(
@@ -70,7 +75,7 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
       context.receiverWallet1,
       context.receiverWallet2,
       context.receiverNotAssociated,
-    ] = await createTestContracts(3, 2, context.IHRC904AccountFacade);
+    ] = await createTestContracts(3, 2, context);
   });
 
   describe("Relay -> HTS -> ERC events", async () => {
