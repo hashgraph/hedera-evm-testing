@@ -33,6 +33,6 @@ async function preSetupChecklist() {
 }
 
 // main
-(async function () {
+xdescribe("HTS System Contract testing. Pre-Setup for tests with token before update", async () => {
   await preSetupChecklist();
-})();
+});

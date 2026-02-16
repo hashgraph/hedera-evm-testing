@@ -120,7 +120,7 @@ async function createFungibleTokenAndAssociate(
   );
   await (
     await receiverFacade1.associate({
-      gasLimit: 1_000_000, //TODO can we do it w/o gas?
+      gasLimit: 1_000_000,
     })
   ).wait();
   const receiverFacade2 = new ethers.Contract(
@@ -130,7 +130,7 @@ async function createFungibleTokenAndAssociate(
   );
   await (
     await receiverFacade2.associate({
-      gasLimit: 1_000_000, //TODO can we do it w/o gas?
+      gasLimit: 1_000_000,
     })
   ).wait();
   return tokenAddress;
@@ -180,7 +180,7 @@ async function createNonFungibleTokenAndAssociate(
   );
   await (
     await receiverFacade1.associate({
-      gasLimit: 1_000_000, //TODO can we do it w/o gas?
+      gasLimit: 1_000_000,
     })
   ).wait();
   const receiverFacade2 = new ethers.Contract(
@@ -190,7 +190,7 @@ async function createNonFungibleTokenAndAssociate(
   );
   await (
     await receiverFacade2.associate({
-      gasLimit: 1_000_000, //TODO can we do it w/o gas?
+      gasLimit: 1_000_000,
     })
   ).wait();
   return tokenAddress;
