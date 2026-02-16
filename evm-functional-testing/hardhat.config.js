@@ -13,6 +13,10 @@ const TESTNET_PRIVATE_KEYS = process.env.TESTNET_PRIVATE_KEYS
     ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
     : [];
 
+const MAINNET_PRIVATE_KEYS = process.env.MAINNET_PRIVATE_KEYS
+  ? process.env.MAINNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
+  : [];
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   mocha: {
@@ -69,6 +73,13 @@ module.exports = {
       gas: 15_000_000,
       timeout: 60_000,
       accounts: TESTNET_PRIVATE_KEYS,
+    },
+    mainnet: {
+      url: "https://mainnet.hashio.io/api",
+      chainId: 296,
+      gas: 15_000_000,
+      timeout: 60_000,
+      accounts: MAINNET_PRIVATE_KEYS,
     },
   },
 };
