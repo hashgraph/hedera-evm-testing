@@ -143,8 +143,13 @@ describe('HIP-1340 - EIP-7702 features', function () {
     [
         'EXTERNAL',
         'SELF',
-    ].forEach(trigger => {
-        it(`should get store and logs when a delegated EOA is the target of a transaction from \`${trigger}\``, async function () {
+    ].flatMap(trigger =>
+        [
+            'EXTERNAL',
+            'SELF',
+        ].flatMap(authSenderTrigger => ({trigger, authSenderTrigger}))
+    ).forEach(({trigger, authSenderTrigger}) => {
+        it.only(`should get store and logs when a delegated EOA is the target of a transaction from \`${trigger}\` ${authSenderTrigger}`, async function () {
             const value = 42;
 
             const to = await createAndFundEOA();
@@ -154,11 +159,23 @@ describe('HIP-1340 - EIP-7702 features', function () {
             const smartWallet = await deploy('contracts/hip-1340/CustomSimple7702Account');
             const eoa = await createAndFundEOA();
 
+            class Nonce {
+                #val = 0;
+                next() {
+                    return this.#val++;
+                }
+                get cur() {
+                    return this.#val;
+                }
+            }
+
+            const [fromNonce, eoaNonce] = [new Nonce(), new Nonce()];
             // Delegation
+            const [authSender, authNonce] = authSenderTrigger === 'SELF' ? [eoa, eoaNonce] : [from, fromNonce];
             const authtx = {
                 type: 4,
                 chainId: network.chainId,
-                nonce: 0,
+                nonce: authNonce.next(),
                 maxFeePerGas: ethers.parseUnits('710', 'gwei'),
                 maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
                 gasLimit: 800_000,
@@ -166,12 +183,12 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 to,
                 authorizationList: [await eoa.authorize({
                     chainId: 0,
-                    nonce: 0,
+                    nonce: eoaNonce.next(),
                     address: smartWallet.address,
                 })],
             };
             log('Transaction', authtx);
-            const resp = await from.sendTransaction(authtx);
+            const resp = await authSender.sendTransaction(authtx);
 
             let txhash;
             try {
@@ -193,10 +210,12 @@ describe('HIP-1340 - EIP-7702 features', function () {
             const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
             const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmit.address, 0, storeAndEmitCall]);
 
-            const tx = await (trigger === 'SELF' ? eoa : from).sendTransaction({
+            const [delegatedExecutionSender, delegatedExecutionSenderNonce] = trigger === 'SELF' ? [eoa, eoaNonce] : [from, fromNonce];
+            log('Sending delegated execution transaction to %s from %s with nonce %s', eoa.address, delegatedExecutionSender.address, delegatedExecutionSenderNonce.cur);
+            const tx = await delegatedExecutionSender.sendTransaction({
                 chainId: network.chainId,
                 to: eoa.address,
-                nonce: 1,
+                nonce: delegatedExecutionSenderNonce.next(),
                 gasLimit: 1_500_000,
                 data,
             });
