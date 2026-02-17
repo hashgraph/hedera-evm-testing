@@ -201,6 +201,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 data,
             });
             const receipt = await tx.wait();
+            log('Transaction receipt', receipt);
             assert(receipt !== null, 'Receipt is null');
 
             log('Logs', receipt.logs);
