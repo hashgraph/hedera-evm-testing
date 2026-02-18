@@ -119,7 +119,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
     });
 
     [0n, 10_000n].forEach(value => {
-        it.skip(`should run no-op with value ${value} when delegating to HTS system contract`, async function () {
+        it(`should run no-op with value ${value} when delegating to HTS system contract`, async function () {
             const sender = await createAndFundEOA();
             const eoa = await createAndFundEOA(asAddress(0x167));
             const balance = await provider.getBalance(eoa.address);
@@ -241,7 +241,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
 
     });
 
-    it.skip('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
+    it('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
         const erc20 = await deploy('contracts/hip-1340/ERC20Mintable', ['Test', 'TST', 10_000_000n]);
         await erc20.contract.mint(50_000n);
         const minterBalance = await erc20.contract.balanceOf(erc20.deployer.address);
@@ -288,7 +288,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(receiverBalance).to.be.equal(3_800n, `Receiver balance should be 3_800 but got ${receiverBalance}`);
     });
 
-    it.skip('should create the account when an EOA sponsors it', async function () {
+    it('should create the account when an EOA sponsors it', async function () {
         const eoa = await createAndFundEOA();
         const to = await createAndFundEOA();
         const receiver = ethers.Wallet.createRandom();
@@ -318,7 +318,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
     });
 
-    it.skip('should replace existing delegation when a new authorization is sent', async function () {
+    it('should replace existing delegation when a new authorization is sent', async function () {
         const firstDelegation = ethers.Wallet.createRandom().address;
         const eoa = await createAndFundEOA(firstDelegation);
         const nonce = await eoa.getNonce();
@@ -343,7 +343,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(code).to.be.equal(designatorFor(secondDelegation.toLowerCase()));
     });
 
-    it.skip('should use the last authorization when multiple authorizations are sent', async function () {
+    it('should use the last authorization when multiple authorizations are sent', async function () {
         const eoa = await createAndFundEOA();
 
         const resp = await eoa.sendTransaction({
@@ -377,7 +377,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(code).to.be.equal(designatorFor(asAddress(3)));
     });
 
-    it.skip('should authorize delegation of an existing account when exact gas is sent', async function () {
+    it('should authorize delegation of an existing account when exact gas is sent', async function () {
         const eoa = await createAndFundEOA();
 
         const resp = await eoa.sendTransaction({
@@ -399,7 +399,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
     });
 
-    it.skip('should revert type 4 transaction when not enough gas is sent', async function () {
+    it('should revert type 4 transaction when not enough gas is sent', async function () {
         const eoa = await createAndFundEOA();
 
         const resp = eoa.sendTransaction({
@@ -416,7 +416,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         await expect(resp).to.be.rejectedWith(/intrinsic gas too low/);
     });
 
-    it.skip('should return delegation designation to `0x167` when an HTS token is created', async function () {
+    it('should return delegation designation to `0x167` when an HTS token is created', async function () {
         const operatorId = sdk.AccountId.fromString(process.env.OPERATOR_ID);
         const operatorKey = sdk.PrivateKey.fromStringECDSA(process.env.OPERATOR_KEY);
         const client = sdk.Client.forNetwork({ '127.0.0.1:50211': '0.0.3' });
