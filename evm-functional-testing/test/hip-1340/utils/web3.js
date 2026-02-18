@@ -5,7 +5,7 @@ const log = require('node:util').debuglog('hip-1340:web3');
 const { ethers } = require('hardhat');
 
 const { MirrorNode } = require('evm-functional-testing/mirror-node');
-const { getAccountInfo } = require('./sdk.js');
+const { getAccountInfo, getContractByteCode } = require('./sdk.js');
 
 /**
  * Gas cost constants and functions.
@@ -40,6 +40,37 @@ function designatorFor(address) {
  */
 function asAddress(n) {
     return `0x${n.toString(16).padStart(40, '0')}`;
+}
+
+/**
+ * @param {string} address 
+ * @returns {Promise<[number, number, number]>} An array containing the nonces from the JSON-RPC Relay, Mirror Node, and Consensus Node (SDK) respectively.
+ */
+async function getNonces(address) {
+    const provider = ethers.provider;
+
+    const nonce = await provider.getTransactionCount(address);
+    const { account, ethereum_nonce } = await new MirrorNode().getAccount(address);
+    const accountInfo = await getAccountInfo(account);
+    log('Nonces for `%s:%s`: RN%s:MN%s:CN%s', account, address, nonce, ethereum_nonce, accountInfo.ethereumNonce);
+
+    return [nonce, ethereum_nonce, accountInfo.ethereumNonce.toNumber()];
+}
+
+/**
+ * @param {string} address 
+ * @returns {Promise<[string, string, string]>} An array containing the code from the JSON-RPC Relay, Mirror Node (SDK), and delegation address respectively. 
+ */
+async function getCodes(address) {
+    const toStr = buf => Buffer.from(buf).toString('hex');
+
+    const provider = ethers.provider;
+    const code = await provider.getCode(address);
+    const { account } = await new MirrorNode().getAccount(address);
+    const contractBytecode = await getContractByteCode(account);
+    const { delegationAddress } = await getAccountInfo(account);
+
+    return [code, toStr(contractBytecode), toStr(delegationAddress)];
 }
 
 /**
@@ -175,7 +206,7 @@ function getArtifact(contractPath) {
  * @param {number} [gasLimit=5000000]
  * @returns {Promise<{address: string, deployer: ethers.BaseWallet, contract: ethers.Contract}>}
  */
-async function deploy(contractName, args, deployer, gasLimit = 5_000_000){
+async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
     if (!deployer) deployer = await createAndFundEOA();
 
     assert(deployer.provider !== null, 'Deployer wallet must be connected to a provider');
@@ -244,4 +275,4 @@ function asHexUint256(value) {
     return '0x' + value.toString(16).padStart(64, '0');
 }
 
-module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress };
+module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress, getNonces, getCodes };
