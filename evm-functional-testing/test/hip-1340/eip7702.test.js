@@ -9,9 +9,9 @@ const { MirrorNode } = require('evm-functional-testing/mirror-node');
 const { getAccountInfo, getContractByteCode, getTransactionRecord, getAccountRecords } = require('./utils/sdk');
 const web3 = require('./utils/web3');
 const { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
+const { setupProviderAndNetwork } = require('./utils/setup');
 
 describe('HIP-1340 - EIP-7702 features', function () {
-
     /** @type {ethers.JsonRpcProvider} */
     let provider;
 
@@ -19,8 +19,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
     let network;
 
     before(async function () {
-        provider = (await ethers.getSigners())[0].provider;
-        network = await provider.getNetwork();
+        ({ provider, network } = await setupProviderAndNetwork());
         log('Starting test suite `%s` on network `%s` (chain id %s)', this.test.parent.title, network.name, Number(network.chainId));
     });
 

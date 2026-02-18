@@ -13,3 +13,4 @@ build/
 
 # Local environment
 .env
+node_modules
