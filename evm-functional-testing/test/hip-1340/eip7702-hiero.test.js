@@ -23,7 +23,15 @@ const ERC_20_ABI = [
     'function balanceOf(address owner) view returns (uint256)',
 ];
 
+const HTS_ASSOCIATE_TOKEN_SIG = [
+    'associateToken(address account, address token)'
+];
+
+const SMART_WALLET_EXECUTE_SIG = 'execute(address target, uint256 value, bytes calldata data)';
+
 const GAS_LIMIT = 1_500_000;
+const TEST_TOKEN_SYMBOL = "tokenName";
+
 
 describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
     /** @type {ethers.JsonRpcProvider | import('hardhat').HardhatEthersProvider} */
@@ -104,15 +112,13 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
             }
         }
 
-        const [eoa1Nonce, eoa2Nonce] = [new Nonce(), new Nonce()];
+        const [eoa1Nonce, eoa2Nonce, receiverNonce] = [new Nonce(), new Nonce(), new Nonce()];
 
         // EOA1 authorization transaction
         const eoa1Authtx = {
             type: 4,
             chainId: network.chainId,
             nonce: eoa1Nonce.next(),
-            // maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-            // maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
             gasLimit: GAS_LIMIT,
             value: 321_00000_00000n,
             to: eoa1.address, // or whatever target address
@@ -128,8 +134,6 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
             type: 4,
             chainId: network.chainId,
             nonce: eoa2Nonce.next(),
-            // maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-            // maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
             gasLimit: GAS_LIMIT,
             value: 321_00000_00000n,
             to: eoa2.address, // or whatever target address
@@ -143,15 +147,11 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         // Send the transactions
         const eoa1Resp = await eoa1.sendTransaction(eoa1Authtx);
 
-        let txhash1;
         try {
             await eoa1Resp.wait();
         } catch (e) {
-            // console.error('Transaction failed to wait', e);
-            console.error('replacement hash 1', e.replacement.hash);
-            txhash1 = e.replacement.hash;
+            log('replacement hash 1', e.replacement.hash);
         }
-
 
         const { account: account1 } = await new MirrorNode().getAccount(eoa1.address);
         log('Account1: %s', account1);
@@ -171,62 +171,38 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         const contractBytecode2 = await getContractByteCode(account2);
         expect(Buffer.from(contractBytecode2).toString('hex')).to.be.equal(designatorFor(smartWallet.address.toLowerCase()).slice(2));
 
-        // 2. Deploy TokenCreateContract and create HTS fungible token
+        // Deploy TokenCreateContract and create HTS fungible token
         const tokenCreateContract = await Utils.deployTokenCreateContract();
         log('TokenCreateContract deployed at %s', tokenCreateContract.target);
 
         const tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
         log('HTS fungible token created at %s', tokenAddress);
 
+        const eoaData = [
+            { eoa: eoa1, nonce: eoa1Nonce },
+            { eoa: eoa2, nonce: eoa2Nonce }
+        ];
 
-        // 4. Associate all accounts with the HTS token via execute() -> HTS precompile
-        // for (const eoa of [eoa1, eoa2]) {
-        //     const associateCalldata = encodeFunctionData(
-        //         'associateToken(address account, address token)',
-        //         [HTS_PRECOMPILE_ADDRESS, tokenAddress]
-        //     );
-        //     await waitFor(eoa.sendTransaction({
-        //         chainId: network.chainId,
-        //         gasLimit: GAS_LIMIT,
-        //         to: eoa.address,
-        //         data: encodeFunctionData(
-        //             'execute(address target, uint256 value, bytes calldata data)',
-        //             [HTS_PRECOMPILE_ADDRESS, 0, associateCalldata]
-        //         ),
-        //     }));
-        //     log('Associated %s with HTS token %s', eoa.address, tokenAddress);
-        // }
+        // Associate EOA accounts with the HTS token via execute() -> HTS precompile
+        for (const {eoa, nonce} of eoaData) {
+            const associateCalldata = encodeFunctionData(HTS_ASSOCIATE_TOKEN_SIG, [eoa.address, tokenAddress]);
+            await waitFor(eoa.sendTransaction({
+                nonce: nonce.next(),
+                chainId: network.chainId,
+                gasLimit: GAS_LIMIT,
+                to: eoa.address,
+                data: encodeFunctionData(SMART_WALLET_EXECUTE_SIG, [HTS_PRECOMPILE_ADDRESS, 0, associateCalldata]),
+            }));
+            log('Associated %s with HTS token %s', eoa.address, tokenAddress);
+        }
 
-        await waitFor(eoa1.sendTransaction({
-            nonce: eoa1Nonce.next(),
-            chainId: network.chainId,
-            gasLimit: GAS_LIMIT,
-            to: HTS_PRECOMPILE_ADDRESS,
-            data: encodeFunctionData(
-                'associateToken(address account, address token)',
-                [eoa1.address, tokenAddress]
-            ),
-        }));
-
-        await waitFor(eoa2.sendTransaction({
-            nonce: eoa2Nonce.next(),
-            chainId: network.chainId,
-            gasLimit: GAS_LIMIT,
-            to: HTS_PRECOMPILE_ADDRESS,
-            data: encodeFunctionData(
-                'associateToken(address account, address token)',
-                [eoa2.address, tokenAddress]
-            ),
-        }));
-
+        // Associate
         await waitFor(receiver.sendTransaction({
+            nonce: receiverNonce.next(),
             chainId: network.chainId,
             gasLimit: GAS_LIMIT,
             to: HTS_PRECOMPILE_ADDRESS,
-            data: encodeFunctionData(
-                'associateToken(address account, address token)',
-                [receiver.address, tokenAddress]
-            ),
+            data: encodeFunctionData(HTS_ASSOCIATE_TOKEN_SIG,[receiver.address, tokenAddress]),
         }));
 
         // Grant KYC (required because createFungibleTokenPublic creates the token with a KYC key)
@@ -234,12 +210,12 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, eoa2.address));
         await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, receiver.address));
 
-        // 5. Transfer HTS tokens from treasury to both EOAs
+        // Transfer HTS tokens from treasury to both EOAs
         await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, eoa1.address, 5_000));
         await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, eoa2.address, 7_000));
         log('Funded EOA1 with 5000 and EOA2 with 7000 HTS tokens');
 
-        // 6. Verify initial balances via ERC20 proxy
+        // Verify initial balances via ERC20 proxy
         const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
 
         const eoa1InitBalance = await tokenContract.balanceOf(eoa1.address);
@@ -250,7 +226,7 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         assert(eoa2InitBalance === 7_000n, `EOA2 initial balance should be 7000 but got ${eoa2InitBalance}`);
         log('EOA2 balance: %s', eoa2InitBalance);
 
-        // 7. EOA1 sends self-sponsored transaction to transfer 1500 HTS tokens to receiver
+        // EOA1 sends self-sponsored transaction to transfer 1500 HTS tokens to receiver
         const eoa1TransferCalldata = encodeFunctionData('transfer(address to, uint256 value)', [receiver.address, 1_500n]);
         const receipt1 = await waitFor(eoa1.sendTransaction({
             nonce: eoa1Nonce.next(),
@@ -258,14 +234,14 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
             gasLimit: GAS_LIMIT,
             to: eoa1.address,
             data: encodeFunctionData(
-                'execute(address target, uint256 value, bytes calldata data)',
+                SMART_WALLET_EXECUTE_SIG,
                 [tokenAddress, 0, eoa1TransferCalldata]
             ),
         }));
         assert(receipt1 !== null, 'EOA1 transfer receipt is null');
         log('EOA1 transfer tx: %s, logs: %d', receipt1.hash, receipt1.logs.length);
 
-        // 8. EOA2 sends self-sponsored transaction to transfer 2300 HTS tokens to receiver
+        // EOA2 sends self-sponsored transaction to transfer 2300 HTS tokens to receiver
         const eoa2TransferCalldata = encodeFunctionData('transfer(address to, uint256 value)', [receiver.address, 2_300n]);
         const receipt2 = await waitFor(eoa2.sendTransaction({
             nonce: eoa2Nonce.next(),
@@ -273,14 +249,14 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
             gasLimit: GAS_LIMIT,
             to: eoa2.address,
             data: encodeFunctionData(
-                'execute(address target, uint256 value, bytes calldata data)',
+                SMART_WALLET_EXECUTE_SIG,
                 [tokenAddress, 0, eoa2TransferCalldata]
             ),
         }));
         assert(receipt2 !== null, 'EOA2 transfer receipt is null');
         log('EOA2 transfer tx: %s, logs: %d', receipt2.hash, receipt2.logs.length);
 
-        // 9. Verify final balances
+        // Verify final balances
         const eoa1FinalBalance = await tokenContract.balanceOf(eoa1.address);
         expect(eoa1FinalBalance).to.be.equal(3_500n, 'EOA1 balance should be 3500 after transfer');
 
@@ -290,7 +266,7 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         const receiverBalance = await tokenContract.balanceOf(receiver.address);
         expect(receiverBalance).to.be.equal(3_800n, 'Receiver balance should be 3800 (1500 + 2300)');
 
-        // 10. Verify HTS Transfer events are emitted correctly and visible from the EOA transactions
+        // Verify HTS Transfer events are emitted correctly and visible from the EOA transactions
         const transferEventSig = ethers.id('Transfer(address,address,uint256)');
 
         // --- EOA1 receipt: HTS Transfer event ---
