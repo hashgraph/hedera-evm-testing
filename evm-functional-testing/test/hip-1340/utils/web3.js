@@ -62,7 +62,7 @@ async function getNonces(address) {
  * @returns {Promise<[string, string, string]>} An array containing the code from the JSON-RPC Relay, Mirror Node (SDK), and delegation address respectively. 
  */
 async function getCodes(address) {
-    const toStr = buf => Buffer.from(buf).toString('hex');
+    const toStr = buf => '0x' + Buffer.from(buf).toString('hex');
 
     const provider = ethers.provider;
     const code = await provider.getCode(address);
@@ -186,6 +186,36 @@ async function createAndFundEOA(delegation, tinyBarBalance = 1000_0000_0000n) {
     return eoa;
 }
 
+async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefined) {
+    assert(delegateToAddress !== asAddress(0), 'Delegation to zero address clears the delegation indicator');
+
+    const provider = ethers.provider;
+    const network = await provider.getNetwork();
+
+    const resp = await (await createAndFundEOA()).sendTransaction({
+        type: 4,
+        chainId: network.chainId,
+        nonce: 0,
+        gasLimit: gas.base + gas.auth(1),
+        to: ethers.ZeroAddress,
+        maxFeePerGas: ethers.parseUnits('710', 'gwei'),
+        maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
+        authorizationList: [await eoa.authorize({
+            chainId: 0,
+            nonce: eoaNonce,
+            address: delegateToAddress,
+        })],
+    });
+    await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+
+    const [code, contractBytecode, delegationAddress] = await getCodes(eoa.address);
+    // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+    // assert(code === designatorFor(delegateToAddress.toLowerCase()));
+    assert(contractBytecode === designatorFor(delegateToAddress.toLowerCase()));
+    assert(delegationAddress === delegateToAddress.toLowerCase());
+    return eoa;
+}
+
 /**
  * Retrieves the compiled artifact for a given contract name.
  *
@@ -275,4 +305,7 @@ function asHexUint256(value) {
     return '0x' + value.toString(16).padStart(64, '0');
 }
 
-module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress, getNonces, getCodes };
+module.exports = {
+    gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor,
+    asAddress, getNonces, getCodes, authorizeEOADelegation,
+};

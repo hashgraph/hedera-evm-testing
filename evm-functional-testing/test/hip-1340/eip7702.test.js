@@ -10,21 +10,6 @@ const { getAccountInfo, getContractByteCode, getTransactionRecord, getAccountRec
 const web3 = require('./utils/web3');
 const { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
 
-/**
- * https://www.evm.codes/precompiled?fork=prague
- */
-const precompiledAddresses = [...Array(0x11).keys()].map(i => asAddress(i + 1));
-
-/**
- * https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts
- */
-const systemContractAddresses = [0x167, 0x168, 0x169, 0x16a, 0x16b, 0x16c].map(asAddress);
-
-/**
- * A delegate address used in multiple tests.
- */
-const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc';
-
 describe('HIP-1340 - EIP-7702 features', function () {
 
     /** @type {ethers.JsonRpcProvider} */
@@ -41,7 +26,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
 
     it('should create and fund an EOA to ensure account creation is successful', async function () {
         const sender = await createAndFundEOA();
-        expect(await sender.getNonce()).to.be.equal(0);
+        expect(await web3.getNonces(sender.address)).to.be.deep.equal([0, 0, 0]);
         expect(await provider.getBalance(sender.address)).to.be.equal(1000_0000_0000n * 1_00000_00000n);
     });
 
@@ -60,20 +45,20 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     1234n,
                 ].flatMap(value =>
                     [
-                        asAddress(1), // Precompile addresses
-                        asAddress(0x167), // System Contract address
+                        asAddress(1), // a precompile addresses https://www.evm.codes/precompiled?fork=prague
+                        asAddress(0x167), // a system contract address https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts
                         '0x0000000000000000000000000000000000068cDa', // Long-zero address
                         '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
-                    ].flatMap(address => ({ toKind, trigger, value, address }))))
-        ).forEach(({ toKind, trigger, value, address }) => {
-            it(`should store delegation designator ${toKind} ${trigger} for EOA to ${address} via a type4 transaction sending ${value} th`, async function () {
+                    ].flatMap(delegateToAddress => ({ toKind, trigger, value, delegateToAddress }))))
+        ).forEach(({ toKind, trigger, value, delegateToAddress }) => {
+            it(`should store delegation designator ${toKind} ${trigger} for EOA to ${delegateToAddress} via a type4 transaction sending ${value} th`, async function () {
                 const sender = await createAndFundEOA();
                 const receiver = toKind === 'FUNDED' ? await createAndFundEOA() : ethers.Wallet.createRandom();
                 const [delegated, authNonce] = trigger === 'SELF'
                     ? [sender, 1]
                     : [await createAndFundEOA(), 0];
 
-                log('Sending %s th to %s from %s and delegating %s to %s', value, receiver.address, sender.address, delegated.address, address);
+                log('Sending %s th to %s from %s and delegating %s to %s', value, receiver.address, sender.address, delegated.address, delegateToAddress);
                 const tx = {
                     type: 4,
                     chainId: network.chainId,
@@ -86,7 +71,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     authorizationList: [await delegated.authorize({
                         chainId: 0,
                         nonce: authNonce,
-                        address,
+                        address: delegateToAddress,
                     })],
                 };
                 const resp = await sender.sendTransaction(tx);
@@ -94,10 +79,9 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 let txhash;
                 try {
                     await resp.wait();
-                } catch (e) {
-                    // console.error('Transaction failed to wait', e);
-                    // console.error('replacement hash', e.replacement.hash);
-                    txhash = e.replacement.hash;
+                } catch (err) {
+                    log('Fetch transaction receipt failed:', err.message);
+                    txhash = err.replacement.hash;
                 }
 
                 const result = await new MirrorNode().getContractResults(txhash);
@@ -105,16 +89,11 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 const transactionId = transactions[0].transaction_id.replace('0.0.2-', '0.0.2@').replace('-', '.');
                 log('Authorization sent in transaction', resp.hash, transactionId);
 
-                const { account } = await new MirrorNode().getAccount(delegated.address);
-                const contractBytecode = await getContractByteCode(account);
-                expect(Buffer.from(contractBytecode).toString('hex')).to.be.equal(designatorFor(address.toLowerCase()).slice(2));
-
-                const { delegationAddress } = await getAccountInfo(account);
-                expect(Buffer.from(delegationAddress).toString('hex')).to.be.equal(address.toLowerCase().slice(2));
-
+                const [code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
                 // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
-                // const code = await provider.getCode(delegated.address);
                 // expect(code).to.be.equal(designatorFor(address.toLowerCase()));
+                expect(contractBytecode).to.be.equal(designatorFor(delegateToAddress.toLowerCase()));
+                expect(delegationAddress).to.be.equal(delegateToAddress.toLowerCase());
             });
         });
     });
@@ -148,8 +127,8 @@ describe('HIP-1340 - EIP-7702 features', function () {
         [
             'EXTERNAL',
             'SELF',
-        ].flatMap(authSenderTrigger => ({trigger, authSenderTrigger}))
-    ).forEach(({trigger, authSenderTrigger}) => {
+        ].flatMap(authSenderTrigger => ({ trigger, authSenderTrigger }))
+    ).forEach(({ trigger, authSenderTrigger }) => {
         it(`should get store and logs when a delegated EOA is the target of a transaction from \`${trigger}\` ${authSenderTrigger}`, async function () {
             const value = 42;
 
@@ -194,18 +173,16 @@ describe('HIP-1340 - EIP-7702 features', function () {
             let txhash;
             try {
                 await resp.wait();
-            } catch (e) {
-                console.error('Transaction failed to wait', e);
-                console.error('replacement hash', e.replacement.hash);
-                txhash = e.replacement.hash;
+            } catch (err) {
+                log('Fetch transaction receipt failed', err.message);
+                txhash = err.replacement.hash;
             }
 
-            const { account } = await new MirrorNode().getAccount(eoa.address);
-            const contractBytecode = await getContractByteCode(account);
-            expect(Buffer.from(contractBytecode).toString('hex')).to.be.equal(designatorFor(smartWallet.address.toLowerCase()).slice(2));
-
-            const { delegationAddress } = await getAccountInfo(account);
-            expect(Buffer.from(delegationAddress).toString('hex')).to.be.equal(smartWallet.address.toLowerCase().slice(2));
+            const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
+            // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+            // expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
+            expect(contractBytecode).to.be.equal(designatorFor(smartWallet.address.toLowerCase()));
+            expect(delegationAddress).to.be.equal(smartWallet.address.toLowerCase());
 
             // Execution
             const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
@@ -290,6 +267,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
     });
 
     it('should create the account when an EOA sponsors it', async function () {
+        const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
         const value = 10n * 1_00000_00000n;
         const eoa = await createAndFundEOA();
         const to = await createAndFundEOA();
@@ -310,7 +288,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         try {
             await resp.wait();
         } catch (err) {
-            console.error('Transaction receipt failed to wait', err);
+            log('Fetch transaction receipt failed', err.message);
         }
 
         expect(await provider.getBalance(to.address)).to.be.equal(1000_0000_0000n * 10_000_000_000n + value);
@@ -324,33 +302,60 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const [_code, contractBytecode, delegationAddress] = await web3.getCodes(receiver.address);
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
         // expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
-        expect(contractBytecode).to.be.equal(designatorFor(delegateAddress).slice(2).toLowerCase());
-        expect(delegationAddress).to.be.equal(delegateAddress.slice(2).toLowerCase());
+        expect(contractBytecode).to.be.equal(designatorFor(delegateAddress));
+        expect(delegationAddress).to.be.equal(delegateAddress);
     });
 
-    it.skip('should replace existing delegation when a new authorization is sent', async function () {
+    it('should replace existing delegation indicator when a second authorization transaction is sent', async function () {
         const firstDelegation = ethers.Wallet.createRandom().address;
-        const eoa = await createAndFundEOA(firstDelegation);
-        const nonce = await eoa.getNonce();
+        const eoa = await web3.authorizeEOADelegation(await createAndFundEOA(), firstDelegation);
+        const [_nonce, _eth_nonce, ethNonce] = await web3.getNonces(eoa.address);
 
         const secondDelegation = ethers.Wallet.createRandom().address;
-        const resp = await eoa.sendTransaction({
+        const resp = await (await createAndFundEOA()).sendTransaction({
+            type: 4,
             chainId: network.chainId,
-            nonce,
+            nonce: 0,
             gasLimit: gas.base + gas.auth(1),
             to: ethers.ZeroAddress,
             authorizationList: [await eoa.authorize({
                 chainId: 0,
-                nonce: nonce + 1,
+                nonce: ethNonce,
                 address: secondDelegation,
             })],
         });
-        await resp.wait();
+        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
 
-        const code = await provider.getCode(eoa.address);
-        log('EOA %s code: %s', eoa.address, code);
+        const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+        // expect(code).to.be.equal(designatorFor(secondDelegation.toLowerCase()));
+        expect(contractBytecode).to.be.equal(designatorFor(secondDelegation.toLowerCase()));
+        expect(delegationAddress).to.be.equal(secondDelegation.toLowerCase());
+    });
 
-        expect(code).to.be.equal(designatorFor(secondDelegation.toLowerCase()));
+    it('should clear existing delegation indicator when delegating to zero address', async function () {
+        const eoa = await web3.authorizeEOADelegation(await createAndFundEOA(), ethers.Wallet.createRandom().address);
+        const [_nonce, _eth_nonce, ethNonce] = await web3.getNonces(eoa.address);
+
+        const resp = await (await createAndFundEOA()).sendTransaction({
+            type: 4,
+            chainId: network.chainId,
+            nonce: 0,
+            gasLimit: gas.base + gas.auth(1),
+            to: ethers.ZeroAddress,
+            authorizationList: [await eoa.authorize({
+                chainId: 0,
+                nonce: ethNonce,
+                address: asAddress(0),
+            })],
+        });
+        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+
+        const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
+        expect(code).to.be.equal('0x');
+        expect(contractBytecode).to.be.equal('0x');
+        // TODO: need to re-pack SDK to remove initialization debug
+        expect(delegationAddress).to.be.equal('0xcafebabe');
     });
 
     it('should use the last authorization when multiple authorizations are sent', async function () {
@@ -382,7 +387,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         try {
             await resp.wait();
         } catch (err) {
-            console.error('Transaction receipt failed to wait', err);
+            log('Fetch transaction receipt failed', err.message);
         }
 
         const [nonce, eth_nonce, ethNonce] = await web3.getNonces(eoa.address)
@@ -394,14 +399,16 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
         // expect(code).to.be.equal(designatorFor(asAddress(3)));
-        expect(contractBytecode).to.be.equal(designatorFor(asAddress(3)).slice(2));
-        expect(delegationAddress).to.be.equal(asAddress(3).slice(2));
+        expect(contractBytecode).to.be.equal(designatorFor(asAddress(3)));
+        expect(delegationAddress).to.be.equal(asAddress(3));
     });
 
-    it.skip('should authorize delegation of an existing account when exact gas is sent', async function () {
+    it('should authorize delegation of an existing account when exact gas is sent', async function () {
+        const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
         const eoa = await createAndFundEOA();
 
         const resp = await eoa.sendTransaction({
+            type: 4,
             chainId: network.chainId,
             nonce: 0,
             gasLimit: gas.base + gas.auth(1),
@@ -412,18 +419,27 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 address: delegateAddress,
             })],
         });
-        await resp.wait();
+        // TODO(pectra): Remove try/catch block once MN and Relay does not replace authorizations transactions
+        try {
+            await resp.wait();
+        } catch (err) {
+            log('Fetch transaction receipt failed', err.message);
+        }
 
-        const code = await provider.getCode(eoa.address);
-        log('EOA %s code: %s', eoa.address, code);
-
-        expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
+        const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+        // expect(code).to.be.equal(designatorFor(delegateAddress));
+        expect(contractBytecode).to.be.equal(designatorFor(delegateAddress));
+        expect(delegationAddress).to.be.equal(delegateAddress);
     });
 
+    // TODO(pectra): Enable once intrinsic gas checks are implemented in the Relay
     it.skip('should revert type 4 transaction when not enough gas is sent', async function () {
+        const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
         const eoa = await createAndFundEOA();
 
         const resp = eoa.sendTransaction({
+            type: 4,
             chainId: network.chainId,
             nonce: 0,
             gasLimit: gas.base + gas.auth(1) - 1,
@@ -437,6 +453,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         await expect(resp).to.be.rejectedWith(/intrinsic gas too low/);
     });
 
+    // TODO(pectra): Move to Hiero specific test suite
     it.skip('should return delegation designation to `0x167` when an HTS token is created', async function () {
         const operatorId = sdk.AccountId.fromString(process.env.OPERATOR_ID);
         const operatorKey = sdk.PrivateKey.fromStringECDSA(process.env.OPERATOR_KEY);
