@@ -3,12 +3,9 @@ const log = require('node:util').debuglog('hip-1340');
 
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
-const { MirrorNode } = require('evm-functional-testing/mirror-node');
-
-const { deploy, designatorFor, createAndFundEOA, encodeFunctionData, waitFor } = require('./utils/web3');
+const { deploy, designatorFor, createAndFundEOA, encodeFunctionData, waitFor, Nonce, sendDelegation, verifyDelegation } = require('./utils/web3');
 const { setupProviderAndNetwork } = require('./utils/setup');
 const Utils = require('../../utils/utils');
-const {getContractByteCode} = require("./utils/sdk");
 
 /**
  * HTS system contract precompile address.
@@ -29,18 +26,9 @@ const HTS_ASSOCIATE_TOKEN_SIG = [
 
 const SMART_WALLET_EXECUTE_SIG = 'execute(address target, uint256 value, bytes calldata data)';
 
+const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
 const GAS_LIMIT = 1_500_000;
 const TEST_TOKEN_NAME = "tokenName";
-
-class Nonce {
-    #val = 0;
-    next() {
-        return this.#val++;
-    }
-    get cur() {
-        return this.#val;
-    }
-}
 
 describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
     /** @type {ethers.JsonRpcProvider | import('hardhat').HardhatEthersProvider} */
@@ -108,67 +96,17 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         log('EOA1: %s, EOA2: %s, Receiver: %s', eoa1.address, eoa2.address, receiver.address);
 
         // 2. Deploy Simple7702Account (the Smart Wallet both EOAs will delegate to)
-        const smartWallet = await deploy('@account-abstraction/contracts/accounts/Simple7702Account');
+        const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
         log('Simple7702Account deployed at %s', smartWallet.address);
 
         const [eoa1Nonce, eoa2Nonce, receiverNonce] = [new Nonce(), new Nonce(), new Nonce()];
 
-        // EOA1 authorization transaction
-        const eoa1Authtx = {
-            type: 4,
-            chainId: network.chainId,
-            nonce: eoa1Nonce.next(),
-            gasLimit: GAS_LIMIT,
-            value: 321_00000_00000n,
-            to: eoa1.address, // or whatever target address
-            authorizationList: [await eoa1.authorize({
-                chainId: 0,
-                nonce: eoa1Nonce.next(),
-                address: smartWallet.address,
-            })],
-        };
+        // Delegate both EOAs to the Smart Wallet and verify via SDK bytecode
+        await sendDelegation(eoa1, smartWallet.address, eoa1Nonce);
+        await verifyDelegation(eoa1.address, smartWallet.address);
 
-        // EOA2 authorization transaction
-        const eoa2Authtx = {
-            type: 4,
-            chainId: network.chainId,
-            nonce: eoa2Nonce.next(),
-            gasLimit: GAS_LIMIT,
-            value: 321_00000_00000n,
-            to: eoa2.address, // or whatever target address
-            authorizationList: [await eoa2.authorize({
-                chainId: network.chainId,
-                nonce: eoa2Nonce.next(),
-                address: smartWallet.address,
-            })],
-        };
-
-        // Send the transactions
-        const eoa1Resp = await eoa1.sendTransaction(eoa1Authtx);
-
-        try {
-            await eoa1Resp.wait();
-        } catch (e) {
-            log('replacement hash 1', e.replacement.hash);
-        }
-
-        const { account: account1 } = await new MirrorNode().getAccount(eoa1.address);
-        log('Account1: %s', account1);
-        const contractBytecode = await getContractByteCode(account1);
-        log('Contract bytecode 1: %s', contractBytecode);
-        expect(Buffer.from(contractBytecode).toString('hex')).to.be.equal(designatorFor(smartWallet.address.toLowerCase()).slice(2));
-
-        const eoa2Resp = await eoa2.sendTransaction(eoa2Authtx);
-
-        try {
-            await eoa2Resp.wait();
-        } catch (e) {
-            log('replacement hash 2', e.replacement.hash);
-        }
-
-        const { account: account2 } = await new MirrorNode().getAccount(eoa2.address);
-        const contractBytecode2 = await getContractByteCode(account2);
-        expect(Buffer.from(contractBytecode2).toString('hex')).to.be.equal(designatorFor(smartWallet.address.toLowerCase()).slice(2));
+        await sendDelegation(eoa2, smartWallet.address, eoa2Nonce);
+        await verifyDelegation(eoa2.address, smartWallet.address);
 
         // Deploy TokenCreateContract and create HTS fungible token
         const tokenCreateContract = await Utils.deployTokenCreateContract();

@@ -305,7 +305,95 @@ function asHexUint256(value) {
     return '0x' + value.toString(16).padStart(64, '0');
 }
 
-module.exports = {
-    gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor,
-    asAddress, getNonces, getCodes, authorizeEOADelegation,
-};
+/**
+ * Sends a self-delegation type-4 (EIP-7702) transaction from an EOA,
+ * authorizing it to delegate to the given contract address.
+ * Handles the TRANSACTION_REPLACED error that Hedera's relay commonly returns.
+ *
+ * @param {ethers.BaseWallet} eoa - The EOA that signs both the tx and the authorization
+ * @param {string} delegationAddress - The contract address to delegate to
+ * @param {Nonce} nonce - Nonce tracker for the EOA (consumes 2 nonces: tx + authorization)
+ * @param {object} [options]
+ * @param {bigint} [options.value=0n] - Value to send with the delegation tx
+ * @param {number} [options.gasLimit=1_500_000] - Gas limit
+ * @param {bigint} [options.authChainId=0n] - Chain ID for the authorization (0 = any chain)
+ * @returns {Promise<string | undefined>} The mined transaction hash, or undefined if unknown
+ */
+async function sendDelegation(eoa, delegationAddress, nonce, options = {}) {
+    const { value = 0n, gasLimit = 1_500_000, authChainId = 0 } = options;
+    const network = await eoa.provider.getNetwork();
+
+    const txNonce = nonce.next();
+    const authNonce = nonce.next();
+
+    const resp = await eoa.sendTransaction({
+        type: 4,
+        chainId: network.chainId,
+        nonce: txNonce,
+        gasLimit,
+        value,
+        to: eoa.address,
+        authorizationList: [await eoa.authorize({
+            chainId: authChainId,
+            nonce: authNonce,
+            address: delegationAddress,
+        })],
+    });
+
+    let txhash;
+    try {
+        await resp.wait();
+        txhash = resp.hash;
+    } catch (e) {
+        if (e.replacement?.hash) {
+            log('Delegation tx replaced: %s -> %s', resp.hash, e.replacement.hash);
+            txhash = e.replacement.hash;
+        } else {
+            log('WARNING: delegation tx.wait() error for %s: %s', eoa.address, e.code || e.message);
+        }
+    }
+
+    log('EOA %s delegated to %s (tx: %s)', eoa.address, delegationAddress, txhash || 'unknown');
+    return txhash;
+}
+
+/**
+ * Verifies that an EOA's delegation bytecode matches the expected designator
+ * by querying the Hedera SDK (consensus node) via the MirrorNode account ID.
+ *
+ * @param {string} eoaAddress - The EVM address of the delegated EOA
+ * @param {string} expectedDelegationAddress - The address the EOA should be delegated to
+ * @returns {Promise<string>} The Hedera account ID (e.g. "0.0.1234")
+ */
+async function verifyDelegation(eoaAddress, expectedDelegationAddress) {
+    const { account } = await new MirrorNode().getAccount(eoaAddress);
+    log('Verifying delegation for %s (account %s)', eoaAddress, account);
+
+    const bytecode = await getContractByteCode(account);
+    const expected = designatorFor(expectedDelegationAddress.toLowerCase()).slice(2);
+    assert(
+        Buffer.from(bytecode).toString('hex') === expected,
+        `Delegation bytecode mismatch for ${eoaAddress}: expected ${expected}`
+    );
+
+    return account;
+}
+
+/**
+ * Sequential nonce tracker for manually managing transaction ordering.
+ * Useful when the relay or MirrorNode returns stale nonce values,
+ * e.g. after EIP-7702 authorization transactions that consume a nonce.
+ */
+class Nonce {
+    #val = 0;
+    /** Returns the current nonce and increments it. */
+    next() {
+        return this.#val++;
+    }
+    /** Returns the current nonce without incrementing. */
+    get cur() {
+        return this.#val;
+    }
+}
+
+module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress, getNonces, getCodes, Nonce, sendDelegation, verifyDelegation, authorizeEOADelegation };
