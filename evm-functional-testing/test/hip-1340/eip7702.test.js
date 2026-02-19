@@ -169,14 +169,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
             };
             log('Transaction', authtx);
             const resp = await authSender.sendTransaction(authtx);
-
-            let txhash;
-            try {
-                await resp.wait();
-            } catch (err) {
-                log('Fetch transaction receipt failed', err.message);
-                txhash = err.replacement.hash;
-            }
+            await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
 
             const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
             // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -285,11 +278,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 address: delegateAddress,
             })],
         });
-        try {
-            await resp.wait();
-        } catch (err) {
-            log('Fetch transaction receipt failed', err.message);
-        }
+        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
 
         expect(await provider.getBalance(to.address)).to.be.equal(1000_0000_0000n * 10_000_000_000n + value);
 
@@ -384,11 +373,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 }),
             ],
         });
-        try {
-            await resp.wait();
-        } catch (err) {
-            log('Fetch transaction receipt failed', err.message);
-        }
+        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
 
         const [nonce, eth_nonce, ethNonce] = await web3.getNonces(eoa.address)
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -419,12 +404,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 address: delegateAddress,
             })],
         });
-        // TODO(pectra): Remove try/catch block once MN and Relay does not replace authorizations transactions
-        try {
-            await resp.wait();
-        } catch (err) {
-            log('Fetch transaction receipt failed', err.message);
-        }
+        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
 
         const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
