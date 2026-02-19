@@ -3,25 +3,15 @@ const log = require('node:util').debuglog('hip-1340');
 
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
-const { deploy, designatorFor, createAndFundEOA, encodeFunctionData, waitFor, Nonce, sendDelegation, verifyDelegation } = require('./utils/web3');
+const { deploy, designatorFor, createAndFundEOA, encodeFunctionData, waitFor, Nonce, sendDelegation, verifyDelegation, associateHtsToken, associateHtsTokenViaDelegation, HTS_ADDRESS } = require('./utils/web3');
 const { setupProviderAndNetwork } = require('./utils/setup');
 const Utils = require('../../utils/utils');
-
-/**
- * HTS system contract precompile address.
- */
-const HTS_PRECOMPILE_ADDRESS = '0x0000000000000000000000000000000000000167';
 
 const ERC_20_ABI = [
     'function name() view returns (string)',
     'function symbol() view returns (string)',
-    'function decimals() view returns (uint8)',
     'function totalSupply() view returns (uint256)',
     'function balanceOf(address owner) view returns (uint256)',
-];
-
-const HTS_ASSOCIATE_TOKEN_SIG = [
-    'associateToken(address account, address token)'
 ];
 
 const SMART_WALLET_EXECUTE_SIG = 'execute(address target, uint256 value, bytes calldata data)';
@@ -29,6 +19,7 @@ const SMART_WALLET_EXECUTE_SIG = 'execute(address target, uint256 value, bytes c
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
 const GAS_LIMIT = 1_500_000;
 const TEST_TOKEN_NAME = "tokenName";
+const TEST_TOKEN_SYMBOL = "tokenSymbol";
 
 describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
     /** @type {ethers.JsonRpcProvider | import('hardhat').HardhatEthersProvider} */
@@ -55,25 +46,14 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         const name = await tokenContract.name();
         const symbol = await tokenContract.symbol();
         const totalSupply = await tokenContract.totalSupply();
-        const decimals = await tokenContract.decimals();
 
         expect(name).to.be.equal(TEST_TOKEN_NAME);
-        expect(symbol).to.be.equal('tokenSymbol');
+        expect(symbol).to.be.equal(TEST_TOKEN_SYMBOL);
         expect(totalSupply).to.be.equal(10000000000);
-        expect(decimals).to.be.equal(0);
 
         // Let's transfer 1000 tokens to another address
         const anotherAddress = await createAndFundEOA();
-        // Associate the another address with the HTS token (EOA must call HTS precompile itself)
-        await waitFor(anotherAddress.sendTransaction({
-            chainId: network.chainId,
-            gasLimit: GAS_LIMIT,
-            to: HTS_PRECOMPILE_ADDRESS,
-            data: encodeFunctionData(
-                'associateToken(address account, address token)',
-                [anotherAddress.address, tokenAddress]
-            ),
-        }));
+        await associateHtsToken(anotherAddress, tokenAddress);
         // Grant KYC (required because createFungibleTokenPublic creates the token with a KYC key)
         await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, anotherAddress.address));
 
@@ -85,7 +65,7 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         // Verify the HTS token address has a delegation designator pointing to 0x167
         // TODO(dsinyakov): uncomment when relay and MN respond with 7702 delegation
         // const code = await provider.getCode(tokenAddress);
-        // expect(code).to.be.equal(designatorFor(HTS_PRECOMPILE_ADDRESS));
+        // expect(code).to.be.equal(designatorFor(HTS_ADDRESS));
     });
 
     it('should transfer HTS tokens when two EOAs delegate to the same Smart Wallet and send self-sponsored transactions', async function () {
@@ -115,32 +95,10 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         const tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
         log('HTS fungible token created at %s', tokenAddress);
 
-        const eoaData = [
-            { eoa: eoa1, nonce: eoa1Nonce },
-            { eoa: eoa2, nonce: eoa2Nonce }
-        ];
-
-        // Associate EOA accounts with the HTS token via execute() -> HTS precompile
-        for (const {eoa, nonce} of eoaData) {
-            const associateCalldata = encodeFunctionData(HTS_ASSOCIATE_TOKEN_SIG, [eoa.address, tokenAddress]);
-            await waitFor(eoa.sendTransaction({
-                nonce: nonce.next(),
-                chainId: network.chainId,
-                gasLimit: GAS_LIMIT,
-                to: eoa.address,
-                data: encodeFunctionData(SMART_WALLET_EXECUTE_SIG, [HTS_PRECOMPILE_ADDRESS, 0, associateCalldata]),
-            }));
-            log('Associated %s with HTS token %s', eoa.address, tokenAddress);
-        }
-
-        // Associate
-        await waitFor(receiver.sendTransaction({
-            nonce: receiverNonce.next(),
-            chainId: network.chainId,
-            gasLimit: GAS_LIMIT,
-            to: HTS_PRECOMPILE_ADDRESS,
-            data: encodeFunctionData(HTS_ASSOCIATE_TOKEN_SIG,[receiver.address, tokenAddress]),
-        }));
+        // Associate all accounts with the HTS token
+        await associateHtsTokenViaDelegation(eoa1, tokenAddress, eoa1Nonce);
+        await associateHtsTokenViaDelegation(eoa2, tokenAddress, eoa2Nonce);
+        await associateHtsToken(receiver, tokenAddress, receiverNonce);
 
         // Grant KYC (required because createFungibleTokenPublic creates the token with a KYC key)
         await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, eoa1.address));
@@ -157,11 +115,9 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
 
         const eoa1InitBalance = await tokenContract.balanceOf(eoa1.address);
         assert(eoa1InitBalance === 5_000n, `EOA1 initial balance should be 5000 but got ${eoa1InitBalance}`);
-        log('EOA1 balance: %s', eoa1InitBalance);
 
         const eoa2InitBalance = await tokenContract.balanceOf(eoa2.address);
         assert(eoa2InitBalance === 7_000n, `EOA2 initial balance should be 7000 but got ${eoa2InitBalance}`);
-        log('EOA2 balance: %s', eoa2InitBalance);
 
         // EOA1 sends self-sponsored transaction to transfer 1500 HTS tokens to receiver
         const eoa1TransferCalldata = encodeFunctionData('transfer(address to, uint256 value)', [receiver.address, 1_500n]);

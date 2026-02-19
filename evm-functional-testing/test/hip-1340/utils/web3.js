@@ -5,6 +5,7 @@ const log = require('node:util').debuglog('hip-1340:web3');
 const { ethers } = require('hardhat');
 
 const { MirrorNode } = require('evm-functional-testing/mirror-node');
+const { HTS_ADDRESS } = require('../../../utils/constants');
 const { getAccountInfo, getContractByteCode } = require('./sdk.js');
 
 /**
@@ -380,6 +381,61 @@ async function verifyDelegation(eoaAddress, expectedDelegationAddress) {
 }
 
 /**
+ * Associates an EOA with an HTS token by calling the HTS precompile directly.
+ *
+ * @param {ethers.BaseWallet} eoa - The EOA to associate
+ * @param {string} tokenAddress - The HTS token address
+ * @param {Nonce} [nonce] - Optional nonce tracker (if omitted, ethers auto-manages)
+ * @param {number} [gasLimit=1_500_000] - Gas limit
+ * @returns {Promise<ethers.TransactionReceipt | null>}
+ */
+async function associateHtsToken(eoa, tokenAddress, nonce, gasLimit = 1_500_000) {
+    const network = await eoa.provider.getNetwork();
+    const receipt = await waitFor(eoa.sendTransaction({
+        chainId: network.chainId,
+        gasLimit,
+        ...(nonce ? { nonce: nonce.next() } : {}),
+        to: HTS_ADDRESS,
+        data: encodeFunctionData(
+            'associateToken(address account, address token)',
+            [eoa.address, tokenAddress]
+        ),
+    }));
+    log('Associated %s with HTS token %s', eoa.address, tokenAddress);
+    return receipt;
+}
+
+/**
+ * Associates a delegated EOA with an HTS token by routing through
+ * the Smart Wallet's `execute()` to the HTS precompile.
+ *
+ * @param {ethers.BaseWallet} eoa - The delegated EOA to associate
+ * @param {string} tokenAddress - The HTS token address
+ * @param {Nonce} [nonce] - Optional nonce tracker (if omitted, ethers auto-manages)
+ * @param {number} [gasLimit=1_500_000] - Gas limit
+ * @returns {Promise<ethers.TransactionReceipt | null>}
+ */
+async function associateHtsTokenViaDelegation(eoa, tokenAddress, nonce, gasLimit = 1_500_000) {
+    const network = await eoa.provider.getNetwork();
+    const associateCalldata = encodeFunctionData(
+        'associateToken(address account, address token)',
+        [eoa.address, tokenAddress]
+    );
+    const receipt = await waitFor(eoa.sendTransaction({
+        chainId: network.chainId,
+        gasLimit,
+        ...(nonce ? { nonce: nonce.next() } : {}),
+        to: eoa.address,
+        data: encodeFunctionData(
+            'execute(address target, uint256 value, bytes calldata data)',
+            [HTS_ADDRESS, 0, associateCalldata]
+        ),
+    }));
+    log('Associated %s with HTS token %s (via delegation)', eoa.address, tokenAddress);
+    return receipt;
+}
+
+/**
  * Sequential nonce tracker for manually managing transaction ordering.
  * Useful when the relay or MirrorNode returns stale nonce values,
  * e.g. after EIP-7702 authorization transactions that consume a nonce.
@@ -396,4 +452,4 @@ class Nonce {
     }
 }
 
-module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress, getNonces, getCodes, Nonce, sendDelegation, verifyDelegation, authorizeEOADelegation };
+module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress, getNonces, getCodes, Nonce, sendDelegation, verifyDelegation, associateHtsToken, associateHtsTokenViaDelegation, HTS_ADDRESS, authorizeEOADelegation };
