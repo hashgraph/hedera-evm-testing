@@ -30,8 +30,17 @@ const HTS_ASSOCIATE_TOKEN_SIG = [
 const SMART_WALLET_EXECUTE_SIG = 'execute(address target, uint256 value, bytes calldata data)';
 
 const GAS_LIMIT = 1_500_000;
-const TEST_TOKEN_SYMBOL = "tokenName";
+const TEST_TOKEN_NAME = "tokenName";
 
+class Nonce {
+    #val = 0;
+    next() {
+        return this.#val++;
+    }
+    get cur() {
+        return this.#val;
+    }
+}
 
 describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
     /** @type {ethers.JsonRpcProvider | import('hardhat').HardhatEthersProvider} */
@@ -60,7 +69,7 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         const totalSupply = await tokenContract.totalSupply();
         const decimals = await tokenContract.decimals();
 
-        expect(name).to.be.equal('tokenName');
+        expect(name).to.be.equal(TEST_TOKEN_NAME);
         expect(symbol).to.be.equal('tokenSymbol');
         expect(totalSupply).to.be.equal(10000000000);
         expect(decimals).to.be.equal(0);
@@ -101,16 +110,6 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         // 2. Deploy Simple7702Account (the Smart Wallet both EOAs will delegate to)
         const smartWallet = await deploy('@account-abstraction/contracts/accounts/Simple7702Account');
         log('Simple7702Account deployed at %s', smartWallet.address);
-
-        class Nonce {
-            #val = 0;
-            next() {
-                return this.#val++;
-            }
-            get cur() {
-                return this.#val;
-            }
-        }
 
         const [eoa1Nonce, eoa2Nonce, receiverNonce] = [new Nonce(), new Nonce(), new Nonce()];
 
