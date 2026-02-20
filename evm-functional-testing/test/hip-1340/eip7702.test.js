@@ -217,16 +217,19 @@ describe('HIP-1340 - EIP-7702 features', function () {
 
     });
 
-    it.skip('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
+    it('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
         const erc20 = await deploy('contracts/hip-1340/ERC20Mintable', ['Test', 'TST', 10_000_000n]);
-        await erc20.contract.mint(50_000n);
+        const tx = await erc20.contract.mint(50_000n);
+        await tx.wait();
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
         const minterBalance = await erc20.contract.balanceOf(erc20.deployer.address);
         log('Minter balance:', minterBalance);
         assert(minterBalance === 50_000n + 10_000_000n, `Minter balance should be \`initialSupply+mint amount\` but got ${minterBalance}`);
 
-        const smartWallet = await deploy('@account-abstraction/contracts/accounts/Simple7702Account');
-        const eoa1 = await createAndFundEOA(smartWallet.address);
-        const eoa2 = await createAndFundEOA(smartWallet.address);
+        const smartWallet = await deploy('contracts/hip-1340/CustomSimple7702Account');
+        const eoa1 = await web3.authorizeEOADelegation(await createAndFundEOA(), smartWallet.address);
+        const eoa2 = await web3.authorizeEOADelegation(await createAndFundEOA(), smartWallet.address);
 
         await waitFor(erc20.contract.transfer(eoa1.address, 5_000n));
         const eoa1Balance = await erc20.contract.balanceOf(eoa1.address);
@@ -241,6 +244,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const eoa1Call = encodeFunctionData('transfer(address to, uint256 value)', [receiver, 1_500n]);
         await waitFor(eoa1.sendTransaction({
             chainId: network.chainId,
+            nonce: 1,
             gasLimit: 1_500_000,
             to: eoa1.address,
             data: encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [erc20.address, 0, eoa1Call]),
@@ -249,6 +253,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const eoa2Call = encodeFunctionData('transfer(address to, uint256 value)', [receiver, 2_300n]);
         await waitFor(eoa2.sendTransaction({
             chainId: network.chainId,
+            nonce: 1,
             gasLimit: 1_500_000,
             to: eoa2.address,
             data: encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [erc20.address, 0, eoa2Call]),
