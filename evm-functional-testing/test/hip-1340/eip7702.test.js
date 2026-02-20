@@ -348,8 +348,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
         expect(code).to.be.equal('0x');
         expect(contractBytecode).to.be.equal('0x');
-        // TODO: need to re-pack SDK to remove initialization debug
-        expect(delegationAddress).to.be.equal('0xcafebabe');
+        expect(delegationAddress).to.be.equal('0x');
     });
 
     it('should use the last authorization when multiple authorizations are sent', async function () {
