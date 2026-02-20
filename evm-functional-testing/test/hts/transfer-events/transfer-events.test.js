@@ -40,8 +40,8 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
 
   before(async () => {
     // gas override for testnet. We are increasing testnet gas on 20%
-    ethers.provider.originalEstimateGas = ethers.provider.estimateGas;
-    ethers.provider.estimateGas = async (tx) =>
+    // ethers.provider.originalEstimateGas = ethers.provider.estimateGas;
+    // ethers.provider.estimateGas = async (tx) =>
       (await ethers.provider.originalEstimateGas(tx)) / 10n * 12n; // * 1.2
     // Import the ABI for SDK tests and set up an ethers.js interface using the abi
     context.tokenCreateAbiInterface = new ethers.Interface(
