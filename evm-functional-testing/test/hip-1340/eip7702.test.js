@@ -213,7 +213,58 @@ describe('HIP-1340 - EIP-7702 features', function () {
         });
     });
 
-    it('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
+    it('should get store and logs when delegate execution to EOA in the same type 4 transaction', async function () {
+        const value = 42;
+        const storeAndEmit = await deploy('contracts/hip-1340/StoreAndEmit');
+        const smartWallet = await deploy('contracts/hip-1340/CustomSimple7702Account');
+        const eoa = await createAndFundEOA();
+
+        // Prepare execution data
+        const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
+        const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmit.address, 0, storeAndEmitCall]);
+
+        // Delegation and execution in the same transaction
+        const resp = await eoa.sendTransaction({
+            type: 4,
+            chainId: network.chainId,
+            nonce: 0,
+            maxFeePerGas: ethers.parseUnits('710', 'gwei'),
+            maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
+            gasLimit: 800_000,
+            value: 0,
+            to: eoa.address,
+            data,
+            authorizationList: [await eoa.authorize({
+                chainId: 0,
+                nonce: 1,
+                address: smartWallet.address,
+            })],
+        });
+        const receipt = await resp.wait().catch(err => (log('Transaction receipt failed:', err.message), err.receipt));
+
+        const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+        // expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
+        expect(contractBytecode).to.be.equal(designatorFor(smartWallet.address.toLowerCase()));
+        expect(delegationAddress).to.be.equal(smartWallet.address.toLowerCase());
+
+        log('Logs', receipt.logs);
+        expect(receipt.logs.length).to.be.equal(1);
+        expect(receipt.logs[0]).to.deep.include({
+            address: storeAndEmit.address,
+            topics: [
+                ethers.id('StoreAndEmitEvent(uint256)'),
+                asHexUint256(value),
+            ],
+        });
+
+        const valueSlot = 0;
+        const storedValue = await provider.getStorage(storeAndEmit.address, valueSlot);
+        log('Stored value at %s:%s is %s', storeAndEmit.address, valueSlot, storedValue);
+        expect(storedValue).to.be.equal(asHexUint256(value));
+    });
+
+    it('should transfer ERC20 tokens when EOAs send transactions to themselves', async function () {
         const erc20 = await deploy('contracts/hip-1340/ERC20Mintable', ['Test', 'TST', 10_000_000n]);
         const tx = await erc20.contract.mint(50_000n);
         await tx.wait();
