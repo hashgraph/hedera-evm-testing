@@ -1,5 +1,5 @@
 const assert = require('node:assert').strict;
-const log = require('node:util').debuglog('hip-1340');
+const log = require('node:util').debuglog('hip-1340:eip7702');
 
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
@@ -55,7 +55,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
                             '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
                         ].flatMap(delegateToAddress => ({ receiver, trigger, value, delegateToChainId, delegateToAddress })))))
         ).forEach(({ receiver, trigger, value, delegateToChainId, delegateToAddress }) => {
-
             it(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
                 const sender = await createAndFundEOA();
                 const to = (await receiver.fn()).address;
@@ -103,10 +102,10 @@ describe('HIP-1340 - EIP-7702 features', function () {
         });
     });
 
-    [0n, 10_000n].forEach(value => {
-        it.skip(`should run no-op with value ${value} when delegating to HTS system contract`, async function () {
+    [0n, 10_000n * 1_00000_00000n].forEach(value => {
+        it(`should run no-op with value ${value} when delegating to HTS system contract`, async function () {
             const sender = await createAndFundEOA();
-            const eoa = await createAndFundEOA(asAddress(0x167));
+            const eoa = await web3.authorizeEOADelegation(await createAndFundEOA(), asAddress(0x167));
             const balance = await provider.getBalance(eoa.address);
             const data = encodeFunctionData('approve(address token, address spender, uint256 amount)', [eoa.address, sender.address, 1000]);
 
@@ -441,40 +440,4 @@ describe('HIP-1340 - EIP-7702 features', function () {
         });
         await expect(resp).to.be.rejectedWith(/intrinsic gas too low/);
     });
-
-    // TODO(pectra): Move to Hiero specific test suite
-    it.skip('should return delegation designation to `0x167` when an HTS token is created', async function () {
-        const operatorId = sdk.AccountId.fromString(process.env.OPERATOR_ID);
-        const operatorKey = sdk.PrivateKey.fromStringECDSA(process.env.OPERATOR_KEY);
-        const client = sdk.Client.forNetwork({ '127.0.0.1:50211': '0.0.3' });
-        client.setOperator(operatorId, operatorKey);
-
-        const tx = new sdk.TokenCreateTransaction({
-            tokenName: "Test",
-            tokenSymbol: "TST",
-            initialSupply: 1000n,
-            decimals: 2,
-            treasuryAccountId: operatorId,
-        });
-        const resp = await tx.execute(client);
-
-        const receipt = await resp.getReceipt(client);
-        assert(receipt.status === sdk.Status.Success, `Token creation failed with status: ${receipt.status}`);
-        log('Token Create Transaction ID:', resp.transactionId.toString(), 'Token ID', receipt.tokenId?.toString());
-
-        const tokenId = receipt.tokenId;
-        assert(tokenId !== null, 'Token ID cannot be null');
-        console.info('Transaction status:', tokenId.toString());
-        const tokenAddr = '0x' + tokenId.toEvmAddress();
-        console.info('Transaction status:', tokenAddr);
-
-        client.close();
-
-        // TODO: Phase 1 - Base implementation
-        new sdk.ContractByteCodeQuery();
-
-        // TODO: Phase 2 - MN impl
-        const code = await provider.getCode(tokenAddr);
-        expect(code).to.be.equal(designatorFor('0x0000000000000000000000000000000000000167'));
-    })
 });
