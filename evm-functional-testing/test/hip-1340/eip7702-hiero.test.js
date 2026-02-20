@@ -3,9 +3,10 @@ const log = require('node:util').debuglog('hip-1340');
 
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
-const { deploy, designatorFor, createAndFundEOA, encodeFunctionData, waitFor, Nonce, sendDelegation, verifyDelegation, associateHtsToken, associateHtsTokenViaDelegation, HTS_ADDRESS } = require('./utils/web3');
+const { deploy, designatorFor, createAndFundEOA, waitFor, Nonce, sendDelegation, verifyDelegation, associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation, HTS_ADDRESS } = require('./utils/web3');
 const { setupProviderAndNetwork } = require('./utils/setup');
 const Utils = require('../../utils/utils');
+const { validateErcEvent } = require('../../utils/events');
 
 const ERC_20_ABI = [
     'function name() view returns (string)',
@@ -14,10 +15,7 @@ const ERC_20_ABI = [
     'function balanceOf(address owner) view returns (uint256)',
 ];
 
-const SMART_WALLET_EXECUTE_SIG = 'execute(address target, uint256 value, bytes calldata data)';
-
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
-const GAS_LIMIT = 1_500_000;
 const TEST_TOKEN_NAME = "tokenName";
 const TEST_TOKEN_SYMBOL = "tokenSymbol";
 
@@ -69,15 +67,13 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
     });
 
     it('should transfer HTS tokens when two EOAs delegate to the same Smart Wallet and send self-sponsored transactions', async function () {
-        // 1. Create two EOAs and a receiver, all delegated to the same Smart Wallet
+        // Create two EOAs and a receiver, all delegated to the same Smart Wallet
         const eoa1 = await createAndFundEOA();
         const eoa2 = await createAndFundEOA();
         const receiver = await createAndFundEOA();
-        log('EOA1: %s, EOA2: %s, Receiver: %s', eoa1.address, eoa2.address, receiver.address);
 
-        // 2. Deploy Simple7702Account (the Smart Wallet both EOAs will delegate to)
+        // Deploy Simple7702Account (the Smart Wallet both EOAs will delegate to)
         const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
-        log('Simple7702Account deployed at %s', smartWallet.address);
 
         const [eoa1Nonce, eoa2Nonce, receiverNonce] = [new Nonce(), new Nonce(), new Nonce()];
 
@@ -90,10 +86,8 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
 
         // Deploy TokenCreateContract and create HTS fungible token
         const tokenCreateContract = await Utils.deployTokenCreateContract();
-        log('TokenCreateContract deployed at %s', tokenCreateContract.target);
 
         const tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
-        log('HTS fungible token created at %s', tokenAddress);
 
         // Associate all accounts with the HTS token
         await associateHtsTokenViaDelegation(eoa1, tokenAddress, eoa1Nonce);
@@ -108,7 +102,6 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         // Transfer HTS tokens from treasury to both EOAs
         await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, eoa1.address, 5_000));
         await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, eoa2.address, 7_000));
-        log('Funded EOA1 with 5000 and EOA2 with 7000 HTS tokens');
 
         // Verify initial balances via ERC20 proxy
         const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
@@ -120,34 +113,12 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         assert(eoa2InitBalance === 7_000n, `EOA2 initial balance should be 7000 but got ${eoa2InitBalance}`);
 
         // EOA1 sends self-sponsored transaction to transfer 1500 HTS tokens to receiver
-        const eoa1TransferCalldata = encodeFunctionData('transfer(address to, uint256 value)', [receiver.address, 1_500n]);
-        const receipt1 = await waitFor(eoa1.sendTransaction({
-            nonce: eoa1Nonce.next(),
-            chainId: network.chainId,
-            gasLimit: GAS_LIMIT,
-            to: eoa1.address,
-            data: encodeFunctionData(
-                SMART_WALLET_EXECUTE_SIG,
-                [tokenAddress, 0, eoa1TransferCalldata]
-            ),
-        }));
+        const receipt1 = await transferHtsTokenViaDelegation(eoa1, tokenAddress, receiver.address, 1_500n, eoa1Nonce);
         assert(receipt1 !== null, 'EOA1 transfer receipt is null');
-        log('EOA1 transfer tx: %s, logs: %d', receipt1.hash, receipt1.logs.length);
 
         // EOA2 sends self-sponsored transaction to transfer 2300 HTS tokens to receiver
-        const eoa2TransferCalldata = encodeFunctionData('transfer(address to, uint256 value)', [receiver.address, 2_300n]);
-        const receipt2 = await waitFor(eoa2.sendTransaction({
-            nonce: eoa2Nonce.next(),
-            chainId: network.chainId,
-            gasLimit: GAS_LIMIT,
-            to: eoa2.address,
-            data: encodeFunctionData(
-                SMART_WALLET_EXECUTE_SIG,
-                [tokenAddress, 0, eoa2TransferCalldata]
-            ),
-        }));
+        const receipt2 = await transferHtsTokenViaDelegation(eoa2, tokenAddress, receiver.address, 2_300n, eoa2Nonce);
         assert(receipt2 !== null, 'EOA2 transfer receipt is null');
-        log('EOA2 transfer tx: %s, logs: %d', receipt2.hash, receipt2.logs.length);
 
         // Verify final balances
         const eoa1FinalBalance = await tokenContract.balanceOf(eoa1.address);
@@ -160,41 +131,12 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         expect(receiverBalance).to.be.equal(3_800n, 'Receiver balance should be 3800 (1500 + 2300)');
 
         // Verify HTS Transfer events are emitted correctly and visible from the EOA transactions
-        const transferEventSig = ethers.id('Transfer(address,address,uint256)');
-
-        // --- EOA1 receipt: HTS Transfer event ---
-        const eoa1TransferLogs = receipt1.logs.filter(l => l.topics[0] === transferEventSig);
-        expect(eoa1TransferLogs.length).to.be.greaterThanOrEqual(1, 'EOA1 receipt should contain HTS Transfer event');
-
-        expect(eoa1TransferLogs[0].address.toLowerCase()).to.equal(
-            tokenAddress.toLowerCase(),
-            'Transfer event should be emitted from the HTS token address'
-        );
-        expect(eoa1TransferLogs[0].topics[1]).to.equal(
-            ethers.zeroPadValue(eoa1.address, 32).toLowerCase(),
-            'Transfer `from` should be EOA1'
-        );
-        expect(eoa1TransferLogs[0].topics[2]).to.equal(
-            ethers.zeroPadValue(receiver.address, 32).toLowerCase(),
-            'Transfer `to` should be receiver'
-        );
-
-        // --- EOA2 receipt: HTS Transfer event ---
-        const eoa2TransferLogs = receipt2.logs.filter(l => l.topics[0] === transferEventSig);
-        expect(eoa2TransferLogs.length).to.be.greaterThanOrEqual(1, 'EOA2 receipt should contain HTS Transfer event');
-
-        expect(eoa2TransferLogs[0].address.toLowerCase()).to.equal(
-            tokenAddress.toLowerCase(),
-            'Transfer event should be emitted from the HTS token address'
-        );
-        expect(eoa2TransferLogs[0].topics[1]).to.equal(
-            ethers.zeroPadValue(eoa2.address, 32).toLowerCase(),
-            'Transfer `from` should be EOA2'
-        );
-        expect(eoa2TransferLogs[0].topics[2]).to.equal(
-            ethers.zeroPadValue(receiver.address, 32).toLowerCase(),
-            'Transfer `to` should be receiver'
-        );
+        await validateErcEvent(receipt1, [
+            { address: tokenAddress, from: eoa1.address, to: receiver.address, amount: 1_500 },
+        ]);
+        await validateErcEvent(receipt2, [
+            { address: tokenAddress, from: eoa2.address, to: receiver.address, amount: 2_300 },
+        ]);
     });
 
 });
