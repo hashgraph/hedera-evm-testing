@@ -393,7 +393,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
     });
 
     it('should authorize delegation of an existing account when exact gas is sent', async function () {
-        const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
+        const delegateToAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
         const eoa = await createAndFundEOA();
 
         const resp = await eoa.sendTransaction({
@@ -405,7 +405,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
             authorizationList: [await eoa.authorize({
                 chainId: 0,
                 nonce: 1,
-                address: delegateAddress,
+                address: delegateToAddress,
             })],
         });
         await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
@@ -413,8 +413,8 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
         // expect(code).to.be.equal(designatorFor(delegateAddress));
-        expect(contractBytecode).to.be.equal(designatorFor(delegateAddress));
-        expect(delegationAddress).to.be.equal(delegateAddress);
+        expect(contractBytecode).to.be.equal(designatorFor(delegateToAddress));
+        expect(delegationAddress).to.be.equal(delegateToAddress);
     });
 
     // TODO(pectra): Enable once intrinsic gas checks are implemented in the Relay
