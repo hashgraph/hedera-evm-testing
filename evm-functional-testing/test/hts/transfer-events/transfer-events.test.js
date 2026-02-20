@@ -39,6 +39,10 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
   }; // using this object to pass 'before' results to tests in other files
 
   before(async () => {
+    // gas override for testnet. We are increasing testnet gas on 20%
+    ethers.provider.originalEstimateGas = ethers.provider.estimateGas;
+    ethers.provider.estimateGas = async (tx) =>
+      (await ethers.provider.originalEstimateGas(tx)) / 10n * 12n; // * 1.2
     // Import the ABI for SDK tests and set up an ethers.js interface using the abi
     context.tokenCreateAbiInterface = new ethers.Interface(
       (
@@ -75,7 +79,7 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
       context.receiverWallet1,
       context.receiverWallet2,
       context.receiverNotAssociated,
-    ] = await createTestContracts(3, 2, context);
+    ] = await createTestContracts(3, 5, context);
   });
 
   describe("Relay -> HTS -> ERC events", async () => {

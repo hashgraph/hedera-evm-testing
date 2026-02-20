@@ -63,10 +63,11 @@ async function createReceiver(receiversBalance, IHRC904AccountFacade) {
   const signers = await ethers.getSigners();
   // create new receiver account
   const receiver = ethers.Wallet.createRandom(ethers.provider);
-  await signers[0].sendTransaction({
+  const transaction = await signers[0].sendTransaction({
     to: receiver.address,
     value: Constants.ONE_HBAR * BigInt(receiversBalance),
   });
+  await transaction.wait(); // wait for receipt
   // wrap new receiver account to receiverAbiInterface facade
   const receiverFacade = new ethers.Contract(
     receiver.address,
@@ -76,7 +77,8 @@ async function createReceiver(receiversBalance, IHRC904AccountFacade) {
   // disable Unlimited Automatic Associations
   await (await receiverFacade.setUnlimitedAutomaticAssociations(false)).wait();
   console.log(
-    "Created receiver account address:%s balance:%s HBAR",
+    "%s Created receiver account address:%s balance:%s HBAR",
+    transaction.hash,
     receiver.address,
     receiversBalance,
   );
@@ -210,28 +212,29 @@ async function mintForNonFungibleTokenTests(
       .map((e) => `0x${e.toString(16).padStart(2, "0")}`),
   );
   const singleMintSize = 10; // 10 is max for a single call
+  const mintTransactionHashes = [];
   for (let i = 0; i < metadata.length; i += singleMintSize) {
     const requestMetadata = metadata.slice(i, i + singleMintSize);
-    const serialNumbersObject = (
-      await (
-        await transferContract.mintTokenPublic(
-          tokenContract,
-          tokenAddress,
-          0,
-          requestMetadata,
-        )
-      ).wait()
-    ).logs.find((e) => e.fragment.name === Constants.Events.MintedToken).args
-      .serialNumbers;
+    const mintTransaction = await transferContract.mintTokenPublic(
+      tokenContract,
+      tokenAddress,
+      0,
+      requestMetadata,
+    );
+    mintTransactionHashes.push(mintTransaction.hash);
+    const serialNumbersObject = (await mintTransaction.wait()).logs.find(
+      (e) => e.fragment.name === Constants.Events.MintedToken,
+    ).args.serialNumbers;
     serialNumbers = serialNumbers.concat(
       Array.from(serialNumbersObject.values()),
     );
   }
   console.log(
-    "Mint token:%s treasury:%s serialNumbers:%s",
+    "Mint token:%s treasury:%s serialNumbers:%s tx.hash:%s",
     tokenAddress,
     transferContract.target,
     serialNumbers,
+    mintTransactionHashes,
   );
   return serialNumbers;
 }
