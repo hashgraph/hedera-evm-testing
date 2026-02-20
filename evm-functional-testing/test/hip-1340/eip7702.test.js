@@ -3,7 +3,6 @@ const log = require('node:util').debuglog('hip-1340:eip7702');
 
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
-const sdk = require('@hiero-ledger/sdk');
 
 const { MirrorNode } = require('evm-functional-testing/mirror-node');
 const { getAccountInfo, getContractByteCode, getTransactionRecord, getAccountRecords } = require('./utils/sdk');
@@ -31,7 +30,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
     });
 
     describe('EOA delegation setup via type 4 transactions', function () {
-
         [
             { fn: () => ethers.Wallet.createRandom(), desc: 'Random EVM address' },
             { fn: () => createAndFundEOA(), desc: 'Pre-funded EOA' },
@@ -213,7 +211,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
             log('Stored value at %s:%s is %s', storeAndEmit.address, valueSlot, storedValue);
             expect(storedValue).to.be.equal(asHexUint256(value));
         });
-
     });
 
     it('should transfer HTS and ERC20 tokens when EOAs send transactions to themselves', async function () {
