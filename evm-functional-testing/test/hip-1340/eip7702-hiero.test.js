@@ -34,10 +34,7 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
     it('should return delegation designation to 0x167 when an HTS token is created', async function () {
         // Deploy TokenCreateContract and create HTS fungible token
         const tokenCreateContract = await Utils.deployTokenCreateContract();
-        log('TokenCreateContract deployed at %s', tokenCreateContract.target);
-
         const tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
-        log('HTS fungible token created at %s', tokenAddress);
 
         // Let's verify the token properties
         const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
@@ -55,7 +52,6 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         // Grant KYC (required because createFungibleTokenPublic creates the token with a KYC key)
         await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, anotherAddress.address));
 
-        console.log('Transferring 1000 tokens to %s', anotherAddress.address);
         await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, anotherAddress.address, 1000));
         const anotherAddressBalance = await tokenContract.balanceOf(anotherAddress.address);
         expect(anotherAddressBalance).to.be.equal(1000);
