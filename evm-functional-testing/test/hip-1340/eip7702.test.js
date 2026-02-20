@@ -33,9 +33,9 @@ describe('HIP-1340 - EIP-7702 features', function () {
     describe('EOA delegation setup via type 4 transactions', function () {
 
         [
-            'HOLLOW',
-            'FUNDED',
-        ].flatMap(toKind =>
+            { fn: () => ethers.Wallet.createRandom(), desc: 'Random EVM address' },
+            { fn: () => createAndFundEOA(), desc: 'Pre-funded EOA' },
+        ].flatMap(receiver =>
             [
                 'EXTERNAL',
                 'SELF',
@@ -45,20 +45,25 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     1234n,
                 ].flatMap(value =>
                     [
-                        asAddress(1), // a precompile addresses https://www.evm.codes/precompiled?fork=prague
-                        asAddress(0x167), // a system contract address https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts
-                        '0x0000000000000000000000000000000000068cDa', // Long-zero address
-                        '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
-                    ].flatMap(delegateToAddress => ({ toKind, trigger, value, delegateToAddress }))))
-        ).forEach(({ toKind, trigger, value, delegateToAddress }) => {
-            it(`should store delegation designator ${toKind} ${trigger} for EOA to ${delegateToAddress} via a type4 transaction sending ${value} th`, async function () {
+                        { fn: () => 0, desc: 'all chains' },
+                        { fn: () => network.chainId, desc: 'specific chain id of current network' },
+                    ].flatMap(delegateToChainId =>
+                        [
+                            asAddress(1), // a precompile addresses https://www.evm.codes/precompiled?fork=prague
+                            asAddress(0x167), // a system contract address https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts
+                            '0x0000000000000000000000000000000000068cDa', // Long-zero address
+                            '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
+                        ].flatMap(delegateToAddress => ({ receiver, trigger, value, delegateToChainId, delegateToAddress })))))
+        ).forEach(({ receiver, trigger, value, delegateToChainId, delegateToAddress }) => {
+
+            it(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
                 const sender = await createAndFundEOA();
-                const receiver = toKind === 'FUNDED' ? await createAndFundEOA() : ethers.Wallet.createRandom();
+                const to = (await receiver.fn()).address;
                 const [delegated, authNonce] = trigger === 'SELF'
                     ? [sender, 1]
                     : [await createAndFundEOA(), 0];
 
-                log('Sending %s th to %s from %s and delegating %s to %s', value, receiver.address, sender.address, delegated.address, delegateToAddress);
+                log('Sending %s th to %s from %s and delegating %s to %s', value, to, sender.address, delegated.address, delegateToAddress);
                 const tx = {
                     type: 4,
                     chainId: network.chainId,
@@ -67,9 +72,9 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
                     gasLimit: 800_000,
                     value: value * 1_00000_00000n,
-                    to: receiver.address,
+                    to,
                     authorizationList: [await delegated.authorize({
-                        chainId: 0,
+                        chainId: delegateToChainId.fn(),
                         nonce: authNonce,
                         address: delegateToAddress,
                     })],
