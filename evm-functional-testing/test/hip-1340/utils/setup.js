@@ -1,4 +1,3 @@
-const log = require('node:util').debuglog('hip-1340');
 const { ethers } = require('hardhat');
 
 /**
@@ -15,7 +14,7 @@ async function setupProviderAndNetwork() {
     provider = (await ethers.getSigners())[0].provider;
     network = await provider.getNetwork();
     
-    return { provider, network, log };
+    return { provider, network };
 }
 
 module.exports = { setupProviderAndNetwork };

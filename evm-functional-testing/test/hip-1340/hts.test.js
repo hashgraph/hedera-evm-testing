@@ -1,12 +1,16 @@
 const assert = require('node:assert').strict;
-const log = require('node:util').debuglog('hip-1340');
+const log = require('node:util').debuglog('hip-1340:hts');
 
-const { expect } = require('chai');
-const { ethers } = require('hardhat');
-const { deploy, designatorFor, createAndFundEOA, waitFor, Nonce, sendDelegation, verifyDelegation, associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation, HTS_ADDRESS } = require('./utils/web3');
-const { setupProviderAndNetwork } = require('./utils/setup');
+const {expect} = require('chai');
+const {ethers} = require('hardhat');
+const {deploy, createAndFundEOA, getCodes, waitFor, Nonce, sendDelegation, verifyDelegation, designatorFor} = require('./utils/web3');
+const {associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation} = require('./utils/hts');
+const {setupProviderAndNetwork} = require('./utils/setup');
 const Utils = require('../../utils/utils');
-const { validateErcEvent } = require('../../utils/events');
+const {validateErcEvent} = require('../../utils/events');
+const {HTS_ADDRESS} = require("../../utils/constants");
+const {getContractByteCode} = require("./utils/sdk");
+const { MirrorNode } = require('evm-functional-testing/mirror-node');
 
 const ERC_20_ABI = [
     'function name() view returns (string)',
@@ -27,7 +31,7 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
     let network;
 
     before(async function () {
-        ({ provider, network } = await setupProviderAndNetwork());
+        ({provider, network} = await setupProviderAndNetwork());
         log('Starting test suite `%s` on network `%s` (chain id %s)', this.test.parent.title, network.name, Number(network.chainId));
     });
 
@@ -96,8 +100,8 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, receiver.address));
 
         // Transfer HTS tokens from treasury to both EOAs
-        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, eoa1.address, 5_000));
-        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, eoa2.address, 7_000));
+        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, eoa1.address, 5_000n));
+        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, eoa2.address, 7_000n));
 
         // Verify initial balances via ERC20 proxy
         const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
@@ -128,10 +132,10 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
 
         // Verify HTS Transfer events are emitted correctly and visible from the EOA transactions
         await validateErcEvent(receipt1, [
-            { address: tokenAddress, from: eoa1.address, to: receiver.address, amount: 1_500 },
+            {address: tokenAddress, from: eoa1.address, to: receiver.address, amount: 1_500n},
         ]);
         await validateErcEvent(receipt2, [
-            { address: tokenAddress, from: eoa2.address, to: receiver.address, amount: 2_300 },
+            {address: tokenAddress, from: eoa2.address, to: receiver.address, amount: 2_300n},
         ]);
     });
 
