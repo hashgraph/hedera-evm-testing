@@ -3,14 +3,13 @@ const log = require('node:util').debuglog('hip-1340:hts');
 
 const {expect} = require('chai');
 const {ethers} = require('hardhat');
-const {deploy, createAndFundEOA, getCodes, waitFor, Nonce, sendDelegation, verifyDelegation, designatorFor} = require('./utils/web3');
+const {deploy, createAndFundEOA, waitFor, Nonce, sendDelegation, verifyDelegation, designatorFor} = require('./utils/web3');
 const {associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation} = require('./utils/hts');
 const {setupProviderAndNetwork} = require('./utils/setup');
 const Utils = require('../../utils/utils');
 const {validateErcEvent} = require('../../utils/events');
 const {HTS_ADDRESS} = require("../../utils/constants");
 const {getContractByteCode} = require("./utils/sdk");
-const { MirrorNode } = require('evm-functional-testing/mirror-node');
 
 const ERC_20_ABI = [
     'function name() view returns (string)',
@@ -61,9 +60,13 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         expect(anotherAddressBalance).to.be.equal(1000);
 
         // Verify the HTS token address has a delegation designator pointing to 0x167
-        // TODO(dsinyakov): uncomment when relay and MN respond with 7702 delegation
+        const entityNum = parseInt(tokenAddress.slice(-8), 16);
+        const bytecode = await getContractByteCode(`0.0.${entityNum}`);
+        const contractBytecode = '0x' + Buffer.from(bytecode).toString('hex');
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
         // const code = await provider.getCode(tokenAddress);
         // expect(code).to.be.equal(designatorFor(HTS_ADDRESS));
+        expect(contractBytecode).to.be.equal(designatorFor(HTS_ADDRESS));
     });
 
     it('should transfer HTS tokens when two EOAs delegate to the same Smart Wallet and send self-sponsored transactions', async function () {
