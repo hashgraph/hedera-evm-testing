@@ -3,12 +3,12 @@ const log = require('node:util').debuglog('hip-1340:hts');
 
 const {expect} = require('chai');
 const {ethers} = require('hardhat');
-const {deploy, createAndFundEOA, waitFor, Nonce, sendDelegation, verifyDelegation, designatorFor} = require('./utils/web3');
-const {associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation} = require('./utils/hts');
+const {deploy, createAndFundEOA, waitFor, Nonce, sendDelegation, verifyDelegation, designatorFor, encodeFunctionData} = require('./utils/web3');
+const {associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation, executeBatchViaDelegation} = require('./utils/hts');
 const {setupProviderAndNetwork} = require('./utils/setup');
 const Utils = require('../../utils/utils');
 const {validateErcEvent} = require('../../utils/events');
-const {HTS_ADDRESS} = require("../../utils/constants");
+const {HTS_ADDRESS, ONE_HBAR, TINYBAR_TO_WEIBAR_COEF} = require("../../utils/constants");
 const {getContractByteCode} = require("./utils/sdk");
 const {MirrorNode} = require("evm-functional-testing/mirror-node");
 
@@ -140,6 +140,134 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         ]);
         await validateErcEvent(receipt2, [
             {address: tokenAddress, from: eoa2.address, to: receiver.address, amount: 2_300n},
+        ]);
+    });
+
+    it('should batch-transfer HTS tokens to multiple recipients from a delegated EOA via executeBatch', async function () {
+        // Create Alice (delegator), Bob and Carol (receivers)
+        const alice = await createAndFundEOA();
+        const bob = await createAndFundEOA();
+        const carol = await createAndFundEOA();
+
+        // Deploy Simple7702Account and delegate Alice
+        const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
+        const aliceNonce = new Nonce();
+        const bobNonce = new Nonce();
+        const carolNonce = new Nonce();
+
+        await sendDelegation(alice, smartWallet.address, aliceNonce);
+        await verifyDelegation(alice.address, smartWallet.address);
+
+        // Deploy TokenCreateContract and create HTS fungible token
+        const tokenCreateContract = await Utils.deployTokenCreateContract();
+        const tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
+
+        // Associate all accounts with the HTS token
+        await associateHtsTokenViaDelegation(alice, tokenAddress, aliceNonce);
+        await associateHtsToken(bob, tokenAddress, bobNonce);
+        await associateHtsToken(carol, tokenAddress, carolNonce);
+
+        // Grant KYC to all
+        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, alice.address));
+        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, bob.address));
+        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, carol.address));
+
+        // Transfer 500 HTS tokens from treasury to Alice
+        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, alice.address, 500n));
+
+        // Verify initial balances
+        const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
+        const aliceInitTokens = await tokenContract.balanceOf(alice.address);
+        assert(aliceInitTokens === 500n, `Alice should have 500 tokens but has ${aliceInitTokens}`);
+
+        // Alice batch-transfers: 100 tokens to Bob + 150 tokens to Carol in one transaction
+        const transferToBob = encodeFunctionData('transfer(address to, uint256 value)', [bob.address, 100n]);
+        const transferToCarol = encodeFunctionData('transfer(address to, uint256 value)', [carol.address, 150n]);
+
+        const receipt = await executeBatchViaDelegation(alice, [
+            { target: tokenAddress, value: 0n, data: transferToBob },
+            { target: tokenAddress, value: 0n, data: transferToCarol },
+        ], aliceNonce);
+        assert(receipt !== null, 'Batch execution receipt is null');
+
+        // Verify final balances
+        const aliceFinalTokens = await tokenContract.balanceOf(alice.address);
+        expect(aliceFinalTokens).to.be.equal(250n, 'Alice should have 250 tokens remaining (500 - 100 - 150)');
+
+        const bobTokens = await tokenContract.balanceOf(bob.address);
+        expect(bobTokens).to.be.equal(100n, 'Bob should have received 100 tokens');
+
+        const carolTokens = await tokenContract.balanceOf(carol.address);
+        expect(carolTokens).to.be.equal(150n, 'Carol should have received 150 tokens');
+
+        // Verify HTS Transfer events
+        await validateErcEvent(receipt, [
+            { address: tokenAddress, from: alice.address, to: bob.address, amount: 100n },
+            { address: tokenAddress, from: alice.address, to: carol.address, amount: 150n },
+        ]);
+    });
+
+    it('should batch-transfer 1 HBAR and 100 HTS tokens from a delegated EOA to another EOA via executeBatch', async function () {
+        const alice = await createAndFundEOA();
+        const bob = await createAndFundEOA();
+
+        const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
+        const aliceNonce = new Nonce();
+        const bobNonce = new Nonce();
+
+        await sendDelegation(alice, smartWallet.address, aliceNonce);
+        await verifyDelegation(alice.address, smartWallet.address);
+
+        // Deploy TokenCreateContract and create HTS fungible token
+        const tokenCreateContract = await Utils.deployTokenCreateContract();
+        const tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
+
+        // Associate both accounts with the HTS token
+        await associateHtsTokenViaDelegation(alice, tokenAddress, aliceNonce);
+        await associateHtsToken(bob, tokenAddress, bobNonce);
+
+        // Grant KYC to both
+        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, alice.address));
+        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, bob.address));
+
+        // Transfer 500 HTS tokens from treasury to Alice
+        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, alice.address, 500n));
+
+        const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
+        const aliceInitTokens = await tokenContract.balanceOf(alice.address);
+        assert(aliceInitTokens === 500n, `Alice should have 500 tokens but has ${aliceInitTokens}`);
+
+        const bobBalanceBefore = await provider.getBalance(bob.address);
+        const bobTokensBefore = await tokenContract.balanceOf(bob.address);
+
+        // Internal EVM calls use tinybars (8 decimals), not weibars (18 decimals).
+        const oneHbarInTinybars = ONE_HBAR / TINYBAR_TO_WEIBAR_COEF;
+
+        const transferCalldata = encodeFunctionData(
+            'transfer(address to, uint256 value)',
+            [bob.address, 100n]
+        );
+
+        const receipt = await executeBatchViaDelegation(alice, [
+            { target: bob.address, value: oneHbarInTinybars, data: '0x' },
+            { target: tokenAddress, value: 0n, data: transferCalldata },
+        ], aliceNonce);
+        assert(receipt !== null, 'Batch execution receipt is null');
+
+        // Verify HBAR transfer
+        const bobBalanceAfter = await provider.getBalance(bob.address);
+        expect(bobBalanceAfter - bobBalanceBefore).to.be.equal(ONE_HBAR, 'Bob should have received 1 HBAR');
+
+        // Verify HTS token transfer
+        const aliceFinalTokens = await tokenContract.balanceOf(alice.address);
+        expect(aliceFinalTokens).to.be.equal(400n, 'Alice should have 400 tokens remaining');
+
+        const bobTokensAfter = await tokenContract.balanceOf(bob.address);
+        expect(bobTokensAfter - bobTokensBefore).to.be.equal(100n, 'Bob should have received 100 tokens');
+
+        // Verify HTS Transfer event
+        await validateErcEvent(receipt, [
+            { address: tokenAddress, from: alice.address, to: bob.address, amount: 100n },
         ]);
     });
 

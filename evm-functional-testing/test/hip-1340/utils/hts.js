@@ -90,4 +90,30 @@ async function transferHtsTokenViaDelegation(eoa, tokenAddress, to, amount, nonc
     return receipt;
 }
 
-module.exports = { associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation, HTS_ADDRESS };
+/**
+ * Executes a batch of calls through a delegated EOA's Smart Wallet `executeBatch()`.
+ * Each call is a tuple of `(address target, uint256 value, bytes data)`.
+ *
+ * @param {import('ethers').BaseWallet} eoa - The delegated EOA
+ * @param {Array<{target: string, value: bigint, data: string}>} calls - Array of calls to execute
+ * @param {import('./web3').Nonce} [nonce] - Optional nonce tracker
+ * @param {number} [gasLimit=1_500_000] - Gas limit
+ * @returns {Promise<import('ethers').TransactionReceipt | null>}
+ */
+async function executeBatchViaDelegation(eoa, calls, nonce, gasLimit = 1_500_000) {
+    const network = await eoa.provider.getNetwork();
+    const receipt = await waitFor(eoa.sendTransaction({
+        chainId: network.chainId,
+        gasLimit,
+        ...(nonce ? { nonce: nonce.next() } : {}),
+        to: eoa.address,
+        data: encodeFunctionData(
+            'executeBatch((address target, uint256 value, bytes data)[] calls)',
+            [calls.map(c => [c.target, c.value, c.data])]
+        ),
+    }));
+    log('Executed batch of %d calls from %s', calls.length, eoa.address);
+    return receipt;
+}
+
+module.exports = { associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation, executeBatchViaDelegation, HTS_ADDRESS };
