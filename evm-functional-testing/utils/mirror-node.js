@@ -20,6 +20,22 @@ class MirrorNode {
     }
 
     /**
+     * @param {string} idOrEvmAddress
+     * @returns 
+     */
+    getContract(idOrEvmAddress) {
+        return this.#fetch(`contracts/${idOrEvmAddress}`);
+    }
+
+    /**
+     * @param {string} idOrEvmAddress
+     * @returns 
+     */
+    getToken(idOrEvmAddress) {
+        return this.#fetch(`tokens/${idOrEvmAddress}`);
+    }
+
+    /**
      * 
      * @param {string} transactionIdOrHash 
      * @returns 

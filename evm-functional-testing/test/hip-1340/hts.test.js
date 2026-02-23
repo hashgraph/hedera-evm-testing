@@ -10,6 +10,7 @@ const Utils = require('../../utils/utils');
 const {validateErcEvent} = require('../../utils/events');
 const {HTS_ADDRESS} = require("../../utils/constants");
 const {getContractByteCode} = require("./utils/sdk");
+const {MirrorNode} = require("evm-functional-testing/mirror-node");
 
 const ERC_20_ABI = [
     'function name() view returns (string)',
@@ -60,8 +61,8 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         expect(anotherAddressBalance).to.be.equal(1000);
 
         // Verify the HTS token address has a delegation designator pointing to 0x167
-        const entityNum = parseInt(tokenAddress.slice(-8), 16);
-        const bytecode = await getContractByteCode(`0.0.${entityNum}`);
+        const { token_id: tokenId } = await new MirrorNode().getToken(tokenAddress);
+        const bytecode = await getContractByteCode(tokenId);
         const contractBytecode = '0x' + Buffer.from(bytecode).toString('hex');
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
         // const code = await provider.getCode(tokenAddress);
