@@ -22,7 +22,7 @@ const {
 const {setupProviderAndNetwork} = require('./utils/setup');
 const Utils = require('../../utils/utils');
 const {validateErcEvent} = require('../../utils/events');
-const {HTS_ADDRESS, ONE_HBAR, TINYBAR_TO_WEIBAR_COEF, GAS_LIMIT_5_000_000} = require("../../utils/constants");
+const {HTS_ADDRESS, ONE_HBAR, TINYBAR_TO_WEIBAR_COEF} = require("../../utils/constants");
 const {getContractByteCode} = require("./utils/sdk");
 const {MirrorNode} = require("evm-functional-testing/mirror-node");
 
@@ -221,7 +221,7 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         ]);
     });
 
-    it('should batch-transfer 1 HBAR and 100 HTS tokens from a delegated EOA to another EOA via executeBatch', async function () {
+    async function setupBatchHbarAndHtsTransferScenario() {
         const alice = await createAndFundEOA();
         const bob = await createAndFundEOA();
 
@@ -236,9 +236,29 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         const tokenCreateContract = await Utils.deployTokenCreateContract();
         const tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
 
-        // Associate both accounts with the HTS token
+        // Alice is always delegated and associates via delegation.
         await associateHtsTokenViaDelegation(alice, tokenAddress, aliceNonce);
+
+        return {alice, bob, smartWallet, aliceNonce, bobNonce, tokenCreateContract, tokenAddress};
+    }
+
+    async function associateRecipientDirectly({bob, tokenAddress, bobNonce}) {
         await associateHtsToken(bob, tokenAddress, bobNonce);
+    }
+
+    async function associateRecipientViaDelegation({bob, smartWallet, tokenAddress, bobNonce}) {
+        await sendDelegation(bob, smartWallet.address, bobNonce);
+        await verifyDelegation(bob.address, smartWallet.address);
+        await associateHtsTokenViaDelegation(bob, tokenAddress, bobNonce);
+    }
+
+    async function executeAndAssertBatchHbarAndHtsTransfer({
+        alice,
+        bob,
+        aliceNonce,
+        tokenCreateContract,
+        tokenAddress,
+    }) {
 
         // Grant KYC to both
         await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, alice.address));
@@ -256,7 +276,6 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
 
         // Internal EVM calls use tinybars (8 decimals), not weibars (18 decimals).
         const oneHbarInTinybars = ONE_HBAR / TINYBAR_TO_WEIBAR_COEF;
-
         const transferCalldata = encodeFunctionData(
             'transfer(address to, uint256 value)',
             [bob.address, 100n]
@@ -283,6 +302,18 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         await validateErcEvent(receipt, [
             {address: tokenAddress, from: alice.address, to: bob.address, amount: 100n},
         ]);
+    }
+
+    it('should batch-transfer 1 HBAR and 100 HTS tokens from a delegated EOA to another EOA via executeBatch', async function () {
+        const scenario = await setupBatchHbarAndHtsTransferScenario();
+        await associateRecipientDirectly(scenario);
+        await executeAndAssertBatchHbarAndHtsTransfer(scenario);
+    });
+
+    it('should batch-transfer 1 HBAR and 100 HTS tokens when recipient associates via delegation', async function () {
+        const scenario = await setupBatchHbarAndHtsTransferScenario();
+        await associateRecipientViaDelegation(scenario);
+        await executeAndAssertBatchHbarAndHtsTransfer(scenario);
     });
 
 });
