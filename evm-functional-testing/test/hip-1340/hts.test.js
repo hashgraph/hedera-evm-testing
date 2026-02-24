@@ -3,12 +3,26 @@ const log = require('node:util').debuglog('hip-1340:hts');
 
 const {expect} = require('chai');
 const {ethers} = require('hardhat');
-const {deploy, createAndFundEOA, waitFor, Nonce, sendDelegation, verifyDelegation, designatorFor, encodeFunctionData} = require('./utils/web3');
-const {associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation, executeBatchViaDelegation} = require('./utils/hts');
+const {
+    deploy,
+    createAndFundEOA,
+    waitFor,
+    Nonce,
+    sendDelegation,
+    verifyDelegation,
+    designatorFor,
+    encodeFunctionData
+} = require('./utils/web3');
+const {
+    associateHtsToken,
+    associateHtsTokenViaDelegation,
+    transferHtsTokenViaDelegation,
+    executeBatchViaDelegation
+} = require('./utils/hts');
 const {setupProviderAndNetwork} = require('./utils/setup');
 const Utils = require('../../utils/utils');
 const {validateErcEvent} = require('../../utils/events');
-const {HTS_ADDRESS, ONE_HBAR, TINYBAR_TO_WEIBAR_COEF} = require("../../utils/constants");
+const {HTS_ADDRESS, ONE_HBAR, TINYBAR_TO_WEIBAR_COEF, GAS_LIMIT_5_000_000} = require("../../utils/constants");
 const {getContractByteCode} = require("./utils/sdk");
 const {MirrorNode} = require("evm-functional-testing/mirror-node");
 
@@ -61,7 +75,7 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         expect(anotherAddressBalance).to.be.equal(1000);
 
         // Verify the HTS token address has a delegation designator pointing to 0x167
-        const { token_id: tokenId } = await new MirrorNode().getToken(tokenAddress);
+        const {token_id: tokenId} = await new MirrorNode().getToken(tokenAddress);
         const bytecode = await getContractByteCode(tokenId);
         const contractBytecode = '0x' + Buffer.from(bytecode).toString('hex');
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -185,8 +199,8 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         const transferToCarol = encodeFunctionData('transfer(address to, uint256 value)', [carol.address, 150n]);
 
         const receipt = await executeBatchViaDelegation(alice, [
-            { target: tokenAddress, value: 0n, data: transferToBob },
-            { target: tokenAddress, value: 0n, data: transferToCarol },
+            {target: tokenAddress, value: 0n, data: transferToBob},
+            {target: tokenAddress, value: 0n, data: transferToCarol},
         ], aliceNonce);
         assert(receipt !== null, 'Batch execution receipt is null');
 
@@ -202,8 +216,8 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
 
         // Verify HTS Transfer events
         await validateErcEvent(receipt, [
-            { address: tokenAddress, from: alice.address, to: bob.address, amount: 100n },
-            { address: tokenAddress, from: alice.address, to: carol.address, amount: 150n },
+            {address: tokenAddress, from: alice.address, to: bob.address, amount: 100n},
+            {address: tokenAddress, from: alice.address, to: carol.address, amount: 150n},
         ]);
     });
 
@@ -249,8 +263,8 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         );
 
         const receipt = await executeBatchViaDelegation(alice, [
-            { target: bob.address, value: oneHbarInTinybars, data: '0x' },
-            { target: tokenAddress, value: 0n, data: transferCalldata },
+            {target: bob.address, value: oneHbarInTinybars, data: '0x'},
+            {target: tokenAddress, value: 0n, data: transferCalldata},
         ], aliceNonce);
         assert(receipt !== null, 'Batch execution receipt is null');
 
@@ -267,7 +281,7 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
 
         // Verify HTS Transfer event
         await validateErcEvent(receipt, [
-            { address: tokenAddress, from: alice.address, to: bob.address, amount: 100n },
+            {address: tokenAddress, from: alice.address, to: bob.address, amount: 100n},
         ]);
     });
 
