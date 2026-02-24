@@ -316,6 +316,38 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(receiverBalance).to.be.equal(3_800n, `Receiver balance should be 3_800 but got ${receiverBalance}`);
     });
 
+    it('should get storage and logs from the EOA address itself when the EOA self-executes a delegated contract', async function () {
+        const value = 42n;
+        const storeAndEmit = await deploy('contracts/hip-1340/StoreAndEmit');
+        const eoa = await web3.authorizeEOADelegation(await createAndFundEOA(), storeAndEmit.address);
+
+        const tx = await eoa.sendTransaction({
+            chainId: network.chainId,
+            to: eoa.address,
+            nonce: 1,
+            gasLimit: 1_500_000,
+            data: encodeFunctionData('storeAndEmit(uint256 value)', [value]),
+        });
+        const receipt = await tx.wait();
+        log('Transaction receipt', receipt);
+        assert(receipt !== null, 'Receipt is null');
+
+        log('Logs', receipt.logs);
+        expect(receipt.logs.length).to.be.equal(1);
+        expect(receipt.logs[0]).to.deep.include({
+            address: eoa.address,
+            topics: [
+                ethers.id('StoreAndEmitEvent(uint256)'),
+                asHexUint256(value),
+            ],
+        });
+
+        const valueSlot = 0;
+        const storedValue = await provider.getStorage(storeAndEmit.address, valueSlot);
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+        // expect(storedValue).to.be.equal(asHexUint256(value), `Stored value at '${storeAndEmit.address}:${valueSlot}' should be '${value}' but got '${BigInt(storedValue)}'`);
+    });
+
     it('should create the account when an EOA sponsors it', async function () {
         const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
         const value = 10n * 1_00000_00000n;
