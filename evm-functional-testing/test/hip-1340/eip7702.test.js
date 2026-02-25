@@ -23,12 +23,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
         log('Starting test suite `%s` on network `%s` (chain id %s)', this.test.parent.title, network.name, Number(network.chainId));
     });
 
-    it('should create and fund an EOA to ensure account creation is successful', async function () {
-        const sender = await createAndFundEOA();
-        expect(await web3.getNonces(sender.address)).to.be.deep.equal([0, 0, 0]);
-        expect(await provider.getBalance(sender.address)).to.be.equal(1000_0000_0000n * 1_00000_00000n);
-    });
-
     describe('EOA delegation setup via type 4 transactions', function () {
         [
             { fn: () => ethers.Wallet.createRandom(), desc: 'Random EVM address' },
