@@ -52,8 +52,9 @@ jobs:
         with:
           repository: hiero-ledger/hiero-consensus-node
           # TODO: Restore Pectra feature branch once fix PR has been merged
+          ref: feature/hedera-evm-pectra-support
           # ref: feature/pectra-luis-testing
-          ref: feature/fix-crypto-update-handler-delegation-address
+          # ref: feature/fix-crypto-update-handler-delegation-address
           fetch-depth: 0
 
       - name: Build hiero-consensus-node
