@@ -347,40 +347,44 @@ describe('HIP-1340 - EIP-7702 features', function () {
         // expect(storedValue).to.be.equal(asHexUint256(value), `Stored value at '${storeAndEmit.address}:${valueSlot}' should be '${value}' but got '${BigInt(storedValue)}'`);
     });
 
-    it('should create the account when an EOA sponsors it', async function () {
-        const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
-        const value = 10n * 1_00000_00000n;
-        const eoa = await createAndFundEOA();
-        const to = await createAndFundEOA();
-        const receiver = ethers.Wallet.createRandom();
+    [false, true].forEach(receiverSameAsDelegated => {
+        it(`should create the account when an EOA sponsors it receiverSameAsDelegated=${receiverSameAsDelegated}`, async function () {
+            const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
+            const value = 10n * 1_00000_00000n;
+            const eoa = await createAndFundEOA();
+            const delegated = ethers.Wallet.createRandom();
+            const [to, initialValue] = !receiverSameAsDelegated
+                ? [await createAndFundEOA(), 10_000_000_000n * 1000_0000_0000n]
+                : [delegated, 0n];
 
-        const resp = await eoa.sendTransaction({
-            chainId: network.chainId,
-            nonce: 0,
-            gasLimit: gas.base + gas.auth(1),
-            value,
-            to,
-            authorizationList: [await receiver.authorize({
-                chainId: 0,
+            const resp = await eoa.sendTransaction({
+                chainId: network.chainId,
                 nonce: 0,
-                address: delegateAddress,
-            })],
+                gasLimit: gas.base + gas.auth(1),
+                value,
+                to,
+                authorizationList: [await delegated.authorize({
+                    chainId: 0,
+                    nonce: 0,
+                    address: delegateAddress,
+                })],
+            });
+            await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+
+            expect(await provider.getBalance(to.address)).to.be.equal(initialValue + value);
+
+            const [_nonce, _eth_nonce, ethNonce] = await web3.getNonces(delegated.address)
+            // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+            // expect(nonce).to.be.equal(1);
+            // expect(eth_nonce).to.be.equal(1);
+            expect(ethNonce).to.be.equal(1);
+
+            const [_code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
+            // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+            // expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
+            expect(contractBytecode).to.be.equal(designatorFor(delegateAddress));
+            expect(delegationAddress).to.be.equal(delegateAddress);
         });
-        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
-
-        expect(await provider.getBalance(to.address)).to.be.equal(1000_0000_0000n * 10_000_000_000n + value);
-
-        const [_nonce, _eth_nonce, ethNonce] = await web3.getNonces(receiver.address)
-        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
-        // expect(nonce).to.be.equal(1);
-        // expect(eth_nonce).to.be.equal(1);
-        expect(ethNonce).to.be.equal(1);
-
-        const [_code, contractBytecode, delegationAddress] = await web3.getCodes(receiver.address);
-        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
-        // expect(code).to.be.equal(designatorFor(delegateAddress.toLowerCase()));
-        expect(contractBytecode).to.be.equal(designatorFor(delegateAddress));
-        expect(delegationAddress).to.be.equal(delegateAddress);
     });
 
     it('should replace existing delegation indicator when a second authorization transaction is sent', async function () {
