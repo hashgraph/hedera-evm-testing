@@ -11,7 +11,7 @@ const {
     sendDelegation,
     verifyDelegation,
     designatorFor,
-    encodeFunctionData
+    encodeFunctionData, gas
 } = require('./utils/web3');
 const {
     associateHtsToken,
@@ -22,9 +22,10 @@ const {
 const {setupProviderAndNetwork} = require('./utils/setup');
 const Utils = require('../../utils/utils');
 const {validateErcEvent} = require('../../utils/events');
-const {HTS_ADDRESS, ONE_HBAR, TINYBAR_TO_WEIBAR_COEF} = require("../../utils/constants");
+const {HTS_ADDRESS, ONE_HBAR, TINYBAR_TO_WEIBAR_COEF, GAS_LIMIT_1_000_000} = require("../../utils/constants");
 const {getContractByteCode} = require("./utils/sdk");
 const {MirrorNode} = require("evm-functional-testing/mirror-node");
+const web3 = require("./utils/web3");
 
 const ERC_20_ABI = [
     'function name() view returns (string)',
@@ -314,6 +315,85 @@ describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
         const scenario = await setupBatchHbarAndHtsTransferScenario();
         await associateRecipientViaDelegation(scenario);
         await executeAndAssertBatchHbarAndHtsTransfer(scenario);
+    });
+
+    it.skip('should not create account via delegation if insufficient gas to cover account creation', async function () {
+        const eoa = await createAndFundEOA();
+        const delegated = ethers.Wallet.createRandom();
+        const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
+        const value = 10n * ONE_HBAR;
+        const resp = await eoa.sendTransaction({
+            chainId: network.chainId,
+            nonce: 0,
+            value,
+            gasLimit: gas.base + gas.auth(1),
+            to: delegated.address,
+            authorizationList: [await delegated.authorize({
+                chainId: 0,
+                nonce: 0,
+                address: delegateAddress,
+            })],
+        });
+
+        const receipt = await resp.wait(1, 3_000).catch(err => {
+            log('Fetch transaction receipt failed: %s', err.message);
+            return null;
+        });
+        if (receipt !== null) {
+            expect(receipt.status).to.be.equal(1, 'Transaction should succeed');
+        }
+
+        const delegatedAccount = await new MirrorNode().getAccount(delegated.address);
+        expect(delegatedAccount.account).to.be.equal(undefined, 'Delegated account should not exist on Hedera');
+        expect(delegatedAccount._status?.messages?.[0]?.message).to.be.equal('Not found');
+        expect(await provider.getBalance(delegated.address)).to.be.equal(0);
+    });
+
+    it.skip('should be able to send value in weibars to a delegated EOA both via smart wallet execute and directly without conversion', async function () {
+        const alice = await createAndFundEOA();
+        const bob = await createAndFundEOA();
+
+        const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
+        const aliceNonce = new Nonce();
+
+        await sendDelegation(alice, smartWallet.address, aliceNonce);
+        await verifyDelegation(alice.address, smartWallet.address);
+
+        const bobBalanceBefore = await provider.getBalance(bob.address)
+
+        const ONE_HBAR_IN_WEI = ethers.parseEther("1");
+
+        // SEND 1 HBAR in wei directly
+        // WORKS
+        const resp = await alice.sendTransaction({
+            chainId: network.chainId,
+            nonce: aliceNonce.next(),
+            gasLimit: gas.base,
+            value: ONE_HBAR_IN_WEI,
+            to: bob.address,
+        });
+
+        await resp.wait();
+        expect(await provider.getBalance(bob.address)).to.be.equal(bobBalanceBefore + ONE_HBAR_IN_WEI);
+
+        // SEND 1 HBAR in wei via Smart Wallet
+        // DOES NOT WORK - as automatic conversion of value will not happen and we will get reverted on
+        // insufficient balance
+        const encodedData = encodeFunctionData(
+            'execute(address target, uint256 value, bytes calldata data)',
+            [bob.address, ONE_HBAR_IN_WEI, '0x']
+        )
+
+        const delegationReps = await alice.sendTransaction({
+            chainId: network.chainId,
+            gasLimit: GAS_LIMIT_1_000_000.gasLimit,
+            nonce: aliceNonce.next(),
+            to: alice.address,
+            data: encodedData
+        });
+
+        await delegationReps.wait();
+        expect(await provider.getBalance(bob.address)).to.be.equal(bobBalanceBefore + 2 * ONE_HBAR_IN_WEI);
     });
 
 });
