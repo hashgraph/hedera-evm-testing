@@ -2,8 +2,8 @@
 pragma solidity ^0.8.10;
 
 import "../IHederaScheduleService_HIP1215.sol";
-import "../../system-contract-references/IHederaTokenService.sol";
-import "../../system-contract-references/HederaResponseCodes.sol";
+import "@hiero-ledger/hiero-contracts/token-service-v2/IHederaTokenService.sol";
+import "@hiero-ledger/hiero-contracts/token-service-v2/HederaResponseCodes.sol";
 
 contract HIP1215TransferContract {
 

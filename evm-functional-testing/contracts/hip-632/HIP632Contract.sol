@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.10;
 
-import "../system-contract-references/IHederaAccountService.sol";
-import "../system-contract-references/HederaResponseCodes.sol";
+import "@hiero-ledger/hiero-contracts/account-service/IHederaAccountService.sol";
+import "@hiero-ledger/hiero-contracts/token-service-v2/HederaResponseCodes.sol";
 
 contract HIP632Contract {
 

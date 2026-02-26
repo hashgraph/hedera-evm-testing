@@ -2,7 +2,7 @@
 pragma solidity >=0.5.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
-import "../system-contract-references/HederaTokenService.sol";
+import "@hiero-ledger/hiero-contracts/token-service-v2/HederaTokenService.sol";
 
 abstract contract KeyHelper {
     using Bits for uint256;
