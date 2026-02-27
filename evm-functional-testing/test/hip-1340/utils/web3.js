@@ -2,11 +2,19 @@ const { strict: assert, strictEqual: assertEq } = require('node:assert');
 const { readFileSync } = require('node:fs');
 const log = require('node:util').debuglog('hip-1340:web3');
 
-const { ethers } = require('hardhat');
+const { ethers, network } = require('hardhat');
 
 const { MirrorNode } = require('evm-functional-testing/mirror-node');
 const { getAccountInfo, getContractByteCode } = require('./sdk.js');
 const {GAS_LIMIT_1_000_000} = require("../../../utils/constants");
+
+
+/**
+ * @returns {boolean} True if the connected network is an Ethereum-based network (e.g., Geth), false if it's a Hedera-based network (e.g., SOLO).
+ */
+function isEthNetwork() {
+    return [1337, 31337].includes(network.config.chainId);
+}
 
 /**
  * Gas cost constants and functions.
@@ -18,7 +26,16 @@ const gas = {
      * @returns 
      */
     auth: n => n * 25_000,
+    hollow: () => isEthNetwork() ? 0 : 570_000,
 };
+
+const units = {
+    /** @param {bigint} n */
+    tinybar: n => n * 1_00000_00000n,
+
+    /** @param {bigint} n */
+    hbar: n => n * units.tinybar(1_0000_0000n),
+}
 
 /**
  * Returns EIP-7702's designator code for a given Ethereum address.
@@ -51,9 +68,12 @@ async function getNonces(address) {
     const provider = ethers.provider;
 
     const nonce = await provider.getTransactionCount(address);
+    if (isEthNetwork()) return [nonce, nonce, nonce];
+
     const { account, evm_address, ethereum_nonce } = await new MirrorNode().getAccount(address);
     const accountInfo = await getAccountInfo(account);
     log('Nonces for `%s:%s`: RN%s:MN%s:CN%s', account, address, nonce, ethereum_nonce, accountInfo.ethereumNonce);
+    assertEq(evm_address, address.toLowerCase(), 'Account EVM address sanity check');
 
     return [nonce, ethereum_nonce, accountInfo.ethereumNonce.toNumber()];
 }
@@ -67,6 +87,8 @@ async function getCodes(address) {
 
     const provider = ethers.provider;
     const code = await provider.getCode(address);
+    if (isEthNetwork()) return [code, code, '0x' + code.slice(4 * 2)];
+
     const { account } = await new MirrorNode().getAccount(address);
     const contractBytecode = await getContractByteCode(account);
     const { delegationAddress } = await getAccountInfo(account);
@@ -79,7 +101,7 @@ async function getCodes(address) {
  */
 let seedEOA = undefined;
 
-async function getSeedEOA(tinyBarBalance = 1_000_000_0000_0000n) {
+async function getSeedEOA(hbarBalance = 1_000_000n) {
     if (seedEOA !== undefined) return seedEOA;
 
     const provider = ethers.provider;
@@ -95,10 +117,8 @@ async function getSeedEOA(tinyBarBalance = 1_000_000_0000_0000n) {
         type: 2,
         chainId: network.chainId,
         nonce,
-        maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-        maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
-        gasLimit: 21_000 + 800_000,
-        value: tinyBarBalance * 10_000_000_000n,
+        gasLimit: gas.base + gas.hollow(),
+        value: units.hbar(hbarBalance),
         to: seedEOA.address,
     });
     await resp.wait();
@@ -107,13 +127,15 @@ async function getSeedEOA(tinyBarBalance = 1_000_000_0000_0000n) {
     return seedEOA;
 }
 
+const EOADefaultBalance = ethers.parseUnits('1000', 'ether');
+
 /**
  * Creates and funds a new Externally Owned Account (EOA) on the connected network.
  *
  * @param {bigint} [tinyBarBalance=100_000_000n]
  * @returns {Promise<ethers.BaseWallet>} The funded EOA wallet
  */
-async function createAndFundEOA(tinyBarBalance = 1000_0000_0000n) {
+async function createAndFundEOA() {
     const provider = ethers.provider;
     const network = await provider.getNetwork();
 
@@ -127,10 +149,8 @@ async function createAndFundEOA(tinyBarBalance = 1000_0000_0000n) {
         type: 2,
         chainId: network.chainId,
         nonce,
-        maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-        maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
-        gasLimit: 21_000 + 800_000,
-        value: tinyBarBalance * 10_000_000_000n,
+        gasLimit: 21_000 + gas.hollow(),
+        value: EOADefaultBalance,
         to: eoa.address,
     });
     await resp.wait();
@@ -151,8 +171,6 @@ async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefin
         nonce: 0,
         gasLimit: gas.base + gas.auth(1),
         to: ethers.ZeroAddress,
-        maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-        maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
         authorizationList: [await eoa.authorize({
             chainId: 0,
             nonce: eoaNonce,
@@ -164,8 +182,8 @@ async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefin
     const [code, contractBytecode, delegationAddress] = await getCodes(eoa.address);
     // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
     // assert(code === designatorFor(delegateToAddress.toLowerCase()));
-    assert(contractBytecode === designatorFor(delegateToAddress.toLowerCase()));
-    assert(delegationAddress === delegateToAddress.toLowerCase());
+    assertEq(contractBytecode, designatorFor(delegateToAddress.toLowerCase()));
+    assertEq(delegationAddress, delegateToAddress.toLowerCase());
     return eoa;
 }
 
@@ -204,10 +222,11 @@ async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
     }
 
     log('Deploying contract `%s` from EOA %s', contractName, deployer.address);
+    const gasPrice = isEthNetwork() ? undefined : ethers.parseUnits('710', 'gwei');
     const resp = await deployer.sendTransaction({
         chainId: network.chainId,
         nonce: await deployer.getNonce(),
-        gasPrice: ethers.parseUnits('710', 'gwei'),
+        gasPrice,
         gasLimit,
         data: bytecode + consArgs,
     });
@@ -255,7 +274,8 @@ async function waitFor(tx) {
  * @returns {string} The hexadecimal string representation of the value as a `uint256`.
  */
 function asHexUint256(value) {
-    return '0x' + value.toString(16).padStart(64, '0');
+    const str = typeof value === 'string' ? value.slice(2) : value.toString(16);
+    return '0x' + str.padStart(64, '0');
 }
 
 /**
@@ -326,3 +346,9 @@ async function verifyDelegation(eoaAddress, expectedDelegationAddress) {
 }
 
 module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress, getNonces, getCodes, sendDelegation: sendSelfSponsoredDelegation, verifyDelegation, authorizeEOADelegation };
+
+module.exports = {
+    gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor,
+    asAddress, getNonces, getCodes, authorizeEOADelegation,
+    EOADefaultBalance,
+};

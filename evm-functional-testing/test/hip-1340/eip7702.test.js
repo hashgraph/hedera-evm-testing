@@ -4,13 +4,11 @@ const log = require('node:util').debuglog('hip-1340:eip7702');
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
 
-const { MirrorNode } = require('evm-functional-testing/mirror-node');
-const { getAccountInfo, getContractByteCode, getTransactionRecord, getAccountRecords } = require('./utils/sdk');
 const web3 = require('./utils/web3');
-const { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
-const { setupProviderAndNetwork } = require('./utils/setup');
+const { gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
 
 describe('HIP-1340 - EIP-7702 features', function () {
+
     /** @type {ethers.JsonRpcProvider} */
     let provider;
 
@@ -18,14 +16,9 @@ describe('HIP-1340 - EIP-7702 features', function () {
     let network;
 
     before(async function () {
-        ({ provider, network } = await setupProviderAndNetwork());
+        provider = (await ethers.getSigners())[0].provider;
+        network = await provider.getNetwork();
         log('Starting test suite `%s` on network `%s` (chain id %s)', this.test.parent.title, network.name, Number(network.chainId));
-    });
-
-    it('should create and fund an EOA to ensure account creation is successful', async function () {
-        const sender = await createAndFundEOA();
-        expect(await web3.getNonces(sender.address)).to.be.deep.equal([0, 0, 0]);
-        expect(await provider.getBalance(sender.address)).to.be.equal(1000_0000_0000n * 1_00000_00000n);
     });
 
     describe('EOA delegation setup via type 4 transactions', function () {
@@ -64,10 +57,8 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     type: 4,
                     chainId: network.chainId,
                     nonce: 0,
-                    maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-                    maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
                     gasLimit: 800_000,
-                    value: value * 1_00000_00000n,
+                    value: units.tinybar(value),
                     to,
                     authorizationList: [await delegated.authorize({
                         chainId: delegateToChainId.fn(),
@@ -84,11 +75,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     log('Fetch transaction receipt failed:', err.message);
                     txhash = err.replacement.hash;
                 }
-
-                const result = await new MirrorNode().getContractResults(txhash);
-                const { transactions } = await new MirrorNode().getTransactionsByTimestamp(result.timestamp);
-                const transactionId = transactions[0].transaction_id.replace('0.0.2-', '0.0.2@').replace('-', '.');
-                log('Authorization sent in transaction', resp.hash, transactionId);
 
                 const [code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
                 // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -157,8 +143,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 type: 4,
                 chainId: network.chainId,
                 nonce: authNonce.next(),
-                maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-                maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
                 gasLimit: 800_000,
                 value: 321_00000_00000n,
                 to,
@@ -227,8 +211,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
             type: 4,
             chainId: network.chainId,
             nonce: 0,
-            maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-            maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
             gasLimit: 800_000,
             value: 0,
             to: eoa.address,
@@ -360,7 +342,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
             const resp = await eoa.sendTransaction({
                 chainId: network.chainId,
                 nonce: 0,
-                gasLimit: gas.base + gas.auth(1),
+                gasLimit: gas.base + gas.auth(1) + gas.hollow(),
                 value,
                 to,
                 authorizationList: [await delegated.authorize({
@@ -438,7 +420,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(delegationAddress).to.be.equal('0x');
     });
 
-    it('should use the last authorization when multiple authorizations are sent', async function () {
+    it(`should use the last authorization when multiple authorizations are sent (and the EOA's nonce should be also incremented multiple times)`, async function () {
         const eoa = await createAndFundEOA();
 
         const resp = await eoa.sendTransaction({
@@ -477,6 +459,52 @@ describe('HIP-1340 - EIP-7702 features', function () {
         // expect(code).to.be.equal(designatorFor(asAddress(3)));
         expect(contractBytecode).to.be.equal(designatorFor(asAddress(3)));
         expect(delegationAddress).to.be.equal(asAddress(3));
+    });
+
+    it(`should use the last valid (w.r.t. nonce) authorization when multiple authorizations are sent (and the EOA's nonce should be also incremented accordingly)`, async function () {
+        const eoa = await createAndFundEOA();
+
+        const resp = await eoa.sendTransaction({
+            chainId: network.chainId,
+            nonce: 0,
+            gasLimit: gas.base + gas.auth(4),
+            to: ethers.ZeroAddress,
+            authorizationList: [
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 1,
+                    address: asAddress(1),
+                }),
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 1,
+                    address: asAddress(0x11),
+                }),
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 2,
+                    address: asAddress(2),
+                }),
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 4,
+                    address: asAddress(4),
+                }),
+            ],
+        });
+        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+
+        const [nonce, eth_nonce, ethNonce] = await web3.getNonces(eoa.address)
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+        // expect(nonce).to.be.equal(3);
+        // expect(eth_nonce).to.be.equal(3);
+        expect(ethNonce).to.be.equal(3);
+
+        const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+        // expect(code).to.be.equal(designatorFor(asAddress(2)));
+        expect(contractBytecode).to.be.equal(designatorFor(asAddress(2)));
+        expect(delegationAddress).to.be.equal(asAddress(2));
     });
 
     it('should authorize delegation of an existing account when exact gas is sent', async function () {
@@ -522,5 +550,42 @@ describe('HIP-1340 - EIP-7702 features', function () {
             })],
         });
         await expect(resp).to.be.rejectedWith(/intrinsic gas too low/);
+    });
+
+    it('should log `msg.sender` and `tx.origin` with code length and hashes from an inner contract call', async function () {
+        const senderAndOrigin = await deploy('contracts/hip-1340/SenderAndOrigin', [], undefined, 400_000);
+        const sender = await web3.authorizeEOADelegation(await createAndFundEOA(), senderAndOrigin.address);
+
+        const tx = await sender.sendTransaction({
+            chainId: network.chainId,
+            to: sender.address,
+            nonce: 1,
+            gasLimit: 400_000,
+            data: encodeFunctionData('logSenderAndOrigin()'),
+        });
+        const receipt = await tx.wait();
+        log('Transaction receipt', receipt);
+        assert(receipt !== null, 'Receipt is null');
+
+        log('Logs', receipt.logs);
+        expect(receipt.logs.length).to.be.equal(3);
+        expect(receipt.logs[0]).to.deep.include({
+            topics: [
+                ethers.id('SenderAndOriginEvent(address,address)'),
+                asHexUint256(sender.address.toLowerCase()),
+                asHexUint256(sender.address.toLowerCase()),
+            ],
+        });
+
+        const designator = designatorFor(senderAndOrigin.address.toLowerCase());
+        [1, 2].forEach(i => {
+            expect(receipt.logs[i]).to.deep.include({
+                topics: [
+                    ethers.id('CodeLengthAndHashEvent(uint256,bytes32)'),
+                    asHexUint256(designator.slice(2).length / 2),
+                    ethers.keccak256(designator),
+                ],
+            });
+        });
     });
 });

@@ -34,7 +34,15 @@ module.exports = {
   defaultNetwork: "local",
   // see https://v2.hardhat.org/hardhat-runner/docs/config
   networks: {
-    hardhat: {loggingEnabled:false},
+    hardhat: {
+      loggingEnabled: false,
+      accounts: {
+        mnemonic: 'test test test test test test test test test test test junk',
+        initialIndex: 0,
+        count: 10,
+        accountsBalance: '10000000000000000000000000'
+      }
+    },
     local: {
       url: "http://localhost:7547",
       chainId: 298,
@@ -55,6 +63,13 @@ module.exports = {
         nodeId: "3",
         mirrorNode: "http://127.0.0.1:8081",
       },
+    },
+    geth: {
+      url: 'http://localhost:8545',
+      chainId: 1337,
+      accounts: [
+        '0xb71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291',
+      ]
     },
     previewnet: {
       url: "https://previewnet.hashio.io/api",
