@@ -433,7 +433,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(delegationAddress).to.be.equal('0x');
     });
 
-    it('should use the last authorization when multiple authorizations are sent', async function () {
+    it(`should use the last authorization when multiple authorizations are sent (and the EOA's nonce should be also incremented multiple times)`, async function () {
         const eoa = await createAndFundEOA();
 
         const resp = await eoa.sendTransaction({
@@ -517,5 +517,42 @@ describe('HIP-1340 - EIP-7702 features', function () {
             })],
         });
         await expect(resp).to.be.rejectedWith(/intrinsic gas too low/);
+    });
+
+    it('should log `msg.sender` and `tx.origin` with code length and hashes from an inner contract call', async function () {
+        const senderAndOrigin = await deploy('contracts/hip-1340/SenderAndOrigin', [], undefined, 400_000);
+        const sender = await web3.authorizeEOADelegation(await createAndFundEOA(), senderAndOrigin.address);
+
+        const tx = await sender.sendTransaction({
+            chainId: network.chainId,
+            to: sender.address,
+            nonce: 1,
+            gasLimit: 400_000,
+            data: encodeFunctionData('logSenderAndOrigin()'),
+        });
+        const receipt = await tx.wait();
+        log('Transaction receipt', receipt);
+        assert(receipt !== null, 'Receipt is null');
+
+        log('Logs', receipt.logs);
+        expect(receipt.logs.length).to.be.equal(3);
+        expect(receipt.logs[0]).to.deep.include({
+            topics: [
+                ethers.id('SenderAndOriginEvent(address,address)'),
+                asHexUint256(sender.address.toLowerCase()),
+                asHexUint256(sender.address.toLowerCase()),
+            ],
+        });
+
+        const designator = designatorFor(senderAndOrigin.address.toLowerCase());
+        [1, 2].forEach(i => {
+            expect(receipt.logs[i]).to.deep.include({
+                topics: [
+                    ethers.id('CodeLengthAndHashEvent(uint256,bytes32)'),
+                    asHexUint256(designator.slice(2).length / 2),
+                    ethers.keccak256(designator),
+                ],
+            });
+        });
     });
 });
