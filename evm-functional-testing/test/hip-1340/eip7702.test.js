@@ -79,11 +79,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     txhash = err.replacement.hash;
                 }
 
-                const result = await new MirrorNode().getContractResults(txhash);
-                const { transactions } = await new MirrorNode().getTransactionsByTimestamp(result.timestamp);
-                const transactionId = transactions[0].transaction_id.replace('0.0.2-', '0.0.2@').replace('-', '.');
-                log('Authorization sent in transaction', resp.hash, transactionId);
-
                 const [code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
                 // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
                 // expect(code).to.be.equal(designatorFor(address.toLowerCase()));
