@@ -28,6 +28,14 @@ const gas = {
     hollow: () => isEthNetwork() ? 0 : 570_000,
 };
 
+const units = {
+    /** @param {bigint} n */
+    tinybar: n => n * 1_00000_00000n,
+
+    /** @param {bigint} n */
+    hbar: n => n * units.tinybar(1_0000_0000n),
+}
+
 /**
  * Returns EIP-7702's designator code for a given Ethereum address.
  *
@@ -92,7 +100,7 @@ async function getCodes(address) {
  */
 let seedEOA = undefined;
 
-async function getSeedEOA(tinyBarBalance = 1_000_000_0000_0000n) {
+async function getSeedEOA(hbarBalance = 1_000_000n) {
     if (seedEOA !== undefined) return seedEOA;
 
     const provider = ethers.provider;
@@ -104,35 +112,21 @@ async function getSeedEOA(tinyBarBalance = 1_000_000_0000_0000n) {
     assertEq(eth_nonce, ethNonce, 'Nonce mismatch between Mirror Node and SDK');
 
     seedEOA = ethers.Wallet.createRandom(provider);
-    const [maxFeePerGas, maxPriorityFeePerGas, gasLimit, scale] = isEthNetwork()
-        ? [ethers.parseUnits('875000000', 'wei'), ethers.parseUnits('1', 'wei'), 21_000, 10000000n]
-        : [ethers.parseUnits('710', 'gwei'), ethers.parseUnits('1', 'gwei'), 21_000 + 600_000, 10_000_000_000n];
     const resp = await operator.sendTransaction({
         type: 2,
         chainId: network.chainId,
         nonce,
-        maxFeePerGas,
-        maxPriorityFeePerGas,
-        gasLimit,
-        value: tinyBarBalance * scale,
+        gasLimit: gas.base + gas.hollow(),
+        value: units.hbar(hbarBalance),
         to: seedEOA.address,
     });
     await resp.wait();
     log('Seed EOA `%s` created at transanction %s', seedEOA.address, resp.hash);
 
-    const a = await seedEOA.sendTransaction({
-        type: 2,
-        chainId: network.chainId,
-        nonce: 0,
-        gasLimit: 21_000 + gas.hollow(),
-        to: ethers.Wallet.createRandom(),
-        value: 1000_0000_0000n,
-    });
-    await a.wait();
-    log('Seed EOA `%s` hollow account completed at transanction %s', seedEOA.address, a.hash);
-
     return seedEOA;
 }
+
+const EOADefaultBalance = ethers.parseUnits('1000', 'ether');
 
 /**
  * Creates and funds a new Externally Owned Account (EOA) on the connected network.
@@ -140,7 +134,7 @@ async function getSeedEOA(tinyBarBalance = 1_000_000_0000_0000n) {
  * @param {bigint} [tinyBarBalance=100_000_000n]
  * @returns {Promise<ethers.BaseWallet>} The funded EOA wallet
  */
-async function createAndFundEOA(tinyBarBalance = 1000_0000_0000n) {
+async function createAndFundEOA() {
     const provider = ethers.provider;
     const network = await provider.getNetwork();
 
@@ -150,17 +144,12 @@ async function createAndFundEOA(tinyBarBalance = 1000_0000_0000n) {
     assertEq(eth_nonce, ethNonce, 'Nonce mismatch between Mirror Node and SDK');
 
     const eoa = ethers.Wallet.createRandom(provider);
-    const [maxFeePerGas, maxPriorityFeePerGas, value] = isEthNetwork()
-        ? [ethers.parseUnits('765778125', 'wei'), ethers.parseUnits('1', 'wei'), 1000000000000000n]
-        : [ethers.parseUnits('710', 'gwei'), ethers.parseUnits('1', 'gwei'), tinyBarBalance * 10_000_000_000n];
     const resp = await seed.sendTransaction({
         type: 2,
         chainId: network.chainId,
         nonce,
-        maxFeePerGas,
-        maxPriorityFeePerGas,
         gasLimit: 21_000 + gas.hollow(),
-        value,
+        value: EOADefaultBalance,
         to: eoa.address,
     });
     await resp.wait();
@@ -181,8 +170,6 @@ async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefin
         nonce: 0,
         gasLimit: gas.base + gas.auth(1),
         to: ethers.ZeroAddress,
-        // maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-        // maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
         authorizationList: [await eoa.authorize({
             chainId: 0,
             nonce: eoaNonce,
@@ -291,6 +278,7 @@ function asHexUint256(value) {
 }
 
 module.exports = {
-    gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor,
+    gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor,
     asAddress, getNonces, getCodes, authorizeEOADelegation,
+    EOADefaultBalance,
 };

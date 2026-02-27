@@ -4,9 +4,8 @@ const log = require('node:util').debuglog('hip-1340:eip7702');
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
 
-const { MirrorNode } = require('evm-functional-testing/mirror-node');
 const web3 = require('./utils/web3');
-const { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
+const { gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
 
 describe('HIP-1340 - EIP-7702 features', function () {
 
@@ -58,10 +57,8 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     type: 4,
                     chainId: network.chainId,
                     nonce: 0,
-                    maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-                    maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
                     gasLimit: 800_000,
-                    value: value * 1_00000_00000n,
+                    value: units.tinybar(value),
                     to,
                     authorizationList: [await delegated.authorize({
                         chainId: delegateToChainId.fn(),
@@ -146,8 +143,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 type: 4,
                 chainId: network.chainId,
                 nonce: authNonce.next(),
-                maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-                maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
                 gasLimit: 800_000,
                 value: 321_00000_00000n,
                 to,
@@ -216,8 +211,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
             type: 4,
             chainId: network.chainId,
             nonce: 0,
-            maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-            maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
             gasLimit: 800_000,
             value: 0,
             to: eoa.address,
