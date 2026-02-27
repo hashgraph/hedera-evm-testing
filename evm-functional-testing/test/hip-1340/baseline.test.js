@@ -30,7 +30,7 @@ describe('HIP-1340 - Baseline Check', function () {
         const resp = await sender.sendTransaction({
             chainId: network.chainId,
             nonce: 0,
-            gasLimit: gas.base,
+            gasLimit: gas.base + gas.hollow(),
             to,
             value,
         });
