@@ -5,7 +5,6 @@ const { expect } = require('chai');
 const { ethers } = require('hardhat');
 
 const { MirrorNode } = require('evm-functional-testing/mirror-node');
-const { getAccountInfo, getContractByteCode, getTransactionRecord, getAccountRecords } = require('./utils/sdk');
 const web3 = require('./utils/web3');
 const { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
 
@@ -355,7 +354,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
             const resp = await eoa.sendTransaction({
                 chainId: network.chainId,
                 nonce: 0,
-                gasLimit: gas.base + gas.auth(1),
+                gasLimit: gas.base + gas.auth(1) + gas.hollow(),
                 value,
                 to,
                 authorizationList: [await delegated.authorize({

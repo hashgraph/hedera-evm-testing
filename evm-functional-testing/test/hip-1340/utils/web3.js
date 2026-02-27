@@ -2,10 +2,18 @@ const { strict: assert, strictEqual: assertEq } = require('node:assert');
 const { readFileSync } = require('node:fs');
 const log = require('node:util').debuglog('hip-1340:web3');
 
-const { ethers } = require('hardhat');
+const { ethers, network } = require('hardhat');
 
 const { MirrorNode } = require('evm-functional-testing/mirror-node');
 const { getAccountInfo, getContractByteCode } = require('./sdk.js');
+
+
+/**
+ * @returns {boolean} True if the connected network is an Ethereum-based network (e.g., Geth), false if it's a Hedera-based network (e.g., SOLO).
+ */
+function isEthNetwork() {
+    return [1337, 31337].includes(network.config.chainId);
+}
 
 /**
  * Gas cost constants and functions.
@@ -17,6 +25,7 @@ const gas = {
      * @returns 
      */
     auth: n => n * 25_000,
+    hollow: () => isEthNetwork() ? 0 : 570_000,
 };
 
 /**
@@ -50,6 +59,8 @@ async function getNonces(address) {
     const provider = ethers.provider;
 
     const nonce = await provider.getTransactionCount(address);
+    if (isEthNetwork()) return [nonce, nonce, nonce];
+
     const { account, evm_address, ethereum_nonce } = await new MirrorNode().getAccount(address);
     const accountInfo = await getAccountInfo(account);
     log('Nonces for `%s:%s`: RN%s:MN%s:CN%s', account, address, nonce, ethereum_nonce, accountInfo.ethereumNonce);
@@ -67,6 +78,8 @@ async function getCodes(address) {
 
     const provider = ethers.provider;
     const code = await provider.getCode(address);
+    if (isEthNetwork()) return [code, code, '0x' + code.slice(4 * 2)];
+
     const { account } = await new MirrorNode().getAccount(address);
     const contractBytecode = await getContractByteCode(account);
     const { delegationAddress } = await getAccountInfo(account);
@@ -91,18 +104,32 @@ async function getSeedEOA(tinyBarBalance = 1_000_000_0000_0000n) {
     assertEq(eth_nonce, ethNonce, 'Nonce mismatch between Mirror Node and SDK');
 
     seedEOA = ethers.Wallet.createRandom(provider);
+    const [maxFeePerGas, maxPriorityFeePerGas, gasLimit, scale] = isEthNetwork()
+        ? [ethers.parseUnits('875000000', 'wei'), ethers.parseUnits('1', 'wei'), 21_000, 10000000n]
+        : [ethers.parseUnits('710', 'gwei'), ethers.parseUnits('1', 'gwei'), 21_000 + 600_000, 10_000_000_000n];
     const resp = await operator.sendTransaction({
         type: 2,
         chainId: network.chainId,
         nonce,
-        maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-        maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
-        gasLimit: 21_000 + 800_000,
-        value: tinyBarBalance * 10_000_000_000n,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+        gasLimit,
+        value: tinyBarBalance * scale,
         to: seedEOA.address,
     });
     await resp.wait();
     log('Seed EOA `%s` created at transanction %s', seedEOA.address, resp.hash);
+
+    const a = await seedEOA.sendTransaction({
+        type: 2,
+        chainId: network.chainId,
+        nonce: 0,
+        gasLimit: 21_000 + gas.hollow(),
+        to: ethers.Wallet.createRandom(),
+        value: 1000_0000_0000n,
+    });
+    await a.wait();
+    log('Seed EOA `%s` hollow account completed at transanction %s', seedEOA.address, a.hash);
 
     return seedEOA;
 }
@@ -123,14 +150,17 @@ async function createAndFundEOA(tinyBarBalance = 1000_0000_0000n) {
     assertEq(eth_nonce, ethNonce, 'Nonce mismatch between Mirror Node and SDK');
 
     const eoa = ethers.Wallet.createRandom(provider);
+    const [maxFeePerGas, maxPriorityFeePerGas, value] = isEthNetwork()
+        ? [ethers.parseUnits('765778125', 'wei'), ethers.parseUnits('1', 'wei'), 1000000000000000n]
+        : [ethers.parseUnits('710', 'gwei'), ethers.parseUnits('1', 'gwei'), tinyBarBalance * 10_000_000_000n];
     const resp = await seed.sendTransaction({
         type: 2,
         chainId: network.chainId,
         nonce,
-        maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-        maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
-        gasLimit: 21_000 + 800_000,
-        value: tinyBarBalance * 10_000_000_000n,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+        gasLimit: 21_000 + gas.hollow(),
+        value,
         to: eoa.address,
     });
     await resp.wait();
@@ -151,8 +181,8 @@ async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefin
         nonce: 0,
         gasLimit: gas.base + gas.auth(1),
         to: ethers.ZeroAddress,
-        maxFeePerGas: ethers.parseUnits('710', 'gwei'),
-        maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
+        // maxFeePerGas: ethers.parseUnits('710', 'gwei'),
+        // maxPriorityFeePerGas: ethers.parseUnits('1', 'gwei'),
         authorizationList: [await eoa.authorize({
             chainId: 0,
             nonce: eoaNonce,
@@ -164,8 +194,8 @@ async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefin
     const [code, contractBytecode, delegationAddress] = await getCodes(eoa.address);
     // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
     // assert(code === designatorFor(delegateToAddress.toLowerCase()));
-    assert(contractBytecode === designatorFor(delegateToAddress.toLowerCase()));
-    assert(delegationAddress === delegateToAddress.toLowerCase());
+    assertEq(contractBytecode, designatorFor(delegateToAddress.toLowerCase()));
+    assertEq(delegationAddress, delegateToAddress.toLowerCase());
     return eoa;
 }
 
@@ -204,10 +234,11 @@ async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
     }
 
     log('Deploying contract `%s` from EOA %s', contractName, deployer.address);
+    const gasPrice = isEthNetwork() ? undefined : ethers.parseUnits('710', 'gwei');
     const resp = await deployer.sendTransaction({
         chainId: network.chainId,
         nonce: await deployer.getNonce(),
-        gasPrice: ethers.parseUnits('710', 'gwei'),
+        gasPrice,
         gasLimit,
         data: bytecode + consArgs,
     });
@@ -255,7 +286,8 @@ async function waitFor(tx) {
  * @returns {string} The hexadecimal string representation of the value as a `uint256`.
  */
 function asHexUint256(value) {
-    return '0x' + value.toString(16).padStart(64, '0');
+    const str = typeof value === 'string' ? value.slice(2) : value.toString(16);
+    return '0x' + str.padStart(64, '0');
 }
 
 module.exports = {
