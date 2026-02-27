@@ -25,12 +25,12 @@ describe('HIP-1340 - Baseline Check', function () {
     it('should complete hollow account creation by sending a transaction with exact gas', async function () {
         const sender = await createAndFundEOA();
         const to = ethers.Wallet.createRandom();
-        const value = 321n * 1_00000_00000n
+        const value = 321n * 1_00000_00000n;
 
         const resp = await sender.sendTransaction({
             chainId: network.chainId,
             nonce: 0,
-            gasLimit: gas.base * 10,
+            gasLimit: gas.base,
             to,
             value,
         });
