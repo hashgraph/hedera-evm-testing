@@ -8,7 +8,7 @@ const { encodeFunctionData, waitFor } = require('./web3');
  *
  * @param {import('ethers').BaseWallet} eoa - The EOA to associate
  * @param {string} tokenAddress - The HTS token address
- * @param {import('./web3').Nonce} [nonce] - Optional nonce tracker (if omitted, ethers auto-manages)
+ * @param {number} [nonce] - Optional explicit transaction nonce
  * @param {number} [gasLimit=1_500_000] - Gas limit
  * @returns {Promise<import('ethers').TransactionReceipt | null>}
  */
@@ -17,7 +17,7 @@ async function associateHtsToken(eoa, tokenAddress, nonce, gasLimit = 1_500_000)
     const receipt = await waitFor(eoa.sendTransaction({
         chainId: network.chainId,
         gasLimit,
-        ...(nonce ? { nonce: nonce.next() } : {}),
+        ...(nonce !== undefined ? { nonce } : {}),
         to: HTS_ADDRESS,
         data: encodeFunctionData(
             'associateToken(address account, address token)',
@@ -34,7 +34,7 @@ async function associateHtsToken(eoa, tokenAddress, nonce, gasLimit = 1_500_000)
  *
  * @param {import('ethers').BaseWallet} eoa - The delegated EOA to associate
  * @param {string} tokenAddress - The HTS token address
- * @param {import('./web3').Nonce} [nonce] - Optional nonce tracker (if omitted, ethers auto-manages)
+ * @param {number} [nonce] - Optional explicit transaction nonce
  * @param {number} [gasLimit=1_500_000] - Gas limit
  * @returns {Promise<import('ethers').TransactionReceipt | null>}
  */
@@ -47,7 +47,7 @@ async function associateHtsTokenViaDelegation(eoa, tokenAddress, nonce, gasLimit
     const receipt = await waitFor(eoa.sendTransaction({
         chainId: network.chainId,
         gasLimit,
-        ...(nonce ? { nonce: nonce.next() } : {}),
+        ...(nonce !== undefined ? { nonce } : {}),
         to: eoa.address,
         data: encodeFunctionData(
             'execute(address target, uint256 value, bytes calldata data)',
@@ -66,7 +66,7 @@ async function associateHtsTokenViaDelegation(eoa, tokenAddress, nonce, gasLimit
  * @param {string} tokenAddress - The HTS token address
  * @param {string} to - The recipient address
  * @param {bigint} amount - The amount of tokens to transfer
- * @param {import('./web3').Nonce} [nonce] - Optional nonce tracker (if omitted, ethers auto-manages)
+ * @param {number} [nonce] - Optional explicit transaction nonce
  * @param {number} [gasLimit=1_500_000] - Gas limit
  * @returns {Promise<import('ethers').TransactionReceipt | null>}
  */
@@ -79,7 +79,7 @@ async function transferHtsTokenViaDelegation(eoa, tokenAddress, to, amount, nonc
     const receipt = await waitFor(eoa.sendTransaction({
         chainId: network.chainId,
         gasLimit,
-        ...(nonce ? { nonce: nonce.next() } : {}),
+        ...(nonce !== undefined ? { nonce } : {}),
         to: eoa.address,
         data: encodeFunctionData(
             'execute(address target, uint256 value, bytes calldata data)',
@@ -96,7 +96,7 @@ async function transferHtsTokenViaDelegation(eoa, tokenAddress, to, amount, nonc
  *
  * @param {import('ethers').BaseWallet} eoa - The delegated EOA
  * @param {Array<{target: string, value: bigint, data: string}>} calls - Array of calls to execute
- * @param {import('./web3').Nonce} [nonce] - Optional nonce tracker
+ * @param {number} [nonce] - Optional explicit transaction nonce
  * @param {number} [gasLimit=1_500_000] - Gas limit
  * @returns {Promise<import('ethers').TransactionReceipt | null>}
  */
@@ -105,7 +105,7 @@ async function executeBatchViaDelegation(eoa, calls, nonce, gasLimit = 1_500_000
     const receipt = await waitFor(eoa.sendTransaction({
         chainId: network.chainId,
         gasLimit,
-        ...(nonce ? { nonce: nonce.next() } : {}),
+        ...(nonce !== undefined ? { nonce } : {}),
         to: eoa.address,
         data: encodeFunctionData(
             'executeBatch((address target, uint256 value, bytes data)[] calls)',

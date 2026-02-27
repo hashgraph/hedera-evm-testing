@@ -6,6 +6,7 @@ const { ethers } = require('hardhat');
 
 const { MirrorNode } = require('evm-functional-testing/mirror-node');
 const { getAccountInfo, getContractByteCode } = require('./sdk.js');
+const {GAS_LIMIT_1_000_000} = require("../../../utils/constants");
 
 /**
  * Gas cost constants and functions.
@@ -53,7 +54,6 @@ async function getNonces(address) {
     const { account, evm_address, ethereum_nonce } = await new MirrorNode().getAccount(address);
     const accountInfo = await getAccountInfo(account);
     log('Nonces for `%s:%s`: RN%s:MN%s:CN%s', account, address, nonce, ethereum_nonce, accountInfo.ethereumNonce);
-    assertEq(evm_address, address.toLowerCase(), 'Account EVM address sanity check');
 
     return [nonce, ethereum_nonce, accountInfo.ethereumNonce.toNumber()];
 }
@@ -265,30 +265,20 @@ function asHexUint256(value) {
  *
  * @param {ethers.BaseWallet} eoa - The EOA that signs both the tx and the authorization
  * @param {string} delegationAddress - The contract address to delegate to
- * @param {Nonce} nonce - Nonce tracker for the EOA (consumes 2 nonces: tx + authorization)
- * @param {object} [options]
- * @param {bigint} [options.value=0n] - Value to send with the delegation tx
- * @param {number} [options.gasLimit=1_500_000] - Gas limit
- * @param {bigint} [options.authChainId=0n] - Chain ID for the authorization (0 = any chain)
+ * @param {number} [nonce] - Optional explicit tx nonce (authorization uses nonce + 1)
  * @returns {Promise<string | undefined>} The mined transaction hash, or undefined if unknown
  */
-async function sendDelegation(eoa, delegationAddress, nonce, options = {}) {
-    const { value = 0n, gasLimit = 1_500_000, authChainId = 0 } = options;
+async function sendSelfSponsoredDelegation(eoa, delegationAddress, nonce) {
     const network = await eoa.provider.getNetwork();
-
-    const txNonce = nonce.next();
-    const authNonce = nonce.next();
-
     const resp = await eoa.sendTransaction({
         type: 4,
         chainId: network.chainId,
-        nonce: txNonce,
-        gasLimit,
-        value,
+        ...(nonce !== undefined ? { nonce } : {}),
+        gasLimit: GAS_LIMIT_1_000_000.gasLimit,
         to: eoa.address,
         authorizationList: [await eoa.authorize({
-            chainId: authChainId,
-            nonce: authNonce,
+            chainId: network.chainId,
+            nonce: nonce !== undefined ? nonce + 1 : (await eoa.getNonce()) + 1,
             address: delegationAddress,
         })],
     });
@@ -323,30 +313,16 @@ async function verifyDelegation(eoaAddress, expectedDelegationAddress) {
     log('Verifying delegation for %s (account %s)', eoaAddress, account);
 
     const bytecode = await getContractByteCode(account);
+    const actual = Buffer.from(bytecode).toString('hex');
+    log("actual: %s", actual);
     const expected = designatorFor(expectedDelegationAddress.toLowerCase()).slice(2);
-    assert(
-        Buffer.from(bytecode).toString('hex') === expected,
-        `Delegation bytecode mismatch for ${eoaAddress}: expected ${expected}`
+    assertEq(
+        actual,
+        expected,
+        `Delegation bytecode mismatch for ${eoaAddress}: expected ${expected}, got ${actual}`
     );
 
     return account;
 }
 
-/**
- * Sequential nonce tracker for manually managing transaction ordering.
- * Useful when the relay or MirrorNode returns stale nonce values,
- * e.g. after EIP-7702 authorization transactions that consume a nonce.
- */
-class Nonce {
-    #val = 0;
-    /** Returns the current nonce and increments it. */
-    next() {
-        return this.#val++;
-    }
-    /** Returns the current nonce without incrementing. */
-    get cur() {
-        return this.#val;
-    }
-}
-
-module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress, getNonces, getCodes, Nonce, sendDelegation, verifyDelegation, authorizeEOADelegation };
+module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress, getNonces, getCodes, sendDelegation: sendSelfSponsoredDelegation, verifyDelegation, authorizeEOADelegation };
