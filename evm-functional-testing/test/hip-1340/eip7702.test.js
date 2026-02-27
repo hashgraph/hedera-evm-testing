@@ -474,6 +474,52 @@ describe('HIP-1340 - EIP-7702 features', function () {
         expect(delegationAddress).to.be.equal(asAddress(3));
     });
 
+    it(`should use the last valid (w.r.t. nonce) authorization when multiple authorizations are sent (and the EOA's nonce should be also incremented accordingly)`, async function () {
+        const eoa = await createAndFundEOA();
+
+        const resp = await eoa.sendTransaction({
+            chainId: network.chainId,
+            nonce: 0,
+            gasLimit: gas.base + gas.auth(4),
+            to: ethers.ZeroAddress,
+            authorizationList: [
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 1,
+                    address: asAddress(1),
+                }),
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 1,
+                    address: asAddress(0x11),
+                }),
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 2,
+                    address: asAddress(2),
+                }),
+                await eoa.authorize({
+                    chainId: 0,
+                    nonce: 4,
+                    address: asAddress(4),
+                }),
+            ],
+        });
+        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+
+        const [nonce, eth_nonce, ethNonce] = await web3.getNonces(eoa.address)
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+        // expect(nonce).to.be.equal(3);
+        // expect(eth_nonce).to.be.equal(3);
+        expect(ethNonce).to.be.equal(3);
+
+        const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+        // expect(code).to.be.equal(designatorFor(asAddress(2)));
+        expect(contractBytecode).to.be.equal(designatorFor(asAddress(2)));
+        expect(delegationAddress).to.be.equal(asAddress(2));
+    });
+
     it('should authorize delegation of an existing account when exact gas is sent', async function () {
         const delegateToAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
         const eoa = await createAndFundEOA();
