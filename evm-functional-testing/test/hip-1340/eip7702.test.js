@@ -7,6 +7,16 @@ const { ethers } = require('hardhat');
 const web3 = require('./utils/web3');
 const { gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
 
+class Nonce {
+    #val = 0;
+    next() {
+        return this.#val++;
+    }
+    get cur() {
+        return this.#val;
+    }
+}
+
 describe('HIP-1340 - EIP-7702 features', function () {
 
     /** @type {ethers.JsonRpcProvider} */
@@ -25,44 +35,52 @@ describe('HIP-1340 - EIP-7702 features', function () {
         [
             { fn: () => ethers.Wallet.createRandom(), desc: 'Random EVM address' },
             { fn: () => createAndFundEOA(), desc: 'Pre-funded EOA' },
+            { fn: () => deploy('contracts/hip-1340/AlwaysSucceed'), desc: 'Deployed contract that succeeds' },
+            // TODO: To be enabled when Pectra feature branch supports contract revert in type 4 transactions
+            // { fn: () => deploy('contracts/hip-1340/AlwaysRevert'), desc: 'Deployed contract that reverts' },
         ].flatMap(receiver =>
             [
-                'EXTERNAL',
-                'SELF',
-            ].flatMap(trigger =>
+                undefined,
+                encodeFunctionData('usedToGenerateSomeCalldata(uint256)', [0x123]),
+            ].flatMap(data =>
                 [
-                    0n,
-                    1234n,
-                ].flatMap(value =>
+                    'EXTERNAL',
+                    'SELF',
+                ].flatMap(trigger =>
                     [
-                        { fn: () => 0, desc: 'all chains' },
-                        { fn: () => network.chainId, desc: 'specific chain id of current network' },
-                    ].flatMap(delegateToChainId =>
+                        0n,
+                        1234n,
+                    ].flatMap(value =>
                         [
-                            asAddress(1), // a precompile addresses https://www.evm.codes/precompiled?fork=prague
-                            asAddress(0x167), // a system contract address https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts
-                            '0x0000000000000000000000000000000000068cDa', // Long-zero address
-                            '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
-                        ].flatMap(delegateToAddress => ({ receiver, trigger, value, delegateToChainId, delegateToAddress })))))
-        ).forEach(({ receiver, trigger, value, delegateToChainId, delegateToAddress }) => {
-            it(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
-                const sender = await createAndFundEOA();
+                            { fn: () => 0, desc: 'all chains' },
+                            { fn: () => network.chainId, desc: 'specific chain id of current network' },
+                        ].flatMap(delegateToChainId =>
+                            [
+                                asAddress(1), // a precompile addresses https://www.evm.codes/precompiled?fork=prague
+                                asAddress(0x167), // a system contract address https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts
+                                '0x0000000000000000000000000000000000068cDa', // Long-zero address
+                                '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
+                            ].flatMap(delegateToAddress => ({ receiver, data, trigger, value, delegateToChainId, delegateToAddress }))))))
+        ).forEach(({ receiver, data, trigger, value, delegateToChainId, delegateToAddress }) => {
+            it(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' with '${data ? 'data' : 'no data'}' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
+                const [sender, senderNonce] = [await createAndFundEOA(), new Nonce()];
                 const to = (await receiver.fn()).address;
-                const [delegated, authNonce] = trigger === 'SELF'
-                    ? [sender, 1]
-                    : [await createAndFundEOA(), 0];
+                const [delegated, delegatedNonce] = trigger === 'SELF'
+                    ? [sender, senderNonce]
+                    : [await createAndFundEOA(), new Nonce()];
 
                 log('Sending %s th to %s from %s and delegating %s to %s', value, to, sender.address, delegated.address, delegateToAddress);
                 const tx = {
                     type: 4,
                     chainId: network.chainId,
-                    nonce: 0,
+                    nonce: senderNonce.next(),
                     gasLimit: 800_000,
                     value: units.tinybar(value),
                     to,
+                    data,
                     authorizationList: [await delegated.authorize({
                         chainId: delegateToChainId.fn(),
-                        nonce: authNonce,
+                        nonce: delegatedNonce.next(),
                         address: delegateToAddress,
                     })],
                 };
@@ -76,6 +94,17 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     txhash = err.replacement.hash;
                 }
 
+                for (const [wallet, walletNonce, walletDesc] of [
+                    [sender, senderNonce, 'sender'],
+                    [delegated, delegatedNonce, 'delegated'],
+                ]) {
+                    const [nonce, eth_nonce, ethNonce] = await web3.getNonces(wallet.address)
+                    // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+                    // expect(nonce).to.be.equal(walletNonce.cur);
+                    // expect(eth_nonce).to.be.equal(walletNonce.cur);
+                    expect(ethNonce).to.be.equal(walletNonce.cur, `Nonce for '${walletDesc}' should be ${walletNonce.cur} but got ${ethNonce}`);
+                }
+
                 const [code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
                 // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
                 // expect(code).to.be.equal(designatorFor(address.toLowerCase()));
@@ -83,6 +112,45 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 expect(delegationAddress).to.be.equal(delegateToAddress.toLowerCase());
             });
         });
+    });
+
+    it(`should not store delegation designator nor increase nonce when chain id doesn't match that of the network`, async function () {
+        const sender = await createAndFundEOA();
+        const to = await createAndFundEOA();
+        const delegated = await createAndFundEOA();
+
+        const resp = await sender.sendTransaction({
+            type: 4,
+            chainId: network.chainId,
+            nonce: 0,
+            gasLimit: gas.base + gas.auth(1) + gas.hollow(),
+            value: units.tinybar(1234n),
+            to: to.address,
+            authorizationList: [await delegated.authorize({
+                chainId: 2,
+                nonce: 0,
+                address: '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase(),
+            })],
+        });
+        log('receipt', resp.hash);
+        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+
+        for (const [wallet, walletNonce, walletName] of [
+            [sender, 1, 'sender'],
+            [delegated, 0, 'delegated'],
+        ]) {
+            const [nonce, eth_nonce, ethNonce] = await web3.getNonces(wallet.address)
+            // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+            // expect(nonce).to.be.equal(walletNonce);
+            // expect(eth_nonce).to.be.equal(walletNonce);
+            expect(ethNonce).to.be.equal(walletNonce, `Nonce for '${walletName}' should be ${walletNonce} but got ${ethNonce}`);
+        }
+
+        const [code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+        // expect(code).to.be.equal('0x');
+        expect(contractBytecode).to.be.equal('0x');
+        expect(delegationAddress).to.be.equal('0x');
     });
 
     [0n, 10_000n * 1_00000_00000n].forEach(value => {
@@ -125,16 +193,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
             const storeAndEmit = await deploy('contracts/hip-1340/StoreAndEmit');
             const smartWallet = await deploy('contracts/hip-1340/CustomSimple7702Account');
             const eoa = await createAndFundEOA();
-
-            class Nonce {
-                #val = 0;
-                next() {
-                    return this.#val++;
-                }
-                get cur() {
-                    return this.#val;
-                }
-            }
 
             const [fromNonce, eoaNonce] = [new Nonce(), new Nonce()];
             // Delegation
@@ -582,10 +640,53 @@ describe('HIP-1340 - EIP-7702 features', function () {
             expect(receipt.logs[i]).to.deep.include({
                 topics: [
                     ethers.id('CodeLengthAndHashEvent(uint256,bytes32)'),
-                    asHexUint256(designator.slice(2).length / 2),
+                    asHexUint256((designator.length - 2) / 2),
                     ethers.keccak256(designator),
                 ],
             });
+        });
+    });
+
+    it('should log the result of `codesize` and `codecopy`', async function () {
+        const codeSizeAndCopy = await deploy('contracts/hip-1340/CodeSizeAndCopy', [], undefined, 300_000);
+        const code = await provider.getCode(codeSizeAndCopy.address);
+        const sender = await web3.authorizeEOADelegation(await createAndFundEOA(), codeSizeAndCopy.address);
+
+        const tx = await sender.sendTransaction({
+            chainId: network.chainId,
+            to: sender.address,
+            nonce: 1,
+            gasLimit: 300_000,
+            data: encodeFunctionData('logCodeSizeAndCopy()'),
+        });
+        const receipt = await tx.wait();
+        log('Transaction receipt', receipt);
+        assert(receipt !== null, 'Receipt is null');
+
+        const designator = designatorFor(codeSizeAndCopy.address.toLowerCase());
+        log('Logs', receipt.logs);
+        expect(receipt.logs.length).to.be.equal(3);
+        expect(receipt.logs[0]).to.deep.include({
+            topics: [
+                ethers.id('ThisSenderAndOriginEvent(address,address,address)'),
+                asHexUint256(sender.address.toLowerCase()),
+                asHexUint256(sender.address.toLowerCase()),
+                asHexUint256(sender.address.toLowerCase()),
+            ],
+        });
+        expect(receipt.logs[1]).to.deep.include({
+            topics: [
+                ethers.id('CodeSizeAndCopyEvent(uint256,bytes32)'),
+                asHexUint256((designator.length - 2) / 2),
+                ethers.keccak256(designator),
+            ],
+        });
+        expect(receipt.logs[2]).to.deep.include({
+            topics: [
+                ethers.id('CodeSizeAndCopyEvent(uint256,bytes32)'),
+                asHexUint256((code.length - 2) / 2),
+                asHexUint256(code.slice(0, 2 + 32 * 2)),
+            ],
         });
     });
 });
