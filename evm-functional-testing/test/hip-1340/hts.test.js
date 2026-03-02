@@ -429,27 +429,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
         ]);
 
         const spender = (await createAndFundEOA()).address;
-        const hasSelectorCalls = [
-            {
-                signature: 'hbarAllowance(address spender)',
-                args: [spender],
-                blockedEvent: 'HbarAllowanceCalled',
-            },
-            {
-                signature: 'hbarApprove(address spender, int256 amount)',
-                args: [spender, 123n],
-                blockedEvent: 'HbarApproveCalled',
-            },
-            {
-                signature: 'setUnlimitedAutomaticAssociations(bool enableAutoAssociations)',
-                args: [true],
-                blockedEvent: 'SetUnlimitedAutomaticAssociationsCalled',
-            },
-        ];
-
-        for (const {signature, args, blockedEvent} of hasSelectorCalls) {
-            // HAS selectors should be redirected to HAS system contract path, not delegated contract code.
-            // So contract defined above events should NOT be emitted.
+        const sendAndAssertProxiedCall = async (signature, args, blockedEvent) => {
             const tx = await eoa.sendTransaction({
                 chainId: network.chainId,
                 nonce: eoaNonce++,
@@ -460,13 +440,41 @@ describe('HIP-1340 - Hiero specific tests', function () {
             const receipt = await tx.wait();
             assert(receipt !== null, `Receipt is null for ${signature}`);
             expect(receipt.status).to.equal(1, `Expected ${signature} call via HAS proxy to succeed`);
-            // We expect not logs if the calls were proxied to HAS system contract
+            // We expect no facade logs if the call is proxied to HAS system contract.
             const deniedLog = receipt.logs.find(
                 l => l.topics[0] === eventIface.getEvent(blockedEvent).topicHash
             );
-            expect(deniedLog).to.equal(undefined, `Facade event ${blockedEvent} should not be emitted on revert path`);
+            expect(deniedLog).to.equal(undefined, `Facade event ${blockedEvent} should not be emitted on proxied path`);
+        };
 
-        }
+        // Approve HBAR allowance through delegated EOA and ensure facade event is not emitted.
+        await sendAndAssertProxiedCall(
+            'hbarApprove(address spender, int256 amount)',
+            [spender, 123n],
+            'HbarApproveCalled',
+        );
+
+        // Verify allowance reflects the prior approval.
+        const allowanceResult = await provider.call({
+            to: eoa.address,
+            data: encodeFunctionData('hbarAllowance(address spender)', [spender]),
+        });
+        const [responseCode, allowance] = new ethers.Interface([
+            'function hbarAllowance(address spender) returns (int64 responseCode, int256 allowance)',
+        ]).decodeFunctionResult('hbarAllowance', allowanceResult);
+        expect(responseCode).to.equal(22n, 'hbarAllowance should return SUCCESS response code');
+        expect(allowance).to.equal(123n, 'hbarAllowance should reflect the amount from hbarApprove');
+
+        // Another HAS selector should also be proxied, without invoking facade code.
+        await sendAndAssertProxiedCall(
+            'setUnlimitedAutomaticAssociations(bool enableAutoAssociations)',
+            [true],
+            'SetUnlimitedAutomaticAssociationsCalled',
+        );
+
+        // Verify account setting was updated by HAS proxy call.
+        const maxAutoAssociations = await Utils.getMaxAutomaticTokenAssociations(eoa.address);
+        expect(maxAutoAssociations).to.equal(-1, 'Expected unlimited automatic token associations');
     });
 
 });
