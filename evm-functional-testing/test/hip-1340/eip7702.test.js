@@ -62,7 +62,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                                 '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
                             ].flatMap(delegateToAddress => ({ receiver, data, trigger, value, delegateToChainId, delegateToAddress }))))))
         ).forEach(({ receiver, data, trigger, value, delegateToChainId, delegateToAddress }) => {
-            it.only(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' with '${data ? 'data' : 'no data'}' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
+            it(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' with '${data ? 'data' : 'no data'}' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
                 const [sender, senderNonce] = [await createAndFundEOA(), new Nonce()];
                 const to = (await receiver.fn()).address;
                 const [delegated, delegatedNonce] = trigger === 'SELF'
@@ -112,6 +112,45 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 expect(delegationAddress).to.be.equal(delegateToAddress.toLowerCase());
             });
         });
+    });
+
+    it(`should not store delegation designator nor increase nonce when chain id doesn't match that of the network`, async function () {
+        const sender = await createAndFundEOA();
+        const to = await createAndFundEOA();
+        const delegated = await createAndFundEOA();
+
+        const resp = await sender.sendTransaction({
+            type: 4,
+            chainId: network.chainId,
+            nonce: 0,
+            gasLimit: gas.base + gas.auth(1) + gas.hollow(),
+            value: units.tinybar(1234n),
+            to: to.address,
+            authorizationList: [await delegated.authorize({
+                chainId: 2,
+                nonce: 0,
+                address: '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase(),
+            })],
+        });
+        log('receipt', resp.hash);
+        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+
+        for (const [wallet, walletNonce, walletName] of [
+            [sender, 1, 'sender'],
+            [delegated, 0, 'delegated'],
+        ]) {
+            const [nonce, eth_nonce, ethNonce] = await web3.getNonces(wallet.address)
+            // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+            // expect(nonce).to.be.equal(walletNonce);
+            // expect(eth_nonce).to.be.equal(walletNonce);
+            expect(ethNonce).to.be.equal(walletNonce, `Nonce for '${walletName}' should be ${walletNonce} but got ${ethNonce}`);
+        }
+
+        const [code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
+        // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+        // expect(code).to.be.equal('0x');
+        expect(contractBytecode).to.be.equal('0x');
+        expect(delegationAddress).to.be.equal('0x');
     });
 
     [0n, 10_000n * 1_00000_00000n].forEach(value => {
