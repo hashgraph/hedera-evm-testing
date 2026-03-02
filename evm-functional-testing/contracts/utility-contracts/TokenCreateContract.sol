@@ -116,7 +116,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
                             HederaTokenService.createFungibleTokenWithCustomFees(token, initialTotalSupply, decimals, fixedFees, fractionalFees);
         emit ResponseCode(responseCode);
 
-        if (int64(responseCode) != HederaResponseCodes.SUCCESS) {
+        if (responseCode != HederaResponseCodes.SUCCESS) {
             revert ();
         }
 
@@ -213,7 +213,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         (int256 responseCode, address tokenAddress) =
                             HederaTokenService.createNonFungibleTokenWithCustomFees(token, fixedFees, royaltyFees);
 
-        if (int64(responseCode) != HederaResponseCodes.SUCCESS) {
+        if (responseCode != HederaResponseCodes.SUCCESS) {
             revert ();
         }
 

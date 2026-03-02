@@ -1,6 +1,5 @@
 const { contractDeployAndFund } = require("../../../../utils/contract");
 const Constants = require("../../../../utils/constants");
-const {GAS_LIMIT_1_000_000, GAS_LIMIT_10_000_000} = require("../../../../utils/constants");
 
 /**
  * Create test contracts, includes token create contract ('TokenCreateContract'),
@@ -41,7 +40,7 @@ async function createFungibleTokenAndAssociate(
   const receipt = await (
     await transferContract.createFungibleTokenWithoutKYCPublic(tokenContract, {
       value: Constants.Cost.CREATE_TOKEN_COST,
-      ...GAS_LIMIT_1_000_000,
+      ...Constants.GAS_LIMIT_1_000_000,
     })
   ).wait();
   const tokenAddress = receipt.logs.find(
@@ -81,7 +80,7 @@ async function createNonFungibleTokenAndAssociate(
       tokenContract,
       {
         value: Constants.Cost.CREATE_TOKEN_COST,
-        ...GAS_LIMIT_1_000_000,
+        ...Constants.GAS_LIMIT_1_000_000,
       },
     )
   ).wait();
@@ -122,7 +121,7 @@ async function mintForNonFungibleTokenTests(
           tokenAddress,
           0,
           requestMetadata,
-          GAS_LIMIT_10_000_000,
+          Constants.GAS_LIMIT_10_000_000,
         )
       ).wait()
     ).logs.find((e) => e.fragment?.name === Constants.Events.MintedToken).args
