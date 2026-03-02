@@ -345,10 +345,8 @@ async function verifyDelegation(eoaAddress, expectedDelegationAddress) {
     return account;
 }
 
-module.exports = { gas, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor, asAddress, getNonces, getCodes, sendDelegation: sendSelfSponsoredDelegation, verifyDelegation, authorizeEOADelegation };
-
 module.exports = {
     gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor,
-    asAddress, getNonces, getCodes, authorizeEOADelegation,
+    asAddress, getNonces, getCodes, sendDelegation: sendSelfSponsoredDelegation, verifyDelegation, authorizeEOADelegation,
     EOADefaultBalance,
 };
