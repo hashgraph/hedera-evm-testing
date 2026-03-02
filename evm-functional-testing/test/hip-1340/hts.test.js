@@ -38,7 +38,7 @@ const HAS_SELECTORS_CONTRACT = 'contracts/hip-1340/HasFacadeSelectors'
 const TEST_TOKEN_NAME = "tokenName";
 const TEST_TOKEN_SYMBOL = "tokenSymbol";
 
-describe('HIP-1340 - EIP-7702 features - hiero specific tests', function () {
+describe('HIP-1340 - Hiero specific tests', function () {
     /** @type {ethers.JsonRpcProvider | import('hardhat').HardhatEthersProvider} */
     let provider;
 
