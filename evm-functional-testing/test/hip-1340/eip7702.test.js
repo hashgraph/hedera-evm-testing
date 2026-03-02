@@ -35,27 +35,34 @@ describe('HIP-1340 - EIP-7702 features', function () {
         [
             { fn: () => ethers.Wallet.createRandom(), desc: 'Random EVM address' },
             { fn: () => createAndFundEOA(), desc: 'Pre-funded EOA' },
+            { fn: () => deploy('contracts/hip-1340/AlwaysSucceed'), desc: 'Deployed contract that succeeds' },
+            // TODO: To be enabled when Pectra feature branch supports contract revert in type 4 transactions
+            // { fn: () => deploy('contracts/hip-1340/AlwaysRevert'), desc: 'Deployed contract that reverts' },
         ].flatMap(receiver =>
             [
-                'EXTERNAL',
-                'SELF',
-            ].flatMap(trigger =>
+                undefined,
+                encodeFunctionData('usedToGenerateSomeCalldata(uint256)', [0x123]),
+            ].flatMap(data =>
                 [
-                    0n,
-                    1234n,
-                ].flatMap(value =>
+                    'EXTERNAL',
+                    'SELF',
+                ].flatMap(trigger =>
                     [
-                        { fn: () => 0, desc: 'all chains' },
-                        { fn: () => network.chainId, desc: 'specific chain id of current network' },
-                    ].flatMap(delegateToChainId =>
+                        0n,
+                        1234n,
+                    ].flatMap(value =>
                         [
-                            asAddress(1), // a precompile addresses https://www.evm.codes/precompiled?fork=prague
-                            asAddress(0x167), // a system contract address https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts
-                            '0x0000000000000000000000000000000000068cDa', // Long-zero address
-                            '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
-                        ].flatMap(delegateToAddress => ({ receiver, trigger, value, delegateToChainId, delegateToAddress })))))
-        ).forEach(({ receiver, trigger, value, delegateToChainId, delegateToAddress }) => {
-            it.only(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
+                            { fn: () => 0, desc: 'all chains' },
+                            { fn: () => network.chainId, desc: 'specific chain id of current network' },
+                        ].flatMap(delegateToChainId =>
+                            [
+                                asAddress(1), // a precompile addresses https://www.evm.codes/precompiled?fork=prague
+                                asAddress(0x167), // a system contract address https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts
+                                '0x0000000000000000000000000000000000068cDa', // Long-zero address
+                                '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
+                            ].flatMap(delegateToAddress => ({ receiver, data, trigger, value, delegateToChainId, delegateToAddress }))))))
+        ).forEach(({ receiver, data, trigger, value, delegateToChainId, delegateToAddress }) => {
+            it.only(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' with '${data ? 'data' : 'no data'}' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
                 const [sender, senderNonce] = [await createAndFundEOA(), new Nonce()];
                 const to = (await receiver.fn()).address;
                 const [delegated, delegatedNonce] = trigger === 'SELF'
@@ -70,6 +77,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     gasLimit: 800_000,
                     value: units.tinybar(value),
                     to,
+                    data,
                     authorizationList: [await delegated.authorize({
                         chainId: delegateToChainId.fn(),
                         nonce: delegatedNonce.next(),
@@ -86,15 +94,15 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     txhash = err.replacement.hash;
                 }
 
-                for (const [wallet, walletNonce] of [
-                    [sender, senderNonce],
-                    [delegated, delegatedNonce],
+                for (const [wallet, walletNonce, walletDesc] of [
+                    [sender, senderNonce, 'sender'],
+                    [delegated, delegatedNonce, 'delegated'],
                 ]) {
                     const [nonce, eth_nonce, ethNonce] = await web3.getNonces(wallet.address)
                     // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
                     // expect(nonce).to.be.equal(walletNonce.cur);
                     // expect(eth_nonce).to.be.equal(walletNonce.cur);
-                    expect(ethNonce).to.be.equal(walletNonce.cur);
+                    expect(ethNonce).to.be.equal(walletNonce.cur, `Nonce for '${walletDesc}' should be ${walletNonce.cur} but got ${ethNonce}`);
                 }
 
                 const [code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
