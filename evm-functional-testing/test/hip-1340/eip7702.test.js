@@ -582,10 +582,53 @@ describe('HIP-1340 - EIP-7702 features', function () {
             expect(receipt.logs[i]).to.deep.include({
                 topics: [
                     ethers.id('CodeLengthAndHashEvent(uint256,bytes32)'),
-                    asHexUint256(designator.slice(2).length / 2),
+                    asHexUint256((designator.length - 2) / 2),
                     ethers.keccak256(designator),
                 ],
             });
+        });
+    });
+
+    it('should log the result of `codesize` and `codecopy`', async function () {
+        const codeSizeAndCopy = await deploy('contracts/hip-1340/CodeSizeAndCopy', [], undefined, 300_000);
+        const code = await provider.getCode(codeSizeAndCopy.address);
+        const sender = await web3.authorizeEOADelegation(await createAndFundEOA(), codeSizeAndCopy.address);
+
+        const tx = await sender.sendTransaction({
+            chainId: network.chainId,
+            to: sender.address,
+            nonce: 1,
+            gasLimit: 300_000,
+            data: encodeFunctionData('logCodeSizeAndCopy()'),
+        });
+        const receipt = await tx.wait();
+        log('Transaction receipt', receipt);
+        assert(receipt !== null, 'Receipt is null');
+
+        const designator = designatorFor(codeSizeAndCopy.address.toLowerCase());
+        log('Logs', receipt.logs);
+        expect(receipt.logs.length).to.be.equal(3);
+        expect(receipt.logs[0]).to.deep.include({
+            topics: [
+                ethers.id('ThisSenderAndOriginEvent(address,address,address)'),
+                asHexUint256(sender.address.toLowerCase()),
+                asHexUint256(sender.address.toLowerCase()),
+                asHexUint256(sender.address.toLowerCase()),
+            ],
+        });
+        expect(receipt.logs[1]).to.deep.include({
+            topics: [
+                ethers.id('CodeSizeAndCopyEvent(uint256,bytes32)'),
+                asHexUint256((designator.length - 2) / 2),
+                ethers.keccak256(designator),
+            ],
+        });
+        expect(receipt.logs[2]).to.deep.include({
+            topics: [
+                ethers.id('CodeSizeAndCopyEvent(uint256,bytes32)'),
+                asHexUint256((code.length - 2) / 2),
+                asHexUint256(code.slice(0, 2 + 32 * 2)),
+            ],
         });
     });
 });
