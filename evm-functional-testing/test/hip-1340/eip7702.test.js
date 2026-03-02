@@ -7,6 +7,16 @@ const { ethers } = require('hardhat');
 const web3 = require('./utils/web3');
 const { gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
 
+class Nonce {
+    #val = 0;
+    next() {
+        return this.#val++;
+    }
+    get cur() {
+        return this.#val;
+    }
+}
+
 describe('HIP-1340 - EIP-7702 features', function () {
 
     /** @type {ethers.JsonRpcProvider} */
@@ -45,24 +55,24 @@ describe('HIP-1340 - EIP-7702 features', function () {
                             '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc', // Random address
                         ].flatMap(delegateToAddress => ({ receiver, trigger, value, delegateToChainId, delegateToAddress })))))
         ).forEach(({ receiver, trigger, value, delegateToChainId, delegateToAddress }) => {
-            it(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
-                const sender = await createAndFundEOA();
+            it.only(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
+                const [sender, senderNonce] = [await createAndFundEOA(), new Nonce()];
                 const to = (await receiver.fn()).address;
-                const [delegated, authNonce] = trigger === 'SELF'
-                    ? [sender, 1]
-                    : [await createAndFundEOA(), 0];
+                const [delegated, delegatedNonce] = trigger === 'SELF'
+                    ? [sender, senderNonce]
+                    : [await createAndFundEOA(), new Nonce()];
 
                 log('Sending %s th to %s from %s and delegating %s to %s', value, to, sender.address, delegated.address, delegateToAddress);
                 const tx = {
                     type: 4,
                     chainId: network.chainId,
-                    nonce: 0,
+                    nonce: senderNonce.next(),
                     gasLimit: 800_000,
                     value: units.tinybar(value),
                     to,
                     authorizationList: [await delegated.authorize({
                         chainId: delegateToChainId.fn(),
-                        nonce: authNonce,
+                        nonce: delegatedNonce.next(),
                         address: delegateToAddress,
                     })],
                 };
@@ -74,6 +84,17 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 } catch (err) {
                     log('Fetch transaction receipt failed:', err.message);
                     txhash = err.replacement.hash;
+                }
+
+                for (const [wallet, walletNonce] of [
+                    [sender, senderNonce],
+                    [delegated, delegatedNonce],
+                ]) {
+                    const [nonce, eth_nonce, ethNonce] = await web3.getNonces(wallet.address)
+                    // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+                    // expect(nonce).to.be.equal(walletNonce.cur);
+                    // expect(eth_nonce).to.be.equal(walletNonce.cur);
+                    expect(ethNonce).to.be.equal(walletNonce.cur);
                 }
 
                 const [code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
@@ -125,16 +146,6 @@ describe('HIP-1340 - EIP-7702 features', function () {
             const storeAndEmit = await deploy('contracts/hip-1340/StoreAndEmit');
             const smartWallet = await deploy('contracts/hip-1340/CustomSimple7702Account');
             const eoa = await createAndFundEOA();
-
-            class Nonce {
-                #val = 0;
-                next() {
-                    return this.#val++;
-                }
-                get cur() {
-                    return this.#val;
-                }
-            }
 
             const [fromNonce, eoaNonce] = [new Nonce(), new Nonce()];
             // Delegation
