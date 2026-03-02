@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.10;
 
-import "../IHederaScheduleService_HIP755.sol";
+import "@hiero-ledger/hiero-contracts/schedule-service/IHRC755.sol";
 import "@hiero-ledger/hiero-contracts/common/HederaResponseCodes.sol";
 
 contract HIP1215PayerContract {
@@ -15,7 +15,7 @@ contract HIP1215PayerContract {
 
     function authorizeSchedule(address schedule) external returns (int64 responseCode) {
         (bool success, bytes memory result) = HSS.call(
-            abi.encodeWithSelector(IHederaScheduleService_HIP755.authorizeSchedule.selector, schedule));
+            abi.encodeWithSelector(IHRC755.authorizeSchedule.selector, schedule));
         responseCode = success ? abi.decode(result, (int64)) : HederaResponseCodes.UNKNOWN;
         emit ResponseCode(responseCode);
         return responseCode;

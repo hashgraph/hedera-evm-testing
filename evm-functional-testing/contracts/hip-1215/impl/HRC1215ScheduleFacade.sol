@@ -2,7 +2,7 @@
 pragma solidity >=0.4.9 <0.9.0;
 
 import "@hiero-ledger/hiero-contracts/common/HederaResponseCodes.sol";
-import "../IHRC1215ScheduleFacade.sol";
+import "@hiero-ledger/hiero-contracts/schedule-service/IHRC1215ScheduleFacade.sol";
 
 abstract contract HRC1215ScheduleFacade {
 

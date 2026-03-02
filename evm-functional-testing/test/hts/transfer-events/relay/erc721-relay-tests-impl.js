@@ -1,9 +1,10 @@
 const { validateRcWithErcEvent } = require("./erc20-relay-tests-impl");
+const {GAS_LIMIT_1_000_000} = require("../../../../utils/constants");
 
 // ---------------- Test util functions ----------------
 async function approveNft(treasury, tokenAddress, sender, serialNumber) {
   const receipt = await (
-    await treasury.approveNftPublic(tokenAddress, sender, serialNumber)
+    await treasury.approveNftPublic(tokenAddress, sender, serialNumber, GAS_LIMIT_1_000_000)
   ).wait();
   console.log(
     "%s approveNftPublic:%s sender:%s serialNumber:%s",

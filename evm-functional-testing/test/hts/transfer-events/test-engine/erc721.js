@@ -2,6 +2,7 @@ const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 const Constants = require("../../../../utils/constants");
 const { contractDeployAndFund } = require("../../../../utils/contract");
 const { approveNft } = require("../relay/erc721-relay-tests-impl");
+const {GAS_LIMIT_10_000_000} = require("../../../../utils/constants");
 
 /**
  * ERC721 events tests. Using this method to reuse tests for different HTS addresses
@@ -39,9 +40,9 @@ async function erc721EventsTests(
         await (
           await context.treasury.mintTokenPublic(context.nftTokenAddress, 0, [
             "0x0101",
-          ])
+          ], GAS_LIMIT_10_000_000)
         ).wait()
-      ).logs.find((e) => e.fragment.name === Constants.Events.MintedToken).args
+      ).logs.find((e) => e.fragment?.name === Constants.Events.MintedToken).args
         .serialNumbers[0];
       // approve minted nft transfer from treasury
       await approveNft(

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.10;
 
-import "../IHederaScheduleService_HIP1215.sol";
-import "@hiero-ledger/hiero-contracts/token-service-v2/IHederaTokenService.sol";
+import "@hiero-ledger/hiero-contracts/schedule-service/IHRC1215.sol";
 import "@hiero-ledger/hiero-contracts/token-service-v2/HederaResponseCodes.sol";
 
 contract HIP1215TransferContract {
@@ -16,7 +15,7 @@ contract HIP1215TransferContract {
 
     function scheduleCallForTransfer(uint256 expirySecond, uint256 gasLimit, uint64 value, address tokenContract, address receiver) external payable returns (int64 responseCode, address scheduleAddress) {
         bytes memory callData = abi.encodeWithSelector(this.createAssociateAndTransfer.selector, tokenContract, receiver);
-        (bool success, bytes memory result) = HSS.call(abi.encodeWithSelector(IHederaScheduleService_HIP1215.scheduleCall.selector, address(this), expirySecond, gasLimit, value, callData));
+        (bool success, bytes memory result) = HSS.call(abi.encodeWithSelector(IHRC1215.scheduleCall.selector, address(this), expirySecond, gasLimit, value, callData));
         (responseCode, scheduleAddress) = success ? abi.decode(result, (int64, address)) : (int64(HederaResponseCodes.UNKNOWN), address(0));
         emit ScheduleCall(responseCode, scheduleAddress);
         return (responseCode, scheduleAddress);
