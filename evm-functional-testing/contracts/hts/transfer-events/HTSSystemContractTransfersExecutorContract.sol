@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.10;
 
-import "../../system-contract-references/HederaResponseCodes.sol";
-import "../../system-contract-references/IHederaTokenService.sol";
 import "../../utility-contracts/TokenCreateContract.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";

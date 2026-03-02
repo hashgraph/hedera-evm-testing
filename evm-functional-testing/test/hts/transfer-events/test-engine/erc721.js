@@ -41,7 +41,7 @@ async function erc721EventsTests(
             "0x0101",
           ])
         ).wait()
-      ).logs.find((e) => e.fragment.name === Constants.Events.MintedToken).args
+      ).logs.find((e) => e.fragment?.name === Constants.Events.MintedToken).args
         .serialNumbers[0];
       // approve minted nft transfer from treasury
       await approveNft(
