@@ -352,6 +352,7 @@ async function sendDelegationCreationTx({ eoa, delegated, delegationAddress = DE
 
 /**
  * Waits for a tx receipt with a short timeout. Returns null on timeout or error.
+ * When the relay reprices/replaces the tx (TRANSACTION_REPLACED), returns the replacement receipt.
  *
  * @param {ethers.TransactionResponse} tx
  * @param {number} [confirmations=1]
@@ -359,10 +360,20 @@ async function sendDelegationCreationTx({ eoa, delegated, delegationAddress = DE
  * @returns {Promise<ethers.TransactionReceipt | null>}
  */
 async function waitReceiptWithTimeout(tx, confirmations = 1, timeoutMs = 3_000) {
-    return tx.wait(confirmations, timeoutMs).catch(err => {
+    try {
+        return await tx.wait(confirmations, timeoutMs);
+    } catch (err) {
+        if (err.replacement) {
+            log('Transaction replaced (e.g. repriced): %s -> %s', tx.hash, err.replacement.hash);
+            if (err.receipt) return err.receipt;
+            return err.replacement.wait(confirmations, timeoutMs).catch(e => {
+                log('Fetch replacement receipt failed: %s', e.message);
+                return null;
+            });
+        }
         log('Fetch transaction receipt failed: %s', err.message);
         return null;
-    });
+    }
 }
 
 /**

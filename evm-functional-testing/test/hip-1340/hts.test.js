@@ -248,11 +248,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
         const delegated = ethers.Wallet.createRandom();
 
         const tx = await sendDelegationCreationTx({eoa, delegated});
-        const receipt = await waitReceiptWithTimeout(tx);
-        if (receipt !== null) {
-            expect(receipt.status).to.be.equal(1, 'Transaction should succeed');
-        }
-
+        await waitReceiptWithTimeout(tx);
         await assertDelegatedAccountDoesNotExist(provider, delegated.address);
     });
 
@@ -267,12 +263,23 @@ describe('HIP-1340 - Hiero specific tests', function () {
             to: delegated.address,
             value,
         });
-        const receipt = await waitReceiptWithTimeout(tx);
-        if (receipt !== null) {
-            expect(receipt.status).to.be.equal(1, 'Transaction should succeed');
-        }
-
+        await waitReceiptWithTimeout(tx);
         await assertDelegatedAccountDoesNotExist(provider, delegated.address);
+    });
+
+    it('should charge gas for account creation during delegation to non-existing EOA', async function () {
+        const eoa = await createAndFundEOA();
+        const delegated = ethers.Wallet.createRandom();
+        const gasLimit = 46000;
+
+        const tx = await sendDelegationCreationTx({ eoa, delegated, gasLimit });
+        const receipt = await waitReceiptWithTimeout(tx);
+
+        expect(receipt, 'Transaction (or replacement) receipt should be available').to.not.be.null;
+        expect(receipt.status).to.equal(1, 'Transaction should succeed');
+        expect(Number(receipt.gasUsed), 'Gas should be charged for account creation').to.be.equal(gasLimit);
+
+        await assertDelegatedAccountExists(provider, delegated.address);
     });
 
     it('should deploy HasFacadeSelectors and expose expected HAS selectors', async function () {
@@ -432,4 +439,15 @@ async function assertDelegatedAccountDoesNotExist(provider, delegatedAddress) {
     expect(delegatedAccount.account).to.be.equal(undefined, 'Delegated account should not exist on Hedera');
     expect(delegatedAccount._status?.messages?.[0]?.message).to.be.equal('Not found');
     expect(await provider.getBalance(delegatedAddress)).to.be.equal(0);
+}
+
+/**
+ * Asserts that the given address has Hedera account.
+ * @param {ethers.Provider} provider
+ * @param {string} delegatedAddress
+ */
+async function assertDelegatedAccountExists(provider, delegatedAddress) {
+    const delegatedAccount = await new MirrorNode().getAccount(delegatedAddress);
+    expect(delegatedAccount.account, 'Delegated account should exist on Hedera').to.not.be.undefined;
+    expect(delegatedAccount._status?.messages?.[0]?.message, 'Delegated account should not have Not found status').to.not.equal('Not found');
 }
