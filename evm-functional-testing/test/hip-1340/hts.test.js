@@ -10,7 +10,10 @@ const {
     sendDelegation,
     verifyDelegation,
     designatorFor,
-    encodeFunctionData, gas, authorizeEOADelegation
+    encodeFunctionData,
+    authorizeEOADelegation,
+    sendDelegationCreationTx,
+    waitReceiptWithTimeout,
 } = require('./utils/web3');
 const {
     associateHtsToken,
@@ -34,7 +37,7 @@ const ERC_20_ABI = [
 ];
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
-const HAS_SELECTORS_CONTRACT = 'contracts/hip-1340/HasFacadeSelectors'
+const HAS_SELECTORS_CONTRACT = 'contracts/hip-1340/HasFacadeSelectors';
 const TEST_TOKEN_NAME = "tokenName";
 const TEST_TOKEN_SYMBOL = "tokenSymbol";
 
@@ -227,133 +230,48 @@ describe('HIP-1340 - Hiero specific tests', function () {
         ]);
     });
 
-    async function setupBatchHbarAndHtsTransferScenario() {
-        const alice = await createAndFundEOA();
-        const bob = await createAndFundEOA();
-
-        const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
-        let aliceNonce = 0;
-        let bobNonce = 0;
-
-        await sendDelegation(alice, smartWallet.address, aliceNonce);
-        aliceNonce += 2;
-        await verifyDelegation(alice.address, smartWallet.address);
-
-        // Deploy TokenCreateContract and create HTS fungible token
-        const tokenCreateContract = await Utils.deployTokenCreateContract();
-        const tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
-
-        // Alice is always delegated and associates via delegation.
-        await associateHtsTokenViaDelegation(alice, tokenAddress, aliceNonce++);
-
-        return {alice, bob, smartWallet, aliceNonce, bobNonce, tokenCreateContract, tokenAddress};
-    }
-
-    async function associateRecipientDirectly(scenario) {
-        await associateHtsToken(scenario.bob, scenario.tokenAddress, scenario.bobNonce++);
-    }
-
-    async function associateRecipientViaDelegation(scenario) {
-        await sendDelegation(scenario.bob, scenario.smartWallet.address, scenario.bobNonce);
-        scenario.bobNonce += 2;
-        await verifyDelegation(scenario.bob.address, scenario.smartWallet.address);
-        await associateHtsTokenViaDelegation(scenario.bob, scenario.tokenAddress, scenario.bobNonce++);
-    }
-
-    async function executeAndAssertBatchHbarAndHtsTransfer({
-                                                               alice,
-                                                               bob,
-                                                               aliceNonce,
-                                                               tokenCreateContract,
-                                                               tokenAddress,
-                                                           }) {
-
-        // Grant KYC to both
-        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, alice.address));
-        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, bob.address));
-
-        // Transfer 500 HTS tokens from treasury to Alice
-        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, alice.address, 500n));
-
-        const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
-        const aliceInitTokens = await tokenContract.balanceOf(alice.address);
-        assert(aliceInitTokens === 500n, `Alice should have 500 tokens but has ${aliceInitTokens}`);
-
-        const bobBalanceBefore = await provider.getBalance(bob.address);
-        const bobTokensBefore = await tokenContract.balanceOf(bob.address);
-
-        // Internal EVM calls use tinybars (8 decimals), not weibars (18 decimals).
-        const oneHbarInTinybars = ONE_HBAR / TINYBAR_TO_WEIBAR_COEF;
-        const transferCalldata = encodeFunctionData(
-            'transfer(address to, uint256 value)',
-            [bob.address, 100n]
-        );
-
-        const receipt = await executeBatchViaDelegation(alice, [
-            {target: bob.address, value: oneHbarInTinybars, data: '0x'},
-            {target: tokenAddress, value: 0n, data: transferCalldata},
-        ], aliceNonce);
-        assert(receipt !== null, 'Batch execution receipt is null');
-
-        // Verify HBAR transfer
-        const bobBalanceAfter = await provider.getBalance(bob.address);
-        expect(bobBalanceAfter - bobBalanceBefore).to.be.equal(ONE_HBAR, 'Bob should have received 1 HBAR');
-
-        // Verify HTS token transfer
-        const aliceFinalTokens = await tokenContract.balanceOf(alice.address);
-        expect(aliceFinalTokens).to.be.equal(400n, 'Alice should have 400 tokens remaining');
-
-        const bobTokensAfter = await tokenContract.balanceOf(bob.address);
-        expect(bobTokensAfter - bobTokensBefore).to.be.equal(100n, 'Bob should have received 100 tokens');
-
-        // Verify HTS Transfer event
-        await validateErcEvent(receipt, [
-            {address: tokenAddress, from: alice.address, to: bob.address, amount: 100n},
-        ]);
-    }
-
     it('should batch-transfer 1 HBAR and 100 HTS tokens from a delegated EOA to another EOA via executeBatch', async function () {
         const scenario = await setupBatchHbarAndHtsTransferScenario();
         await associateRecipientDirectly(scenario);
-        await executeAndAssertBatchHbarAndHtsTransfer(scenario);
+        await executeAndAssertBatchHbarAndHtsTransfer(scenario, provider);
     });
 
     it('should batch-transfer 1 HBAR and 100 HTS tokens when recipient associates via delegation', async function () {
         const scenario = await setupBatchHbarAndHtsTransferScenario();
         await associateRecipientViaDelegation(scenario);
-        await executeAndAssertBatchHbarAndHtsTransfer(scenario);
+        await executeAndAssertBatchHbarAndHtsTransfer(scenario, provider);
     });
 
-    it.skip('should not create account via delegation if insufficient gas to cover account creation', async function () {
+    it('should not create account via delegation if insufficient gas to cover account creation', async function () {
         const eoa = await createAndFundEOA();
         const delegated = ethers.Wallet.createRandom();
-        const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
-        const value = 10n * ONE_HBAR;
-        const resp = await eoa.sendTransaction({
-            chainId: network.chainId,
-            nonce: 0,
-            value,
-            gasLimit: gas.base + gas.auth(1),
-            to: delegated.address,
-            authorizationList: [await delegated.authorize({
-                chainId: 0,
-                nonce: 0,
-                address: delegateAddress,
-            })],
-        });
 
-        const receipt = await resp.wait(1, 3_000).catch(err => {
-            log('Fetch transaction receipt failed: %s', err.message);
-            return null;
-        });
+        const tx = await sendDelegationCreationTx({eoa, delegated});
+        const receipt = await waitReceiptWithTimeout(tx);
         if (receipt !== null) {
             expect(receipt.status).to.be.equal(1, 'Transaction should succeed');
         }
 
-        const delegatedAccount = await new MirrorNode().getAccount(delegated.address);
-        expect(delegatedAccount.account).to.be.equal(undefined, 'Delegated account should not exist on Hedera');
-        expect(delegatedAccount._status?.messages?.[0]?.message).to.be.equal('Not found');
-        expect(await provider.getBalance(delegated.address)).to.be.equal(0);
+        await assertDelegatedAccountDoesNotExist(provider, delegated.address);
+    });
+
+    it('should not create account via delegation when sending value to delegated address if insufficient gas', async function () {
+        const eoa = await createAndFundEOA();
+        const delegated = ethers.Wallet.createRandom();
+        const value = 10n * ONE_HBAR;
+
+        const tx = await sendDelegationCreationTx({
+            eoa,
+            delegated,
+            to: delegated.address,
+            value,
+        });
+        const receipt = await waitReceiptWithTimeout(tx);
+        if (receipt !== null) {
+            expect(receipt.status).to.be.equal(1, 'Transaction should succeed');
+        }
+
+        await assertDelegatedAccountDoesNotExist(provider, delegated.address);
     });
 
     it('should deploy HasFacadeSelectors and expose expected HAS selectors', async function () {
@@ -430,3 +348,87 @@ describe('HIP-1340 - Hiero specific tests', function () {
     });
 
 });
+
+async function setupBatchHbarAndHtsTransferScenario() {
+    const alice = await createAndFundEOA();
+    const bob = await createAndFundEOA();
+
+    const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
+    let aliceNonce = 0;
+    let bobNonce = 0;
+
+    await sendDelegation(alice, smartWallet.address, aliceNonce);
+    aliceNonce += 2;
+    await verifyDelegation(alice.address, smartWallet.address);
+
+    const tokenCreateContract = await Utils.deployTokenCreateContract();
+    const tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
+
+    await associateHtsTokenViaDelegation(alice, tokenAddress, aliceNonce++);
+
+    return {alice, bob, smartWallet, aliceNonce, bobNonce, tokenCreateContract, tokenAddress};
+}
+
+async function associateRecipientDirectly(scenario) {
+    await associateHtsToken(scenario.bob, scenario.tokenAddress, scenario.bobNonce++);
+}
+
+async function associateRecipientViaDelegation(scenario) {
+    await sendDelegation(scenario.bob, scenario.smartWallet.address, scenario.bobNonce);
+    scenario.bobNonce += 2;
+    await verifyDelegation(scenario.bob.address, scenario.smartWallet.address);
+    await associateHtsTokenViaDelegation(scenario.bob, scenario.tokenAddress, scenario.bobNonce++);
+}
+
+async function executeAndAssertBatchHbarAndHtsTransfer(
+    {alice, bob, aliceNonce, tokenCreateContract, tokenAddress},
+    provider,
+) {
+    await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, alice.address));
+    await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, bob.address));
+    await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, alice.address, 500n));
+
+    const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
+    const aliceInitTokens = await tokenContract.balanceOf(alice.address);
+    assert(aliceInitTokens === 500n, `Alice should have 500 tokens but has ${aliceInitTokens}`);
+
+    const bobBalanceBefore = await provider.getBalance(bob.address);
+    const bobTokensBefore = await tokenContract.balanceOf(bob.address);
+
+    const oneHbarInTinybars = ONE_HBAR / TINYBAR_TO_WEIBAR_COEF;
+    const transferCalldata = encodeFunctionData(
+        'transfer(address to, uint256 value)',
+        [bob.address, 100n],
+    );
+
+    const receipt = await executeBatchViaDelegation(alice, [
+        {target: bob.address, value: oneHbarInTinybars, data: '0x'},
+        {target: tokenAddress, value: 0n, data: transferCalldata},
+    ], aliceNonce);
+    assert(receipt !== null, 'Batch execution receipt is null');
+
+    const bobBalanceAfter = await provider.getBalance(bob.address);
+    expect(bobBalanceAfter - bobBalanceBefore).to.be.equal(ONE_HBAR, 'Bob should have received 1 HBAR');
+
+    const aliceFinalTokens = await tokenContract.balanceOf(alice.address);
+    expect(aliceFinalTokens).to.be.equal(400n, 'Alice should have 400 tokens remaining');
+
+    const bobTokensAfter = await tokenContract.balanceOf(bob.address);
+    expect(bobTokensAfter - bobTokensBefore).to.be.equal(100n, 'Bob should have received 100 tokens');
+
+    await validateErcEvent(receipt, [
+        {address: tokenAddress, from: alice.address, to: bob.address, amount: 100n},
+    ]);
+}
+
+/**
+ * Asserts that the given address has no Hedera account and zero balance.
+ * @param {ethers.Provider} provider
+ * @param {string} delegatedAddress
+ */
+async function assertDelegatedAccountDoesNotExist(provider, delegatedAddress) {
+    const delegatedAccount = await new MirrorNode().getAccount(delegatedAddress);
+    expect(delegatedAccount.account).to.be.equal(undefined, 'Delegated account should not exist on Hedera');
+    expect(delegatedAccount._status?.messages?.[0]?.message).to.be.equal('Not found');
+    expect(await provider.getBalance(delegatedAddress)).to.be.equal(0);
+}

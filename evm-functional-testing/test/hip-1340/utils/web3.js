@@ -320,6 +320,51 @@ async function sendSelfSponsoredDelegation(eoa, delegationAddress, nonce) {
     return txhash;
 }
 
+/** Default delegation target used in "insufficient gas" delegation-creation tests. */
+const DELEGATION_TARGET_ADDRESS = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
+
+/** Gas limit used when sending a type-4 tx that is intended not to complete account creation. */
+const DELEGATION_CREATION_GAS_LIMIT = gas.base + 10_000;
+
+/**
+ * Sends a type-4 tx that would create a delegated EOA (authorization from `delegated` to `delegationAddress`).
+ * Used by tests that assert no account is created when gas is insufficient or value is sent to the delegated address.
+ *
+ * @param {{ eoa: ethers.Wallet, delegated: ethers.Wallet, delegationAddress?: string, to?: string, value?: bigint, gasLimit?: number }} opts
+ * @returns {Promise<ethers.TransactionResponse>}
+ */
+async function sendDelegationCreationTx({ eoa, delegated, delegationAddress = DELEGATION_TARGET_ADDRESS, to, value = 0n, gasLimit = DELEGATION_CREATION_GAS_LIMIT }) {
+    const network = await eoa.provider.getNetwork();
+    const targetTo = to !== undefined ? to : eoa.address;
+    return eoa.sendTransaction({
+        chainId: network.chainId,
+        nonce: 0,
+        to: targetTo,
+        value,
+        gasLimit,
+        authorizationList: [await delegated.authorize({
+            chainId: network.chainId,
+            nonce: 0,
+            address: delegationAddress,
+        })],
+    });
+}
+
+/**
+ * Waits for a tx receipt with a short timeout. Returns null on timeout or error.
+ *
+ * @param {ethers.TransactionResponse} tx
+ * @param {number} [confirmations=1]
+ * @param {number} [timeoutMs=3000]
+ * @returns {Promise<ethers.TransactionReceipt | null>}
+ */
+async function waitReceiptWithTimeout(tx, confirmations = 1, timeoutMs = 3_000) {
+    return tx.wait(confirmations, timeoutMs).catch(err => {
+        log('Fetch transaction receipt failed: %s', err.message);
+        return null;
+    });
+}
+
 /**
  * Verifies that an EOA's delegation bytecode matches the expected designator
  * by querying the Hedera SDK (consensus node) via the MirrorNode account ID.
@@ -348,5 +393,7 @@ async function verifyDelegation(eoaAddress, expectedDelegationAddress) {
 module.exports = {
     gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor,
     asAddress, getNonces, getCodes, sendDelegation: sendSelfSponsoredDelegation, verifyDelegation, authorizeEOADelegation,
+    sendDelegationCreationTx, waitReceiptWithTimeout,
+    DELEGATION_TARGET_ADDRESS, DELEGATION_CREATION_GAS_LIMIT,
     EOADefaultBalance,
 };
