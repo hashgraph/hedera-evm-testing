@@ -242,6 +242,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
         await executeAndAssertBatchHbarAndHtsTransfer(scenario, provider);
     });
 
+    // TODO: revisit below 2 tests when relay throws a proper insufficient rejection
     it('should not create account via delegation if insufficient gas to cover account creation', async function () {
         const eoa = await createAndFundEOA();
         const delegated = ethers.Wallet.createRandom();
