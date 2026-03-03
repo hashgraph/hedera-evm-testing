@@ -356,54 +356,6 @@ describe('HIP-1340 - Hiero specific tests', function () {
         expect(await provider.getBalance(delegated.address)).to.be.equal(0);
     });
 
-    it.skip('should be able to send value in weibars to a delegated EOA both via smart wallet execute and directly without conversion', async function () {
-        const alice = await createAndFundEOA();
-        const bob = await createAndFundEOA();
-
-        const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
-        let aliceNonce = 0;
-
-        await sendDelegation(alice, smartWallet.address, aliceNonce);
-        aliceNonce += 2;
-        await verifyDelegation(alice.address, smartWallet.address);
-
-        const bobBalanceBefore = await provider.getBalance(bob.address)
-
-        const ONE_HBAR_IN_WEI = ethers.parseEther("1");
-
-        // SEND 1 HBAR in wei directly
-        // WORKS
-        const resp = await alice.sendTransaction({
-            chainId: network.chainId,
-            nonce: aliceNonce++,
-            gasLimit: gas.base,
-            value: ONE_HBAR_IN_WEI,
-            to: bob.address,
-        });
-
-        await resp.wait();
-        expect(await provider.getBalance(bob.address)).to.be.equal(bobBalanceBefore + ONE_HBAR_IN_WEI);
-
-        // SEND 1 HBAR in wei via Smart Wallet
-        // DOES NOT WORK - as automatic conversion of value will not happen and we will get reverted on
-        // insufficient balance
-        const encodedData = encodeFunctionData(
-            'execute(address target, uint256 value, bytes calldata data)',
-            [bob.address, ONE_HBAR_IN_WEI, '0x']
-        )
-
-        const delegationReps = await alice.sendTransaction({
-            chainId: network.chainId,
-            gasLimit: GAS_LIMIT_1_000_000.gasLimit,
-            nonce: aliceNonce++,
-            to: alice.address,
-            data: encodedData
-        });
-
-        await delegationReps.wait();
-        expect(await provider.getBalance(bob.address)).to.be.equal(bobBalanceBefore + 2 * ONE_HBAR_IN_WEI);
-    });
-
     it('should deploy HasFacadeSelectors and expose expected HAS selectors', async function () {
         const {contract} = await deploy(HAS_SELECTORS_CONTRACT);
         const hbarAllowanceSelector = contract.interface.getFunction('hbarAllowance(address)').selector;
