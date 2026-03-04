@@ -98,6 +98,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     [delegated, delegatedNonce, 'delegated'],
                 ]) {
                     const [nonce, eth_nonce, ethNonce] = await web3.getNonces(wallet.address)
+                    log(walletDesc, 'is', wallet.address, 'CN nonce is', ethNonce, 'expected', walletNonce.cur);
                     // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
                     // expect(nonce).to.be.equal(walletNonce.cur);
                     // expect(eth_nonce).to.be.equal(walletNonce.cur);
