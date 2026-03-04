@@ -307,7 +307,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
         expect(receipt.status).to.equal(0, 'Transaction should be processed');
     });
 
-    it.skip('should no-op transaction delegated to another EOA/HAS facade', async function () {
+    it('should no-op transaction delegated to another EOA/HAS facade', async function () {
         const alice = await createAndFundEOA();
         const bob = await createAndFundEOA();
         const spender = (await createAndFundEOA()).address;
@@ -321,9 +321,9 @@ describe('HIP-1340 - Hiero specific tests', function () {
         const hasIface = new ethers.Interface([
             'function hbarAllowance(address spender) returns (int64 responseCode, int256 allowance)',
         ]);
-        const readAllowance = async () => {
+        const readAllowance = async (address) => {
             const result = await provider.call({
-                to: alice.address,
+                to: address,
                 data: encodeFunctionData('hbarAllowance(address spender)', [spender]),
             });
             expect(result).to.not.equal('0x', 'hbarAllowance should return response payload');
@@ -332,7 +332,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
             return allowance;
         };
 
-        const allowanceBefore = await readAllowance();
+        const allowanceBefore = await readAllowance(alice.address);
         expect(allowanceBefore).to.equal(0n, 'Initial allowance should be zero');
 
         const amount = 123n;
@@ -347,8 +347,11 @@ describe('HIP-1340 - Hiero specific tests', function () {
         expect(approveReceipt, 'hbarApprove transaction receipt should be available').to.not.be.null;
         expect(approveReceipt.status).to.equal(1, 'hbarApprove transaction should be processed');
 
-        const allowanceAfter = await readAllowance();
-        expect(allowanceAfter).to.equal(allowanceBefore, 'hbarApprove should not be applied when delegated to another EOA');
+        const bobsAllowance = await readAllowance(bob.address);
+        expect(bobsAllowance).to.equal(0, 'bobs allowance should be zero');
+
+        const allowanceAfter = await readAllowance(alice.address);
+        expect(allowanceAfter).to.equal(allowanceBefore, 'alice allowance should not change after hbarApprove');
     });
 
     it('should deploy HasFacadeSelectors and expose expected HAS selectors', async function () {
