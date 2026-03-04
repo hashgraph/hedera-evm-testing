@@ -153,12 +153,7 @@ class Utils {
   }
 
   static async changeAccountKey(account, newPrivateKey) {
-    const network = htsUtils.getCurrentNetwork();
-    const operatorId = hre.config.networks[network].sdkClient.operatorId;
-    const operatorKey = PrivateKey.fromStringDer(
-      hre.config.networks[network].sdkClient.operatorKey.replace("0x", "")
-    );
-    const client = await htsUtils.createSDKClient(operatorId, operatorKey);
+    const client = await htsUtils.createSDKClient();
     const newPublicKey = newPrivateKey.publicKey;
     const transaction = new AccountUpdateTransaction()
       .setAccountId(account.accountId)

@@ -538,25 +538,13 @@ class Utils {
   }
 
   static async createSDKClient(operatorId, operatorKey) {
-    const network = Utils.getCurrentNetwork();
+    const network = hre.network.name;
+    const { sdkClient } = hre.config.networks[network];
 
-    const hederaNetwork = {};
-    hederaNetwork[hre.config.networks[network].sdkClient.networkNodeUrl] =
-      AccountId.fromString(hre.config.networks[network].sdkClient.nodeId);
-    const { mirrorNode } = hre.config.networks[network].sdkClient;
-
-    operatorId =
-      operatorId || hre.config.networks[network].sdkClient.operatorId;
-    operatorKey =
-      operatorKey || hre.config.networks[network].sdkClient.operatorKey;
-
-    const requestTimeout =
-      hre.config.networks[network].sdkClient.requestTimeout || 30000;
-
-    return Client.forNetwork(hederaNetwork)
-      .setMirrorNetwork(mirrorNode)
-      .setOperator(operatorId, operatorKey)
-      .setRequestTimeout(requestTimeout);
+    return Client.forNetwork(sdkClient.networkNode)
+      .setMirrorNetwork(sdkClient.mirrorNode)
+      .setOperator(operatorId || sdkClient.operatorId, operatorKey || sdkClient.operatorKey)
+      .setRequestTimeout(sdkClient.requestTimeout || 30000);
   }
 
   static async getAccountId(evmAddress, client) {

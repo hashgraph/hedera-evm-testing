@@ -56,11 +56,9 @@ module.exports = {
       ],
       sdkClient: {
         operatorId: "0.0.1002",
-        operatorKey:
         // private key of SOLO local network. Configured at 'test.sh' file of this folder
-            "3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68",
-        networkNodeUrl: "127.0.0.1:50211",
-        nodeId: "3",
+        operatorKey: "3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68",
+        networkNode: { '127.0.0.1:50211': '0.0.3' },
         mirrorNode: "http://127.0.0.1:8081",
       },
     },
