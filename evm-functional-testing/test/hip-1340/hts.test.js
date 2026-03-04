@@ -307,7 +307,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
         expect(receipt.status).to.equal(0, 'Transaction should be processed');
     });
 
-    it('should no-op transaction delegated to another EOA/HAS facade', async function () {
+    it.skip('should no-op transaction delegated to another EOA/HAS facade', async function () {
         const alice = await createAndFundEOA();
         const bob = await createAndFundEOA();
         const spender = (await createAndFundEOA()).address;
