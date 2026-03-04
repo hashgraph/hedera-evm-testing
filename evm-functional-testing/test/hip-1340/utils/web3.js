@@ -371,6 +371,9 @@ async function waitReceiptWithTimeout(tx, confirmations = 1, timeoutMs = 3_000) 
                 return null;
             });
         }
+        if (err.receipt) {
+            return err.receipt;
+        }
         log('Fetch transaction receipt failed: %s', err.message);
         return null;
     }

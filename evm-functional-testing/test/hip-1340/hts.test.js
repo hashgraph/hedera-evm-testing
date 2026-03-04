@@ -16,10 +16,7 @@ const {
     waitReceiptWithTimeout,
 } = require('./utils/web3');
 const {
-    associateHtsToken,
-    associateHtsTokenViaDelegation,
-    transferHtsTokenViaDelegation,
-    executeBatchViaDelegation
+    associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation, executeBatchViaDelegation
 } = require('./utils/hts');
 const {setupProviderAndNetwork} = require('./utils/setup');
 const Utils = require('../../utils/utils');
@@ -29,12 +26,7 @@ const {getContractByteCode} = require("./utils/sdk");
 const {MirrorNode} = require("evm-functional-testing/mirror-node");
 const web3 = require("./utils/web3");
 
-const ERC_20_ABI = [
-    'function name() view returns (string)',
-    'function symbol() view returns (string)',
-    'function totalSupply() view returns (uint256)',
-    'function balanceOf(address owner) view returns (uint256)',
-];
+const ERC_20_ABI = ['function name() view returns (string)', 'function symbol() view returns (string)', 'function totalSupply() view returns (uint256)', 'function balanceOf(address owner) view returns (uint256)',];
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
 const HAS_SELECTORS_CONTRACT = 'contracts/hip-1340/HasFacadeSelectors';
@@ -157,12 +149,18 @@ describe('HIP-1340 - Hiero specific tests', function () {
         expect(receiverBalance).to.be.equal(3_800n, 'Receiver balance should be 3800 (1500 + 2300)');
 
         // Verify HTS Transfer events are emitted correctly and visible from the EOA transactions
-        await validateErcEvent(receipt1, [
-            {address: tokenAddress, from: eoa1.address, to: receiver.address, amount: 1_500n},
-        ]);
-        await validateErcEvent(receipt2, [
-            {address: tokenAddress, from: eoa2.address, to: receiver.address, amount: 2_300n},
-        ]);
+        await validateErcEvent(receipt1, [{
+            address: tokenAddress,
+            from: eoa1.address,
+            to: receiver.address,
+            amount: 1_500n
+        },]);
+        await validateErcEvent(receipt2, [{
+            address: tokenAddress,
+            from: eoa2.address,
+            to: receiver.address,
+            amount: 2_300n
+        },]);
     });
 
     it('should batch-transfer HTS tokens to multiple recipients from a delegated EOA via executeBatch', async function () {
@@ -207,10 +205,11 @@ describe('HIP-1340 - Hiero specific tests', function () {
         const transferToBob = encodeFunctionData('transfer(address to, uint256 value)', [bob.address, 100n]);
         const transferToCarol = encodeFunctionData('transfer(address to, uint256 value)', [carol.address, 150n]);
 
-        const receipt = await executeBatchViaDelegation(alice, [
-            {target: tokenAddress, value: 0n, data: transferToBob},
-            {target: tokenAddress, value: 0n, data: transferToCarol},
-        ], aliceNonce++);
+        const receipt = await executeBatchViaDelegation(alice, [{
+            target: tokenAddress,
+            value: 0n,
+            data: transferToBob
+        }, {target: tokenAddress, value: 0n, data: transferToCarol},], aliceNonce++);
         assert(receipt !== null, 'Batch execution receipt is null');
 
         // Verify final balances
@@ -224,10 +223,12 @@ describe('HIP-1340 - Hiero specific tests', function () {
         expect(carolTokens).to.be.equal(150n, 'Carol should have received 150 tokens');
 
         // Verify HTS Transfer events
-        await validateErcEvent(receipt, [
-            {address: tokenAddress, from: alice.address, to: bob.address, amount: 100n},
-            {address: tokenAddress, from: alice.address, to: carol.address, amount: 150n},
-        ]);
+        await validateErcEvent(receipt, [{
+            address: tokenAddress,
+            from: alice.address,
+            to: bob.address,
+            amount: 100n
+        }, {address: tokenAddress, from: alice.address, to: carol.address, amount: 150n},]);
     });
 
     it('should batch-transfer 1 HBAR and 100 HTS tokens from a delegated EOA to another EOA via executeBatch', async function () {
@@ -258,10 +259,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
         const value = 10n * ONE_HBAR;
 
         const tx = await sendDelegationCreationTx({
-            eoa,
-            delegated,
-            to: delegated.address,
-            value,
+            eoa, delegated, to: delegated.address, value,
         });
         await waitReceiptWithTimeout(tx);
         await assertDelegatedAccountDoesNotExist(provider, delegated.address);
@@ -272,7 +270,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
         const delegated = ethers.Wallet.createRandom();
         const gasLimit = 46000;
 
-        const tx = await sendDelegationCreationTx({ eoa, delegated, gasLimit });
+        const tx = await sendDelegationCreationTx({eoa, delegated, gasLimit});
         const receipt = await waitReceiptWithTimeout(tx);
 
         expect(receipt, 'Transaction (or replacement) receipt should be available').to.not.be.null;
@@ -280,6 +278,33 @@ describe('HIP-1340 - Hiero specific tests', function () {
         expect(Number(receipt.gasUsed), 'Gas should be charged for account creation').to.be.equal(gasLimit);
 
         await assertDelegatedAccountExists(provider, delegated.address);
+    });
+
+    // TODO: revisit below test as we expect a revert
+    it.skip('should revert transaction delegated to a system contract', async function () {
+        const eoa = await createAndFundEOA();
+        let nonce = 0;
+
+        // Delegate the EOA to the HTS system contract.
+        await sendDelegation(eoa, HTS_ADDRESS, nonce);
+        nonce += 2;
+        await verifyDelegation(eoa.address, HTS_ADDRESS);
+
+        // Try to call HIP-1215 Schedule Service selector `scheduleCall` through the delegated EOA.
+        const expirySecond = BigInt(Math.floor(Date.now() / 1000) + 600);
+        const scheduleCallData = encodeFunctionData('scheduleCall(address to, uint256 expirySecond, uint256 gasLimit, uint64 value, bytes callData)', [eoa.address, expirySecond, 100_000n, 0n, '0x'],);
+
+        const tx = await eoa.sendTransaction({
+            chainId: network.chainId,
+            nonce: nonce++,
+            gasLimit: GAS_LIMIT_1_000_000.gasLimit,
+            to: eoa.address,
+            data: scheduleCallData,
+        });
+
+        const receipt = await waitReceiptWithTimeout(tx);
+        expect(receipt, 'Transaction (or replacement) receipt should be available').to.not.be.null;
+        expect(receipt.status).to.equal(0, 'Transaction should be processed');
     });
 
     it('should deploy HasFacadeSelectors and expose expected HAS selectors', async function () {
@@ -300,11 +325,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
         await authorizeEOADelegation(eoa, hasSelectorsAddress, eoaNonce++);
         await verifyDelegation(eoa.address, hasSelectorsAddress);
 
-        const eventIface = new ethers.Interface([
-            'event HbarAllowanceCalled(address indexed caller, address indexed spender)',
-            'event HbarApproveCalled(address indexed caller, address indexed spender, int256 amount)',
-            'event SetUnlimitedAutomaticAssociationsCalled(address indexed caller, bool enabled)',
-        ]);
+        const eventIface = new ethers.Interface(['event HbarAllowanceCalled(address indexed caller, address indexed spender)', 'event HbarApproveCalled(address indexed caller, address indexed spender, int256 amount)', 'event SetUnlimitedAutomaticAssociationsCalled(address indexed caller, bool enabled)',]);
 
         const spender = (await createAndFundEOA()).address;
         const sendAndAssertProxiedCall = async (signature, args, blockedEvent) => {
@@ -319,36 +340,23 @@ describe('HIP-1340 - Hiero specific tests', function () {
             assert(receipt !== null, `Receipt is null for ${signature}`);
             expect(receipt.status).to.equal(1, `Expected ${signature} call via HAS proxy to succeed`);
             // We expect no facade logs if the call is proxied to HAS system contract.
-            const deniedLog = receipt.logs.find(
-                l => l.topics[0] === eventIface.getEvent(blockedEvent).topicHash
-            );
+            const deniedLog = receipt.logs.find(l => l.topics[0] === eventIface.getEvent(blockedEvent).topicHash);
             expect(deniedLog).to.equal(undefined, `Facade event ${blockedEvent} should not be emitted on proxied path`);
         };
 
         // Approve HBAR allowance through delegated EOA and ensure facade event is not emitted.
-        await sendAndAssertProxiedCall(
-            'hbarApprove(address spender, int256 amount)',
-            [spender, 123n],
-            'HbarApproveCalled',
-        );
+        await sendAndAssertProxiedCall('hbarApprove(address spender, int256 amount)', [spender, 123n], 'HbarApproveCalled',);
 
         // Verify allowance reflects the prior approval.
         const allowanceResult = await provider.call({
-            to: eoa.address,
-            data: encodeFunctionData('hbarAllowance(address spender)', [spender]),
+            to: eoa.address, data: encodeFunctionData('hbarAllowance(address spender)', [spender]),
         });
-        const [responseCode, allowance] = new ethers.Interface([
-            'function hbarAllowance(address spender) returns (int64 responseCode, int256 allowance)',
-        ]).decodeFunctionResult('hbarAllowance', allowanceResult);
+        const [responseCode, allowance] = new ethers.Interface(['function hbarAllowance(address spender) returns (int64 responseCode, int256 allowance)',]).decodeFunctionResult('hbarAllowance', allowanceResult);
         expect(responseCode).to.equal(22n, 'hbarAllowance should return SUCCESS response code');
         expect(allowance).to.equal(123n, 'hbarAllowance should reflect the amount from hbarApprove');
 
         // Another HAS selector should also be proxied, without invoking facade code.
-        await sendAndAssertProxiedCall(
-            'setUnlimitedAutomaticAssociations(bool enableAutoAssociations)',
-            [true],
-            'SetUnlimitedAutomaticAssociationsCalled',
-        );
+        await sendAndAssertProxiedCall('setUnlimitedAutomaticAssociations(bool enableAutoAssociations)', [true], 'SetUnlimitedAutomaticAssociationsCalled',);
 
         // Verify account setting was updated by HAS proxy call.
         const maxAutoAssociations = await Utils.getMaxAutomaticTokenAssociations(eoa.address);
@@ -388,10 +396,13 @@ async function associateRecipientViaDelegation(scenario) {
     await associateHtsTokenViaDelegation(scenario.bob, scenario.tokenAddress, scenario.bobNonce++);
 }
 
-async function executeAndAssertBatchHbarAndHtsTransfer(
-    {alice, bob, aliceNonce, tokenCreateContract, tokenAddress},
-    provider,
-) {
+async function executeAndAssertBatchHbarAndHtsTransfer({
+                                                           alice,
+                                                           bob,
+                                                           aliceNonce,
+                                                           tokenCreateContract,
+                                                           tokenAddress
+                                                       }, provider,) {
     await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, alice.address));
     await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, bob.address));
     await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, alice.address, 500n));
@@ -404,15 +415,13 @@ async function executeAndAssertBatchHbarAndHtsTransfer(
     const bobTokensBefore = await tokenContract.balanceOf(bob.address);
 
     const oneHbarInTinybars = ONE_HBAR / TINYBAR_TO_WEIBAR_COEF;
-    const transferCalldata = encodeFunctionData(
-        'transfer(address to, uint256 value)',
-        [bob.address, 100n],
-    );
+    const transferCalldata = encodeFunctionData('transfer(address to, uint256 value)', [bob.address, 100n],);
 
-    const receipt = await executeBatchViaDelegation(alice, [
-        {target: bob.address, value: oneHbarInTinybars, data: '0x'},
-        {target: tokenAddress, value: 0n, data: transferCalldata},
-    ], aliceNonce);
+    const receipt = await executeBatchViaDelegation(alice, [{
+        target: bob.address,
+        value: oneHbarInTinybars,
+        data: '0x'
+    }, {target: tokenAddress, value: 0n, data: transferCalldata},], aliceNonce);
     assert(receipt !== null, 'Batch execution receipt is null');
 
     const bobBalanceAfter = await provider.getBalance(bob.address);
@@ -424,9 +433,7 @@ async function executeAndAssertBatchHbarAndHtsTransfer(
     const bobTokensAfter = await tokenContract.balanceOf(bob.address);
     expect(bobTokensAfter - bobTokensBefore).to.be.equal(100n, 'Bob should have received 100 tokens');
 
-    await validateErcEvent(receipt, [
-        {address: tokenAddress, from: alice.address, to: bob.address, amount: 100n},
-    ]);
+    await validateErcEvent(receipt, [{address: tokenAddress, from: alice.address, to: bob.address, amount: 100n},]);
 }
 
 /**
