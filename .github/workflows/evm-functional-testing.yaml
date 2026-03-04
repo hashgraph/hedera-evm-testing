@@ -159,8 +159,8 @@ jobs:
         run: |
           kind delete cluster -n ${{ env.SOLO_CLUSTER_NAME }}
 
-  hip1340-eip7702-ethereum-testing:
-    name: HIP-1340 - EIP-7702 Ethereum Testing
+  hip1340-eip7702-ethereum-hardhat-testing:
+    name: HIP-1340 - EIP-7702 Ethereum/Hardhat Testing
     runs-on: smart-contracts-linux-medium
     steps:
       - name: Harden Runner
@@ -181,6 +181,39 @@ jobs:
         run: npm ci
         working-directory: evm-functional-testing
 
-      - name: Run HIP-1340 - EIP-7702 tests on Hardhat local network
+      - name: Run HIP-1340 - EIP-7702 tests against Hardhat local network
         run: npx hardhat test --grep 'HIP-1340 - EIP-7702 features' --network hardhat
         working-directory: evm-functional-testing
+
+  hip1340-eip7702-ethereum-geth-testing:
+    name: HIP-1340 - EIP-7702 Ethereum/Geth Testing
+    runs-on: smart-contracts-linux-medium
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+
+      - name: Setup NodeJS Environment
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Checkout Code
+        id: checkout-code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install npm testing dependencies
+        run: npm ci
+        working-directory: evm-functional-testing
+
+      - name: Start Geth container
+        run: docker run --name geth --publish 8545:8545 --detach ethereum/client-go:v1.17.1 --dev --verbosity 3 --http --http.api eth --http.addr 0.0.0.0
+
+      - name: Run HIP-1340 - EIP-7702 tests against Geth local network
+        run: npx hardhat test --grep 'HIP-1340 - EIP-7702 features' --network geth
+        working-directory: evm-functional-testing
+
+      - name: Stop Geth container
+        if: always()
+        run: docker stop geth
