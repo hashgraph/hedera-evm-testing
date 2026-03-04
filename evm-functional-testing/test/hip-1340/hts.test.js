@@ -307,6 +307,50 @@ describe('HIP-1340 - Hiero specific tests', function () {
         expect(receipt.status).to.equal(0, 'Transaction should be processed');
     });
 
+    it.skip('should no-op transaction delegated to another EOA/HAS facade', async function () {
+        const alice = await createAndFundEOA();
+        const bob = await createAndFundEOA();
+        const spender = (await createAndFundEOA()).address;
+        let aliceNonce = 0;
+
+        // Delegate the EOA to the HTS system contract.
+        await sendDelegation(alice, bob.address, aliceNonce);
+        aliceNonce += 2;
+        await verifyDelegation(alice.address, bob.address);
+
+        const hasIface = new ethers.Interface([
+            'function hbarAllowance(address spender) returns (int64 responseCode, int256 allowance)',
+        ]);
+        const readAllowance = async () => {
+            const result = await provider.call({
+                to: alice.address,
+                data: encodeFunctionData('hbarAllowance(address spender)', [spender]),
+            });
+            expect(result).to.not.equal('0x', 'hbarAllowance should return response payload');
+            const [responseCode, allowance] = hasIface.decodeFunctionResult('hbarAllowance', result);
+            expect(responseCode).to.equal(22n, 'hbarAllowance should return SUCCESS response code');
+            return allowance;
+        };
+
+        const allowanceBefore = await readAllowance();
+        expect(allowanceBefore).to.equal(0n, 'Initial allowance should be zero');
+
+        const amount = 123n;
+        const approveTx = await alice.sendTransaction({
+            chainId: network.chainId,
+            nonce: aliceNonce++,
+            gasLimit: GAS_LIMIT_1_000_000.gasLimit,
+            to: alice.address,
+            data: encodeFunctionData('hbarApprove(address spender, int256 amount)', [spender, amount]),
+        });
+        const approveReceipt = await waitReceiptWithTimeout(approveTx);
+        expect(approveReceipt, 'hbarApprove transaction receipt should be available').to.not.be.null;
+        expect(approveReceipt.status).to.equal(1, 'hbarApprove transaction should be processed');
+
+        const allowanceAfter = await readAllowance();
+        expect(allowanceAfter).to.equal(allowanceBefore, 'hbarApprove should not be applied when delegated to another EOA');
+    });
+
     it('should deploy HasFacadeSelectors and expose expected HAS selectors', async function () {
         const {contract} = await deploy(HAS_SELECTORS_CONTRACT);
         const hbarAllowanceSelector = contract.interface.getFunction('hbarAllowance(address)').selector;
