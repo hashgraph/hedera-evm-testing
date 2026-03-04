@@ -36,7 +36,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
             { fn: () => ethers.Wallet.createRandom(), desc: 'Random EVM address' },
             { fn: () => createAndFundEOA(), desc: 'Pre-funded EOA' },
             { fn: () => deploy('contracts/hip-1340/AlwaysSucceed'), desc: 'Deployed contract that succeeds' },
-            // TODO: To be enabled when Pectra feature branch supports contract revert in type 4 transactions
+            // TODO(pectra): To be enabled when Pectra feature branch supports contract revert in type 4 transactions
             // { fn: () => deploy('contracts/hip-1340/AlwaysRevert'), desc: 'Deployed contract that reverts' },
         ].flatMap(receiver =>
             [
@@ -84,14 +84,13 @@ describe('HIP-1340 - EIP-7702 features', function () {
                         address: delegateToAddress,
                     })],
                 };
-                const resp = await sender.sendTransaction(tx);
-                log('receipt', resp.hash);
-                let txhash;
                 try {
+                    // When the transaction reverts, Hardhat throws an error when sending the transaction
+                    const resp = await sender.sendTransaction(tx);
+                    log('receipt', resp.hash);
                     await resp.wait();
                 } catch (err) {
                     log('Fetch transaction receipt failed:', err.message);
-                    txhash = err.replacement.hash;
                 }
 
                 for (const [wallet, walletNonce, walletDesc] of [
