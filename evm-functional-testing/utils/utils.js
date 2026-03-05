@@ -538,13 +538,9 @@ class Utils {
   }
 
   static async createSDKClient(operatorId, operatorKey) {
-    const network = hre.network.name;
-    const { sdkClient } = hre.config.networks[network];
-
+    const { sdkClient } = hre.network.config;
     return Client.forNetwork(sdkClient.networkNode)
-      .setMirrorNetwork(sdkClient.mirrorNode)
-      .setOperator(operatorId || sdkClient.operatorId, operatorKey || sdkClient.operatorKey)
-      .setRequestTimeout(sdkClient.requestTimeout || 30000);
+      .setOperator(operatorId || sdkClient.operatorId, operatorKey || sdkClient.operatorKey);
   }
 
   static async getAccountId(evmAddress, client) {
