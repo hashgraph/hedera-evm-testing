@@ -5,7 +5,7 @@ const { expect } = require('chai');
 const { ethers } = require('hardhat');
 
 const web3 = require('./utils/web3');
-const { gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, waitFor, asAddress } = require('./utils/web3');
+const { gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, asAddress } = require('./utils/web3');
 
 class Nonce {
     #val = 0;
@@ -70,7 +70,8 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     : [await createAndFundEOA(), new Nonce()];
 
                 log('Sending %s th to %s from %s and delegating %s to %s', value, to, sender.address, delegated.address, delegateToAddress);
-                const tx = {
+                // In the transaction revert case, Hardhat throws an error when sending the transaction
+                await sender.sendTransaction({
                     type: 4,
                     chainId: network.chainId,
                     nonce: senderNonce.next(),
@@ -83,15 +84,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                         nonce: delegatedNonce.next(),
                         address: delegateToAddress,
                     })],
-                };
-                try {
-                    // When the transaction reverts, Hardhat throws an error when sending the transaction
-                    const resp = await sender.sendTransaction(tx);
-                    log('receipt', resp.hash);
-                    await resp.wait();
-                } catch (err) {
-                    log('Fetch transaction receipt failed:', err.message);
-                }
+                }).then(tx => tx.wait()).catch(err => log('Transaction failed with error:', err.message));
 
                 for (const [wallet, walletNonce, walletDesc] of [
                     [sender, senderNonce, 'sender'],
@@ -119,7 +112,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const to = await createAndFundEOA();
         const delegated = await createAndFundEOA();
 
-        const resp = await sender.sendTransaction({
+        await sender.sendTransaction({
             type: 4,
             chainId: network.chainId,
             nonce: 0,
@@ -131,9 +124,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 nonce: 0,
                 address: '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase(),
             })],
-        });
-        log('receipt', resp.hash);
-        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+        }).then(tx => tx.wait());
 
         for (const [wallet, walletNonce, walletName] of [
             [sender, 1, 'sender'],
@@ -160,18 +151,16 @@ describe('HIP-1340 - EIP-7702 features', function () {
             const balance = await provider.getBalance(eoa.address);
             const data = encodeFunctionData('approve(address token, address spender, uint256 amount)', [eoa.address, sender.address, 1000]);
 
-            const tx = await sender.sendTransaction({
+            const receipt = await sender.sendTransaction({
                 chainId: network.chainId,
                 nonce: 0,
                 gasLimit: 100_000,
                 value,
                 data,
                 to: eoa.address,
-            });
-            const resp = await tx.wait();
-            assert(resp !== null);
+            }).then(tx => tx.wait());
 
-            expect(await provider.getBalance(eoa.address, resp.blockNumber)).to.be.equal(balance + value);
+            expect(await provider.getBalance(eoa.address, receipt.blockNumber)).to.be.equal(balance + value);
         });
     });
 
@@ -197,7 +186,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
             const [fromNonce, eoaNonce] = [new Nonce(), new Nonce()];
             // Delegation
             const [authSender, authNonce] = authSenderTrigger === 'SELF' ? [eoa, eoaNonce] : [from, fromNonce];
-            const authtx = {
+            await authSender.sendTransaction({
                 type: 4,
                 chainId: network.chainId,
                 nonce: authNonce.next(),
@@ -209,10 +198,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     nonce: eoaNonce.next(),
                     address: smartWallet.address,
                 })],
-            };
-            log('Transaction', authtx);
-            const resp = await authSender.sendTransaction(authtx);
-            await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+            }).then(tx => tx.wait());
 
             const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
             // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -226,14 +212,13 @@ describe('HIP-1340 - EIP-7702 features', function () {
 
             const [delegatedExecutionSender, delegatedExecutionSenderNonce] = trigger === 'SELF' ? [eoa, eoaNonce] : [from, fromNonce];
             log('Sending delegated execution transaction to %s from %s with nonce %s', eoa.address, delegatedExecutionSender.address, delegatedExecutionSenderNonce.cur);
-            const tx = await delegatedExecutionSender.sendTransaction({
+            const receipt = await delegatedExecutionSender.sendTransaction({
                 chainId: network.chainId,
                 to: eoa.address,
                 nonce: delegatedExecutionSenderNonce.next(),
                 gasLimit: 1_500_000,
                 data,
-            });
-            const receipt = await tx.wait();
+            }).then(tx => tx.wait());
             log('Transaction receipt', receipt);
             assert(receipt !== null, 'Receipt is null');
 
@@ -265,7 +250,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmit.address, 0, storeAndEmitCall]);
 
         // Delegation and execution in the same transaction
-        const resp = await eoa.sendTransaction({
+        const receipt = await eoa.sendTransaction({
             type: 4,
             chainId: network.chainId,
             nonce: 0,
@@ -278,8 +263,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 nonce: 1,
                 address: smartWallet.address,
             })],
-        });
-        const receipt = await resp.wait().catch(err => (log('Transaction receipt failed:', err.message), err.receipt));
+        }).then(tx => tx.wait());
 
         const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -305,8 +289,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
 
     it('should transfer ERC20 tokens when EOAs send transactions to themselves', async function () {
         const erc20 = await deploy('contracts/hip-1340/ERC20Mintable', ['Test', 'TST', 10_000_000n]);
-        const tx = await erc20.contract.mint(50_000n);
-        await tx.wait();
+        await erc20.contract.mint(50_000n).then(tx => tx.wait());
         await new Promise(resolve => setTimeout(resolve, 4000));
 
         const minterBalance = await erc20.contract.balanceOf(erc20.deployer.address);
@@ -317,33 +300,33 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const eoa1 = await web3.authorizeEOADelegation(await createAndFundEOA(), smartWallet.address);
         const eoa2 = await web3.authorizeEOADelegation(await createAndFundEOA(), smartWallet.address);
 
-        await waitFor(erc20.contract.transfer(eoa1.address, 5_000n));
+        await erc20.contract.transfer(eoa1.address, 5_000n).then(tx => tx.wait());
         const eoa1Balance = await erc20.contract.balanceOf(eoa1.address);
         assert(eoa1Balance === 5_000n, `EOA1 balance should be 5_000 but got ${eoa1Balance}`);
 
-        await waitFor(erc20.contract.transfer(eoa2.address, 7_000n, { nonce: 3 }));
+        await erc20.contract.transfer(eoa2.address, 7_000n, { nonce: 3 }).then(tx => tx.wait());
         const eoa2Balance = await erc20.contract.balanceOf(eoa2.address);
         assert(eoa2Balance === 7_000n, `EOA2 balance should be 7_000 but got ${eoa2Balance}`);
 
         const receiver = ethers.Wallet.createRandom().address;
 
         const eoa1Call = encodeFunctionData('transfer(address to, uint256 value)', [receiver, 1_500n]);
-        await waitFor(eoa1.sendTransaction({
+        await eoa1.sendTransaction({
             chainId: network.chainId,
             nonce: 1,
             gasLimit: 1_500_000,
             to: eoa1.address,
             data: encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [erc20.address, 0, eoa1Call]),
-        }));
+        }).then(tx => tx.wait());
 
         const eoa2Call = encodeFunctionData('transfer(address to, uint256 value)', [receiver, 2_300n]);
-        await waitFor(eoa2.sendTransaction({
+        await eoa2.sendTransaction({
             chainId: network.chainId,
             nonce: 1,
             gasLimit: 1_500_000,
             to: eoa2.address,
             data: encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [erc20.address, 0, eoa2Call]),
-        }));
+        }).then(tx => tx.wait());
 
         const eoa1BalanceAfter = await erc20.contract.balanceOf(eoa1.address);
         expect(eoa1BalanceAfter).to.be.equal(3_500n, `EOA1 balance should be 3_500 but got ${eoa1BalanceAfter}`);
@@ -360,14 +343,13 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const storeAndEmit = await deploy('contracts/hip-1340/StoreAndEmit');
         const eoa = await web3.authorizeEOADelegation(await createAndFundEOA(), storeAndEmit.address);
 
-        const tx = await eoa.sendTransaction({
+        const receipt = await eoa.sendTransaction({
             chainId: network.chainId,
             to: eoa.address,
             nonce: 1,
             gasLimit: 1_500_000,
             data: encodeFunctionData('storeAndEmit(uint256 value)', [value]),
-        });
-        const receipt = await tx.wait();
+        }).then(tx => tx.wait());
         log('Transaction receipt', receipt);
         assert(receipt !== null, 'Receipt is null');
 
@@ -387,17 +369,20 @@ describe('HIP-1340 - EIP-7702 features', function () {
         // expect(storedValue).to.be.equal(asHexUint256(value), `Stored value at '${storeAndEmit.address}:${valueSlot}' should be '${value}' but got '${BigInt(storedValue)}'`);
     });
 
-    [false, true].forEach(receiverSameAsDelegated => {
+    [
+        false,
+        true,
+    ].forEach(receiverSameAsDelegated => {
         it(`should create the account when an EOA sponsors it receiverSameAsDelegated=${receiverSameAsDelegated}`, async function () {
             const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
             const value = 10n * 1_00000_00000n;
-            const eoa = await createAndFundEOA();
+            const sender = await createAndFundEOA();
             const delegated = ethers.Wallet.createRandom();
             const [to, initialValue] = !receiverSameAsDelegated
                 ? [await createAndFundEOA(), 10_000_000_000n * 1000_0000_0000n]
                 : [delegated, 0n];
 
-            const resp = await eoa.sendTransaction({
+            await sender.sendTransaction({
                 chainId: network.chainId,
                 nonce: 0,
                 gasLimit: gas.base + gas.auth(1) + gas.hollow(),
@@ -408,16 +393,20 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     nonce: 0,
                     address: delegateAddress,
                 })],
-            });
-            await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+            }).then(tx => tx.wait());
 
             expect(await provider.getBalance(to.address)).to.be.equal(initialValue + value);
 
-            const [_nonce, _eth_nonce, ethNonce] = await web3.getNonces(delegated.address)
-            // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
-            // expect(nonce).to.be.equal(1);
-            // expect(eth_nonce).to.be.equal(1);
-            expect(ethNonce).to.be.equal(1);
+            for (const [wallet, walletNonce, walletName] of [
+                [sender, 1, 'sender'],
+                [delegated, 1, 'delegated'],
+            ]) {
+                const [_nonce, _eth_nonce, ethNonce] = await web3.getNonces(wallet.address)
+                // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+                // expect(nonce).to.be.equal(1);
+                // expect(eth_nonce).to.be.equal(1);
+                expect(ethNonce).to.be.equal(walletNonce, `Nonce for '${walletName}' should be ${walletNonce} but got ${ethNonce}`);
+            }
 
             const [_code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
             // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -433,7 +422,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const [_nonce, _eth_nonce, ethNonce] = await web3.getNonces(eoa.address);
 
         const secondDelegation = ethers.Wallet.createRandom().address;
-        const resp = await (await createAndFundEOA()).sendTransaction({
+        await (await createAndFundEOA()).sendTransaction({
             type: 4,
             chainId: network.chainId,
             nonce: 0,
@@ -444,8 +433,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 nonce: ethNonce,
                 address: secondDelegation,
             })],
-        });
-        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+        }).then(tx => tx.wait());
 
         const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -458,7 +446,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const eoa = await web3.authorizeEOADelegation(await createAndFundEOA(), ethers.Wallet.createRandom().address);
         const [_nonce, _eth_nonce, ethNonce] = await web3.getNonces(eoa.address);
 
-        const resp = await (await createAndFundEOA()).sendTransaction({
+        await (await createAndFundEOA()).sendTransaction({
             type: 4,
             chainId: network.chainId,
             nonce: 0,
@@ -469,8 +457,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 nonce: ethNonce,
                 address: asAddress(0),
             })],
-        });
-        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+        }).then(tx => tx.wait());
 
         const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
         expect(code).to.be.equal('0x');
@@ -481,7 +468,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
     it(`should use the last authorization when multiple authorizations are sent (and the EOA's nonce should be also incremented multiple times)`, async function () {
         const eoa = await createAndFundEOA();
 
-        const resp = await eoa.sendTransaction({
+        await eoa.sendTransaction({
             chainId: network.chainId,
             nonce: 0,
             gasLimit: gas.base + gas.auth(3),
@@ -503,8 +490,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     address: asAddress(3),
                 }),
             ],
-        });
-        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+        }).then(tx => tx.wait());
 
         const [nonce, eth_nonce, ethNonce] = await web3.getNonces(eoa.address)
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -522,7 +508,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
     it(`should use the last valid (w.r.t. nonce) authorization when multiple authorizations are sent (and the EOA's nonce should be also incremented accordingly)`, async function () {
         const eoa = await createAndFundEOA();
 
-        const resp = await eoa.sendTransaction({
+        await eoa.sendTransaction({
             chainId: network.chainId,
             nonce: 0,
             gasLimit: gas.base + gas.auth(4),
@@ -549,8 +535,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                     address: asAddress(4),
                 }),
             ],
-        });
-        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+        }).then(tx => tx.wait());
 
         const [nonce, eth_nonce, ethNonce] = await web3.getNonces(eoa.address)
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -569,7 +554,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const delegateToAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
         const eoa = await createAndFundEOA();
 
-        const resp = await eoa.sendTransaction({
+        await eoa.sendTransaction({
             type: 4,
             chainId: network.chainId,
             nonce: 0,
@@ -580,8 +565,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 nonce: 1,
                 address: delegateToAddress,
             })],
-        });
-        await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+        }).then(tx => tx.wait());
 
         const [code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
         // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -595,7 +579,7 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
         const eoa = await createAndFundEOA();
 
-        const resp = eoa.sendTransaction({
+        const tx = eoa.sendTransaction({
             type: 4,
             chainId: network.chainId,
             nonce: 0,
@@ -607,21 +591,20 @@ describe('HIP-1340 - EIP-7702 features', function () {
                 address: delegateAddress,
             })],
         });
-        await expect(resp).to.be.rejectedWith(/intrinsic gas too low/);
+        await expect(tx).to.be.rejectedWith(/intrinsic gas too low/);
     });
 
     it('should log `msg.sender` and `tx.origin` with code length and hashes from an inner contract call', async function () {
         const senderAndOrigin = await deploy('contracts/hip-1340/SenderAndOrigin', [], undefined, 400_000);
         const sender = await web3.authorizeEOADelegation(await createAndFundEOA(), senderAndOrigin.address);
 
-        const tx = await sender.sendTransaction({
+        const receipt = await sender.sendTransaction({
             chainId: network.chainId,
             to: sender.address,
             nonce: 1,
             gasLimit: 400_000,
             data: encodeFunctionData('logSenderAndOrigin()'),
-        });
-        const receipt = await tx.wait();
+        }).then(tx => tx.wait());
         log('Transaction receipt', receipt);
         assert(receipt !== null, 'Receipt is null');
 
@@ -652,14 +635,13 @@ describe('HIP-1340 - EIP-7702 features', function () {
         const code = await provider.getCode(codeSizeAndCopy.address);
         const sender = await web3.authorizeEOADelegation(await createAndFundEOA(), codeSizeAndCopy.address);
 
-        const tx = await sender.sendTransaction({
+        const receipt = await sender.sendTransaction({
             chainId: network.chainId,
             to: sender.address,
             nonce: 1,
             gasLimit: 300_000,
             data: encodeFunctionData('logCodeSizeAndCopy()'),
-        });
-        const receipt = await tx.wait();
+        }).then(tx => tx.wait());
         log('Transaction receipt', receipt);
         assert(receipt !== null, 'Receipt is null');
 

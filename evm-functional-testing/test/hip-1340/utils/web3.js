@@ -91,6 +91,7 @@ async function getCodes(address) {
     const { account } = await new MirrorNode().getAccount(address);
     const contractBytecode = await getContractByteCode(account);
     const { delegationAddress } = await getAccountInfo(account);
+    log('Bytecode for `%s:%s`: ethcode %s : bytecode %s : delegation %s', account, address, code, toStr(contractBytecode), toStr(delegationAddress));
 
     return [code, toStr(contractBytecode), toStr(delegationAddress)];
 }
@@ -158,13 +159,20 @@ async function createAndFundEOA() {
     return eoa;
 }
 
+/**
+ * 
+ * @param {ethers.BaseWallet} eoa 
+ * @param {string} delegateToAddress 
+ * @param {number} [eoaNonce] 
+ * @returns {Promise<ethers.BaseWallet>}
+ */
 async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefined) {
     assert(delegateToAddress !== asAddress(0), 'Delegation to zero address clears the delegation indicator');
 
     const provider = ethers.provider;
     const network = await provider.getNetwork();
 
-    const resp = await (await createAndFundEOA()).sendTransaction({
+    await (await createAndFundEOA()).sendTransaction({
         type: 4,
         chainId: network.chainId,
         nonce: 0,
@@ -175,8 +183,7 @@ async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefin
             nonce: eoaNonce,
             address: delegateToAddress,
         })],
-    });
-    await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+    }).then(tx => tx.wait());
 
     const [code, contractBytecode, delegationAddress] = await getCodes(eoa.address);
     // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -255,18 +262,6 @@ function encodeFunctionData(functionSignature, values) {
 }
 
 /**
- * Waits for a transaction to be processed and returns its receipt, or null if the transaction failed.
- *
- * @param {Promise<ethers.TransactionResponse>} tx 
- * @returns {Promise<ethers.TransactionReceipt | null>}
- */
-async function waitFor(tx) {
-    const response = await tx;
-    const receipt = await response.wait();
-    return receipt;
-}
-
-/**
  * Converts a value to a hexadecimal string representing a `uint256`.
  * 
  * @param {bigint | number} value The value to convert.
@@ -278,7 +273,7 @@ function asHexUint256(value) {
 }
 
 module.exports = {
-    gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact, waitFor,
+    gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact,
     asAddress, getNonces, getCodes, authorizeEOADelegation,
     EOADefaultBalance,
 };
