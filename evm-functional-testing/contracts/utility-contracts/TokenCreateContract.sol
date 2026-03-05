@@ -2,9 +2,9 @@
 pragma solidity >=0.5.0 <0.9.0;
 pragma experimental ABIEncoderV2;
 
-import "../system-contract-references/HederaTokenService.sol";
-import "../utility-contracts/ExpiryHelper.sol";
-import "../utility-contracts/KeyHelper.sol";
+import "@hiero-ledger/hiero-contracts/token-service/HederaTokenService.sol";
+import "@hiero-ledger/hiero-contracts/token-service/KeyHelper.sol";
+import "@hiero-ledger/hiero-contracts/token-service/ExpiryHelper.sol";
 
 contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
 
@@ -17,7 +17,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
     bool freezeDefaultStatus = false;
     bool finiteTotalSupplyType = true;
 
-    event ResponseCode(int64 responseCode);
+    event ResponseCode(int256 responseCode);
     event CreatedToken(address tokenAddress);
     event MintedToken(int64 newTotalSupply, int64[] serialNumbers);
     event KycGranted(bool kycGranted);
@@ -32,7 +32,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
             name, symbol, treasury, memo, finiteTotalSupplyType, maxSupply, freezeDefaultStatus, keys, expiry
         );
 
-        (int64 responseCode, address tokenAddress) =
+        (int256 responseCode, address tokenAddress) =
                             HederaTokenService.createFungibleToken(token, initialTotalSupply, decimals);
 
         if (responseCode != HederaResponseCodes.SUCCESS) {
@@ -112,7 +112,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         IHederaTokenService.FractionalFee[] memory fractionalFees = new IHederaTokenService.FractionalFee[](1);
         fractionalFees[0] = IHederaTokenService.FractionalFee(4, 5, 10, 30, false, treasury);
 
-        (int64 responseCode, address tokenAddress) =
+        (int256 responseCode, address tokenAddress) =
                             HederaTokenService.createFungibleTokenWithCustomFees(token, initialTotalSupply, decimals, fixedFees, fractionalFees);
         emit ResponseCode(responseCode);
 
@@ -134,7 +134,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
             name, symbol, treasury, memo, finiteTotalSupplyType, maxSupply, freezeDefaultStatus, keys, expiry
         );
 
-        (int64 responseCode, address tokenAddress) =
+        (int256 responseCode, address tokenAddress) =
                             HederaTokenService.createNonFungibleToken(token);
 
         if (responseCode != HederaResponseCodes.SUCCESS) {
@@ -210,7 +210,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         IHederaTokenService.RoyaltyFee[] memory royaltyFees = new IHederaTokenService.RoyaltyFee[](1);
         royaltyFees[0] = IHederaTokenService.RoyaltyFee(4, 5, 10, fixedFeeTokenAddress, false, treasury);
 
-        (int64 responseCode, address tokenAddress) =
+        (int256 responseCode, address tokenAddress) =
                             HederaTokenService.createNonFungibleTokenWithCustomFees(token, fixedFees, royaltyFees);
 
         if (responseCode != HederaResponseCodes.SUCCESS) {
@@ -223,7 +223,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
 
     // ---------------------------------- Utils ----------------------------------
     function mintTokenPublic(address token, int64 amount, bytes[] memory metadata) public
-    returns (int64 responseCode, int64 newTotalSupply, int64[] memory serialNumbers)  {
+    returns (int256 responseCode, int64 newTotalSupply, int64[] memory serialNumbers)  {
         (responseCode, newTotalSupply, serialNumbers) = HederaTokenService.mintToken(token, amount, metadata);
         emit ResponseCode(responseCode);
 
@@ -235,7 +235,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
     }
 
     function mintTokenToAddressPublic(address token, int64 amount, bytes[] memory metadata, address receiver) public
-    returns (int64 responseCode, int64 newTotalSupply, int64[] memory serialNumbers)  {
+    returns (int256 responseCode, int64 newTotalSupply, int64[] memory serialNumbers)  {
         (responseCode, newTotalSupply, serialNumbers) = HederaTokenService.mintToken(token, amount, metadata);
         emit ResponseCode(responseCode);
 
@@ -254,7 +254,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         HederaTokenService.transferNFTs(token, senders, receivers, serialNumbers);
     }
 
-    function associateTokensPublic(address account, address[] memory tokens) external returns (int64 responseCode) {
+    function associateTokensPublic(address account, address[] memory tokens) external returns (int256 responseCode) {
         (responseCode) = HederaTokenService.associateTokens(account, tokens);
         emit ResponseCode(responseCode);
 
@@ -263,7 +263,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         }
     }
 
-    function associateTokenPublic(address account, address token) public returns (int64 responseCode) {
+    function associateTokenPublic(address account, address token) public returns (int256 responseCode) {
         responseCode = HederaTokenService.associateToken(account, token);
         emit ResponseCode(responseCode);
 
@@ -272,7 +272,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         }
     }
 
-    function grantTokenKycPublic(address token, address account) external returns (int64 responseCode) {
+    function grantTokenKycPublic(address token, address account) external returns (int256 responseCode) {
         (responseCode) = HederaTokenService.grantTokenKyc(token, account);
         emit ResponseCode(responseCode);
 
@@ -282,7 +282,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
     }
 
     //Adding this function to showcase token functionality in extended updateTokenInfo test suite
-    function updateTokenInfoPublic(address token, IHederaTokenService.HederaToken memory tokenInfo) external returns (int64 responseCode) {
+    function updateTokenInfoPublic(address token, IHederaTokenService.HederaToken memory tokenInfo) external returns (int256 responseCode) {
         (responseCode) = HederaTokenService.updateTokenInfo(token, tokenInfo);
         emit ResponseCode(responseCode);
 
@@ -291,7 +291,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         }
     }
 
-    function approvePublic(address token, address spender, uint256 amount) public returns (int64 responseCode) {
+    function approvePublic(address token, address spender, uint256 amount) public returns (int256 responseCode) {
         responseCode = HederaTokenService.approve(token, spender, amount);
         emit ResponseCode(responseCode);
 
@@ -300,7 +300,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         }
     }
 
-    function approveNftPublic(address token, address spender, uint256 serialNumber) public returns (int64 responseCode) {
+    function approveNftPublic(address token, address spender, uint256 serialNumber) public returns (int256 responseCode) {
         responseCode = HederaTokenService.approveNFT(token, spender, serialNumber);
         emit ResponseCode(responseCode);
 
@@ -309,7 +309,7 @@ contract TokenCreateContract is HederaTokenService, ExpiryHelper, KeyHelper {
         }
     }
 
-    function transferTokenPublic(address tokenAddress, address receiver, int64 amount) public returns (int64 responseCode) {
+    function transferTokenPublic(address tokenAddress, address receiver, int64 amount) public returns (int256 responseCode) {
         responseCode = HederaTokenService.transferToken(tokenAddress, address(this), receiver, amount);
         emit ResponseCode(responseCode);
 
