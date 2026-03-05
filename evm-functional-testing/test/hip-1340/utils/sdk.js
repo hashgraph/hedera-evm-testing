@@ -2,6 +2,8 @@ const log = require('node:util').debuglog('hip-1340:sdk');
 
 const sdk = require('@hiero-ledger/sdk');
 
+const hre = require('hardhat');
+
 /**
  * 
  * @param {string} accountId 
@@ -39,8 +41,7 @@ function getAccountRecords(accountId) {
 }
 
 async function runQuery(query) {
-    const network = hre.network.name;
-    const { operatorId, operatorKey, networkNode } = hre.config.networks[network].sdkClient;
+    const { networkNode, operatorId, operatorKey } = hre.network.config.sdkClient;
     const client = sdk.Client.forNetwork(networkNode)
         .setOperator(operatorId, operatorKey);
     const result = await query.execute(client);
