@@ -14,6 +14,7 @@
   "author": "Hashgraph Smart Contracts Team",
   "license": "Apache-2.0",
   "dependencies": {
+    "@hiero-ledger/hiero-contracts": "^0.1.0-rc.1",
     "@nomicfoundation/solidity-analyzer": "0.1.2",
     "chai": "4.5.0",
     "dotenv": "17.2.0",

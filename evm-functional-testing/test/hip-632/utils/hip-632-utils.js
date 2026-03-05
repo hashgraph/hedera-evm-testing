@@ -7,8 +7,8 @@ async function testAccountAuthorization(receipt, responseCode, isAuthorized) {
     (e) => e.fragment.name === "AccountAuthorizationResponse"
   );
   expect(log.args[0]).to.equal(responseCode);
-  expect(log.args[1]).to.equal(isAuthorized);
-  return log.args[1];
+  expect(log.args[2]).to.equal(isAuthorized);
+  return log.args[2];
 }
 
 // hedera-wallet-connect functions -----------------------------

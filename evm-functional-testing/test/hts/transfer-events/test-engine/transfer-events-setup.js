@@ -121,7 +121,7 @@ async function mintForNonFungibleTokenTests(
           requestMetadata,
         )
       ).wait()
-    ).logs.find((e) => e.fragment.name === Constants.Events.MintedToken).args
+    ).logs.find((e) => e.fragment?.name === Constants.Events.MintedToken).args
       .serialNumbers;
     serialNumbers = serialNumbers.concat(
       Array.from(serialNumbersObject.values()),
