@@ -1,13 +1,12 @@
-const {strict: assert, strictEqual: assertEq} = require('node:assert');
-const {readFileSync} = require('node:fs');
+const { strict: assert, strictEqual: assertEq } = require('node:assert');
+const { readFileSync } = require('node:fs');
 const log = require('node:util').debuglog('hip-1340:web3');
 
-const {ethers, network} = require('hardhat');
+const { ethers, network } = require('hardhat');
 
-const {MirrorNode} = require('evm-functional-testing/mirror-node');
-const {getAccountInfo, getContractByteCode} = require('./sdk.js');
-const {GAS_LIMIT_1_000_000} = require("../../../utils/constants");
-
+const { MirrorNode } = require('evm-functional-testing/mirror-node');
+const { getAccountInfo, getContractByteCode } = require('./sdk.js');
+const { GAS_LIMIT_1_000_000 } = require("../../../utils/constants");
 
 /**
  * @returns {boolean} True if the connected network is an Ethereum-based network (e.g., Geth), false if it's a Hedera-based network (e.g., SOLO).
@@ -70,7 +69,7 @@ async function getNonces(address) {
     const nonce = await provider.getTransactionCount(address);
     if (isEthNetwork()) return [nonce, nonce, nonce];
 
-    const {account, evm_address, ethereum_nonce} = await new MirrorNode().getAccount(address);
+    const { account, evm_address, ethereum_nonce } = await new MirrorNode().getAccount(address);
     const accountInfo = await getAccountInfo(account);
     log('Nonces for `%s:%s`: RN%s:MN%s:CN%s', account, address, nonce, ethereum_nonce, accountInfo.ethereumNonce);
     assertEq(evm_address, address.toLowerCase(), 'Account EVM address sanity check');
@@ -89,9 +88,10 @@ async function getCodes(address) {
     const code = await provider.getCode(address);
     if (isEthNetwork()) return [code, code, '0x' + code.slice(4 * 2)];
 
-    const {account} = await new MirrorNode().getAccount(address);
+    const { account } = await new MirrorNode().getAccount(address);
     const contractBytecode = await getContractByteCode(account);
-    const {delegationAddress} = await getAccountInfo(account);
+    const { delegationAddress } = await getAccountInfo(account);
+    log('Bytecode for `%s:%s`: ethcode %s : bytecode %s : delegation %s', account, address, code, toStr(contractBytecode), toStr(delegationAddress));
 
     return [code, toStr(contractBytecode), toStr(delegationAddress)];
 }
@@ -159,13 +159,20 @@ async function createAndFundEOA() {
     return eoa;
 }
 
+/**
+ *
+ * @param {ethers.BaseWallet} eoa
+ * @param {string} delegateToAddress
+ * @param {number} [eoaNonce]
+ * @returns {Promise<ethers.BaseWallet>}
+ */
 async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefined) {
     assert(delegateToAddress !== asAddress(0), 'Delegation to zero address clears the delegation indicator');
 
     const provider = ethers.provider;
     const network = await provider.getNetwork();
 
-    const resp = await (await createAndFundEOA()).sendTransaction({
+    await (await createAndFundEOA()).sendTransaction({
         type: 4,
         chainId: network.chainId,
         nonce: 0,
@@ -176,8 +183,7 @@ async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefin
             nonce: eoaNonce,
             address: delegateToAddress,
         })],
-    });
-    await resp.wait().catch(err => log('Fetch transaction receipt failed:', err.message));
+    }).then(tx => tx.wait());
 
     const [code, contractBytecode, delegationAddress] = await getCodes(eoa.address);
     // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
@@ -195,8 +201,8 @@ async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefin
 function getArtifact(contractPath) {
     const contractName = contractPath.split('/').pop();
     const file = readFileSync(`./artifacts/${contractPath}.sol/${contractName}.json`, 'utf-8');
-    const {abi, bytecode, storageLayout} = JSON.parse(file);
-    return {abi, bytecode, storageLayout};
+    const { abi, bytecode, storageLayout } = JSON.parse(file);
+    return { abi, bytecode, storageLayout };
 }
 
 /**
@@ -212,7 +218,7 @@ async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
 
     assert(deployer.provider !== null, 'Deployer wallet must be connected to a provider');
     const network = await deployer.provider.getNetwork();
-    const {abi, bytecode} = getArtifact(contractName)
+    const { abi, bytecode } = getArtifact(contractName)
 
     let consArgs = '';
     if (args && args.length > 0) {
@@ -237,7 +243,7 @@ async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
     assert(receipt.contractAddress !== null, 'Contract address is null');
 
     const contract = new ethers.Contract(receipt.contractAddress, abi, deployer);
-    return {address: receipt.contractAddress, deployer, contract};
+    return { address: receipt.contractAddress, deployer, contract };
 }
 
 /**
@@ -253,18 +259,6 @@ function encodeFunctionData(functionSignature, values) {
     const calldata = iface.encodeFunctionData(functionName, values);
     log(`Calldata for ${functionName}(${values !== undefined ? values.join(', ') : ''}):`, calldata);
     return calldata;
-}
-
-/**
- * Waits for a transaction to be processed and returns its receipt, or null if the transaction failed.
- *
- * @param {Promise<ethers.TransactionResponse>} tx
- * @returns {Promise<ethers.TransactionReceipt | null>}
- */
-async function waitFor(tx) {
-    const response = await tx;
-    const receipt = await response.wait();
-    return receipt;
 }
 
 /**
@@ -378,7 +372,6 @@ module.exports = {
     encodeFunctionData,
     asHexUint256,
     getArtifact,
-    waitFor,
     asAddress,
     getNonces,
     getCodes,

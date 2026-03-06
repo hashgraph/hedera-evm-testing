@@ -59,12 +59,10 @@ class Utils {
   static async deploy() {
     const EcrecoverCheck = await ethers.getContractFactory("EcrecoverCheck");
     try {
-      const network = hre.network.name;
       const ecrecoverCheck = await EcrecoverCheck.deploy();
       await ecrecoverCheck.waitForDeployment();
       const address = await ecrecoverCheck.getAddress();
-      const contractQuery =
-        Utils.getMirrorNodeUrl(network) + "/contracts/" + address;
+      const contractQuery = Utils.getMirrorNodeUrl() + "/contracts/" + address;
       let result;
       let cnt = 0;
       while (cnt < 20 && (!result || result.status === 404)) {
@@ -153,12 +151,7 @@ class Utils {
   }
 
   static async changeAccountKey(account, newPrivateKey) {
-    const network = htsUtils.getCurrentNetwork();
-    const operatorId = hre.config.networks[network].sdkClient.operatorId;
-    const operatorKey = PrivateKey.fromStringDer(
-      hre.config.networks[network].sdkClient.operatorKey.replace("0x", "")
-    );
-    const client = await htsUtils.createSDKClient(operatorId, operatorKey);
+    const client = await htsUtils.createSDKClient();
     const newPublicKey = newPrivateKey.publicKey;
     const transaction = new AccountUpdateTransaction()
       .setAccountId(account.accountId)
@@ -173,7 +166,8 @@ class Utils {
     return newPrivateKey;
   }
 
-  static getMirrorNodeUrl(network) {
+  static getMirrorNodeUrl() {
+    const network = hre.network.name;
     switch (network) {
       case "mainnet":
         return "https://mainnet.mirrornode.hedera.com/api/v1";
@@ -181,8 +175,8 @@ class Utils {
         return "https://testnet.mirrornode.hedera.com/api/v1";
       case "previewnet":
         return "https://previewnet.mirrornode.hedera.com/api/v1";
-      case "local":
-        return "http://127.0.0.1:8081/api/v1";
+      case "solo":
+        return hre.network.config.mirrorNodeUrl + '/api/v1';
       default:
         throw new Error("Unknown network");
     }

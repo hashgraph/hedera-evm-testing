@@ -538,25 +538,9 @@ class Utils {
   }
 
   static async createSDKClient(operatorId, operatorKey) {
-    const network = Utils.getCurrentNetwork();
-
-    const hederaNetwork = {};
-    hederaNetwork[hre.config.networks[network].sdkClient.networkNodeUrl] =
-      AccountId.fromString(hre.config.networks[network].sdkClient.nodeId);
-    const { mirrorNode } = hre.config.networks[network].sdkClient;
-
-    operatorId =
-      operatorId || hre.config.networks[network].sdkClient.operatorId;
-    operatorKey =
-      operatorKey || hre.config.networks[network].sdkClient.operatorKey;
-
-    const requestTimeout =
-      hre.config.networks[network].sdkClient.requestTimeout || 30000;
-
-    return Client.forNetwork(hederaNetwork)
-      .setMirrorNetwork(mirrorNode)
-      .setOperator(operatorId, operatorKey)
-      .setRequestTimeout(requestTimeout);
+    const { sdkClient } = hre.network.config;
+    return Client.forNetwork(sdkClient.networkNode)
+      .setOperator(operatorId || sdkClient.operatorId, operatorKey || sdkClient.operatorKey);
   }
 
   static async getAccountId(evmAddress, client) {
@@ -827,8 +811,7 @@ class Utils {
    * @returns {string} - The response code as a string.
    */
   static async getHTSResponseCode(txHash) {
-    const network = hre.network.name;
-    const mirrorNodeUrl = getMirrorNodeUrl(network);
+    const mirrorNodeUrl = getMirrorNodeUrl();
     const res = await axios.get(
       `${mirrorNodeUrl}/contracts/results/${txHash}/actions`
     );
@@ -839,8 +822,7 @@ class Utils {
   }
 
   static async getTokenInfoByMN(tokenAddress) {
-    const network = hre.network.name;
-    const mirrorNodeUrl = getMirrorNodeUrl(network);
+    const mirrorNodeUrl = getMirrorNodeUrl();
     const res = await axios.get(`${mirrorNodeUrl}/tokens/${tokenAddress}`);
 
     return res.data;
@@ -856,8 +838,7 @@ class Utils {
    * @returns {string} - The response code as a string.
    */
   static async getHASResponseCode(txHash) {
-    const network = hre.network.name;
-    const mirrorNodeUrl = getMirrorNodeUrl(network);
+    const mirrorNodeUrl = getMirrorNodeUrl();
     const res = await axios.get(
       `${mirrorNodeUrl}/contracts/results/${txHash}/actions`
     );
@@ -1028,8 +1009,7 @@ class Utils {
    * @throws {Error} If there was an error fetching the data from mirror node
    */
   static async getMaxAutomaticTokenAssociations(evmAddress) {
-    const network = hre.network.name;
-    const mirrorNodeUrl = getMirrorNodeUrl(network);
+    const mirrorNodeUrl = getMirrorNodeUrl();
     const response = await axios.get(`${mirrorNodeUrl}/accounts/${evmAddress}`);
     return response.data.max_automatic_token_associations;
   }

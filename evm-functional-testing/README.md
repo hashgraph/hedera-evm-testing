@@ -35,7 +35,7 @@ npx hardhat test
 ### Run with local Hiero Network using Solo
 
 ```sh
-npx hardhat test --network local
+npx hardhat test --network solo
 ```
 
 ## Run Solo
