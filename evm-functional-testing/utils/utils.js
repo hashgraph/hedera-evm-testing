@@ -593,52 +593,12 @@ class Utils {
     return asBuffer ? Buffer.from(cpk, "hex") : cpk;
   }
 
-  static async getHardhatSignersPrivateKeys(add0xPrefix = true) {
-    const network = Utils.getCurrentNetwork();
-    return hre.config.networks[network].accounts.map((pk) =>
-      add0xPrefix ? pk : pk.replace("0x", "")
-    );
+  static getHardhatSignersPrivateKeys() {
+    return hre.network.config.accounts;
   }
 
   static getHardhatSignerPrivateKeyByIndex(index = 0) {
-    return hre.config.networks[hre.network.name].accounts[index];
-  }
-
-  static async updateAccountKeysViaHapi(
-    contractAddresses,
-    ecdsaPrivateKeys = []
-  ) {
-    const clientGenesis = await Utils.createSDKClient();
-    if (!ecdsaPrivateKeys.length) {
-      ecdsaPrivateKeys = await this.getHardhatSignersPrivateKeys(false);
-    }
-
-    for (const privateKey of ecdsaPrivateKeys) {
-      const pkSigner = PrivateKey.fromStringECDSA(privateKey.replace("0x", ""));
-      const accountId = await Utils.getAccountId(
-        pkSigner.publicKey.toEvmAddress(),
-        clientGenesis
-      );
-      const clientSigner = await Utils.createSDKClient(accountId, pkSigner);
-
-      const keyList = new KeyList(
-        [
-          pkSigner.publicKey,
-          ...contractAddresses.map((address) =>
-            ContractId.fromEvmAddress(0, 0, address)
-          ),
-        ],
-        1
-      );
-
-      await (
-        await new AccountUpdateTransaction()
-          .setAccountId(accountId)
-          .setKey(keyList)
-          .freezeWith(clientSigner)
-          .sign(pkSigner)
-      ).execute(clientSigner);
-    }
+    return hre.network.config.accounts[index];
   }
 
   static async getAccountBalance(client, address) {
@@ -662,9 +622,7 @@ class Utils {
   ) {
     const signers = await ethers.getSigners();
     const clientGenesis = await Utils.createSDKClient();
-    const pkSigners = (await Utils.getHardhatSignersPrivateKeys()).map((pk) =>
-      PrivateKey.fromStringECDSA(pk)
-    );
+    const pkSigners = Utils.getHardhatSignersPrivateKeys().map(PrivateKey.fromStringECDSA);
     const accountIdSigner0 = await Utils.getAccountId(
       signers[0].address,
       clientGenesis
@@ -698,10 +656,6 @@ class Utils {
     await (
       await tx.freezeWith(clientSigner0).sign(pkSigners[0])
     ).execute(clientSigner0);
-  }
-
-  static getCurrentNetwork() {
-    return hre.network.name;
   }
 
   static convertAccountIdToLongZeroAddress(accountId, prepend0x = false) {
