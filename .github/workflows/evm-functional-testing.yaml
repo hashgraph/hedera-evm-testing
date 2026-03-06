@@ -186,3 +186,29 @@ jobs:
       - name: Stop Geth container
         if: always()
         run: docker stop geth
+
+  hip1340-eip7702-hiero-hardhat-testing:
+    name: HIP-1340 - EIP-7702 Hiero Hardhat Testing
+    runs-on: smart-contracts-linux-medium
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+
+      - name: Setup NodeJS Environment
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Checkout Code
+        id: checkout-code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install npm testing dependencies
+        run: npm ci
+        working-directory: evm-functional-testing
+
+      - name: Run HIP-1340 - EIP-7702 tests against Hardhat local network
+        run: npx hardhat test --grep 'HIP-1340 - Hiero specific tests' --network hardhat
+        working-directory: evm-functional-testing

@@ -43,7 +43,7 @@ module.exports = {
       }
     },
     solo: {
-      url: "http://localhost:7547",
+      url: "http://localhost:7546",
       chainId: 298,
       gas: 15_000_000,
       timeout: 60_000,
