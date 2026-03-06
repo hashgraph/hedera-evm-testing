@@ -1,7 +1,7 @@
 const log = require('node:util').debuglog('hip-1340:hts');
 
 const { HTS_ADDRESS } = require('../../../utils/constants');
-const { encodeFunctionData, waitFor } = require('./web3');
+const { encodeFunctionData } = require('./web3');
 
 /**
  * Associates an EOA with an HTS token by calling the HTS precompile directly.
@@ -14,7 +14,7 @@ const { encodeFunctionData, waitFor } = require('./web3');
  */
 async function associateHtsToken(eoa, tokenAddress, nonce, gasLimit = 1_500_000) {
     const network = await eoa.provider.getNetwork();
-    const receipt = await waitFor(eoa.sendTransaction({
+    const receipt = await eoa.sendTransaction({
         chainId: network.chainId,
         gasLimit,
         ...(nonce !== undefined ? { nonce } : {}),
@@ -23,7 +23,8 @@ async function associateHtsToken(eoa, tokenAddress, nonce, gasLimit = 1_500_000)
             'associateToken(address account, address token)',
             [eoa.address, tokenAddress]
         ),
-    }));
+    });
+    await receipt.wait();
     log('Associated %s with HTS token %s', eoa.address, tokenAddress);
     return receipt;
 }
@@ -44,7 +45,7 @@ async function associateHtsTokenViaDelegation(eoa, tokenAddress, nonce, gasLimit
         'associateToken(address account, address token)',
         [eoa.address, tokenAddress]
     );
-    const receipt = await waitFor(eoa.sendTransaction({
+    const receipt = await (await eoa.sendTransaction({
         chainId: network.chainId,
         gasLimit,
         ...(nonce !== undefined ? { nonce } : {}),
@@ -53,7 +54,7 @@ async function associateHtsTokenViaDelegation(eoa, tokenAddress, nonce, gasLimit
             'execute(address target, uint256 value, bytes calldata data)',
             [HTS_ADDRESS, 0, associateCalldata]
         ),
-    }));
+    })).wait();
     log('Associated %s with HTS token %s (via delegation)', eoa.address, tokenAddress);
     return receipt;
 }
@@ -76,7 +77,7 @@ async function transferHtsTokenViaDelegation(eoa, tokenAddress, to, amount, nonc
         'transfer(address to, uint256 value)',
         [to, amount]
     );
-    const receipt = await waitFor(eoa.sendTransaction({
+    const receipt = await (await eoa.sendTransaction({
         chainId: network.chainId,
         gasLimit,
         ...(nonce !== undefined ? { nonce } : {}),
@@ -85,7 +86,7 @@ async function transferHtsTokenViaDelegation(eoa, tokenAddress, to, amount, nonc
             'execute(address target, uint256 value, bytes calldata data)',
             [tokenAddress, 0, transferCalldata]
         ),
-    }));
+    })).wait();
     log('Transferred %s HTS tokens from %s to %s (via delegation)', amount, eoa.address, to);
     return receipt;
 }
@@ -102,7 +103,7 @@ async function transferHtsTokenViaDelegation(eoa, tokenAddress, to, amount, nonc
  */
 async function executeBatchViaDelegation(eoa, calls, nonce, gasLimit = 1_500_000) {
     const network = await eoa.provider.getNetwork();
-    const receipt = await waitFor(eoa.sendTransaction({
+    const receipt = await (await eoa.sendTransaction({
         chainId: network.chainId,
         gasLimit,
         ...(nonce !== undefined ? { nonce } : {}),
@@ -111,7 +112,7 @@ async function executeBatchViaDelegation(eoa, calls, nonce, gasLimit = 1_500_000
             'executeBatch((address target, uint256 value, bytes data)[] calls)',
             [calls.map(c => [c.target, c.value, c.data])]
         ),
-    }));
+    })).wait();
     log('Executed batch of %d calls from %s', calls.length, eoa.address);
     return receipt;
 }

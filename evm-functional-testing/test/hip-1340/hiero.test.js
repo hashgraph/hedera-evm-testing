@@ -6,7 +6,6 @@ const {ethers} = require('hardhat');
 const {
     deploy,
     createAndFundEOA,
-    waitFor,
     sendDelegation,
     verifyDelegation,
     designatorFor,
@@ -63,9 +62,9 @@ describe('HIP-1340 - Hiero specific tests', function () {
         const anotherAddress = await createAndFundEOA();
         await associateHtsToken(anotherAddress, tokenAddress);
         // Grant KYC (required because createFungibleTokenPublic creates the token with a KYC key)
-        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, anotherAddress.address));
+        await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, anotherAddress.address)).wait();
 
-        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, anotherAddress.address, 1000));
+        await (await tokenCreateContract.transferTokenPublic(tokenAddress, anotherAddress.address, 1000)).wait();
         const anotherAddressBalance = await tokenContract.balanceOf(anotherAddress.address);
         expect(anotherAddressBalance).to.be.equal(1000);
 
@@ -112,13 +111,13 @@ describe('HIP-1340 - Hiero specific tests', function () {
         await associateHtsToken(receiver, tokenAddress, receiverNonce++);
 
         // Grant KYC (required because createFungibleTokenPublic creates the token with a KYC key)
-        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, eoa1.address));
-        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, eoa2.address));
-        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, receiver.address));
+        await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, eoa1.address)).wait();
+        await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, eoa2.address)).wait();
+        await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, receiver.address)).wait();
 
         // Transfer HTS tokens from treasury to both EOAs
-        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, eoa1.address, 5_000n));
-        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, eoa2.address, 7_000n));
+        await (await tokenCreateContract.transferTokenPublic(tokenAddress, eoa1.address, 5_000n)).wait();
+        await (await tokenCreateContract.transferTokenPublic(tokenAddress, eoa2.address, 7_000n)).wait();
 
         // Verify initial balances via ERC20 proxy
         const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
@@ -188,12 +187,12 @@ describe('HIP-1340 - Hiero specific tests', function () {
         await associateHtsToken(carol, tokenAddress, carolNonce++);
 
         // Grant KYC to all
-        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, alice.address));
-        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, bob.address));
-        await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, carol.address));
+        await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, alice.address)).wait();
+        await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, bob.address)).wait();
+        await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, carol.address)).wait();
 
         // Transfer 500 HTS tokens from treasury to Alice
-        await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, alice.address, 500n));
+        await (await tokenCreateContract.transferTokenPublic(tokenAddress, alice.address, 500n)).wait();
 
         // Verify initial balances
         const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
@@ -455,9 +454,9 @@ async function executeAndAssertBatchHbarAndHtsTransfer({
                                                            tokenCreateContract,
                                                            tokenAddress
                                                        }, provider,) {
-    await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, alice.address));
-    await waitFor(tokenCreateContract.grantTokenKycPublic(tokenAddress, bob.address));
-    await waitFor(tokenCreateContract.transferTokenPublic(tokenAddress, alice.address, 500n));
+    await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, alice.address)).wait();
+    await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, bob.address)).wait();
+    await (await tokenCreateContract.transferTokenPublic(tokenAddress, alice.address, 500n)).wait();
 
     const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
     const aliceInitTokens = await tokenContract.balanceOf(alice.address);
