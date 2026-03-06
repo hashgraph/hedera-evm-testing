@@ -811,8 +811,7 @@ class Utils {
    * @returns {string} - The response code as a string.
    */
   static async getHTSResponseCode(txHash) {
-    const network = hre.network.name;
-    const mirrorNodeUrl = getMirrorNodeUrl(network);
+    const mirrorNodeUrl = getMirrorNodeUrl();
     const res = await axios.get(
       `${mirrorNodeUrl}/contracts/results/${txHash}/actions`
     );
@@ -823,8 +822,7 @@ class Utils {
   }
 
   static async getTokenInfoByMN(tokenAddress) {
-    const network = hre.network.name;
-    const mirrorNodeUrl = getMirrorNodeUrl(network);
+    const mirrorNodeUrl = getMirrorNodeUrl();
     const res = await axios.get(`${mirrorNodeUrl}/tokens/${tokenAddress}`);
 
     return res.data;
@@ -840,8 +838,7 @@ class Utils {
    * @returns {string} - The response code as a string.
    */
   static async getHASResponseCode(txHash) {
-    const network = hre.network.name;
-    const mirrorNodeUrl = getMirrorNodeUrl(network);
+    const mirrorNodeUrl = getMirrorNodeUrl();
     const res = await axios.get(
       `${mirrorNodeUrl}/contracts/results/${txHash}/actions`
     );
@@ -1012,8 +1009,7 @@ class Utils {
    * @throws {Error} If there was an error fetching the data from mirror node
    */
   static async getMaxAutomaticTokenAssociations(evmAddress) {
-    const network = hre.network.name;
-    const mirrorNodeUrl = getMirrorNodeUrl(network);
+    const mirrorNodeUrl = getMirrorNodeUrl();
     const response = await axios.get(`${mirrorNodeUrl}/accounts/${evmAddress}`);
     return response.data.max_automatic_token_associations;
   }

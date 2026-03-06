@@ -122,7 +122,7 @@ jobs:
 
       - name: Run the tests
         if: ${{ steps.run_solo.outcome == 'success' }}
-        run: npx hardhat test --network local
+        run: npx hardhat test --network solo
         working-directory: evm-testing/evm-functional-testing
 
       - name: Stop solo

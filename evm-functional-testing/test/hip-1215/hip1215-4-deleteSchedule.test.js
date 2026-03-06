@@ -20,16 +20,13 @@ const {
   Hbar,
   PrivateKey,
 } = require("@hiero-ledger/sdk");
-const axios = require("axios");
 const { expect } = require("chai");
 const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 
 const getScheduleInfoFromMN = async (scheduleAddress) => {
-  const url =
-    getMirrorNodeUrl(hre.network.name) +
-    `/schedules/0.0.${Number(scheduleAddress)}`;
-
-  return axios.get(url).then((r) => r.data);
+  const url = `${getMirrorNodeUrl()}/schedules/0.0.${Number(scheduleAddress)}`;
+  const resp = await fetch(url);
+  return await resp.json();
 };
 
 describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
