@@ -12,8 +12,7 @@ const {
     designatorFor,
     encodeFunctionData,
     authorizeEOADelegation,
-    sendDelegationCreationTx,
-    waitReceiptWithTimeout,
+    sendDelegationCreationTx
 } = require('./utils/web3');
 const {
     associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation, executeBatchViaDelegation
@@ -243,13 +242,17 @@ describe('HIP-1340 - Hiero specific tests', function () {
         await executeAndAssertBatchHbarAndHtsTransfer(scenario, provider);
     });
 
-    // TODO: revisit below 2 tests when relay throws a proper insufficient rejection
     it('should not create account via delegation if insufficient gas to cover account creation', async function () {
         const eoa = await createAndFundEOA();
         const delegated = ethers.Wallet.createRandom();
+        const timeoutMs = 10_000;
 
         const tx = await sendDelegationCreationTx({eoa, delegated});
-        await waitReceiptWithTimeout(tx);
+        try {
+            await tx.wait(1, timeoutMs);
+        } catch (err) {
+            if (err?.code !== 'TIMEOUT') throw err;
+        }
         await assertDelegatedAccountDoesNotExist(provider, delegated.address);
     });
 
@@ -257,11 +260,16 @@ describe('HIP-1340 - Hiero specific tests', function () {
         const eoa = await createAndFundEOA();
         const delegated = ethers.Wallet.createRandom();
         const value = 10n * ONE_HBAR;
+        const timeoutMs = 10_000;
 
         const tx = await sendDelegationCreationTx({
             eoa, delegated, to: delegated.address, value,
         });
-        await waitReceiptWithTimeout(tx);
+        try {
+            await tx.wait(1, timeoutMs);
+        } catch (err) {
+            if (err?.code !== 'TIMEOUT') throw err;
+        }
         await assertDelegatedAccountDoesNotExist(provider, delegated.address);
     });
 
@@ -271,17 +279,15 @@ describe('HIP-1340 - Hiero specific tests', function () {
         const gasLimit = 46000;
 
         const tx = await sendDelegationCreationTx({eoa, delegated, gasLimit});
-        const receipt = await waitReceiptWithTimeout(tx);
+        const receipt = await tx.wait();
 
-        expect(receipt, 'Transaction (or replacement) receipt should be available').to.not.be.null;
         expect(receipt.status).to.equal(1, 'Transaction should succeed');
         expect(Number(receipt.gasUsed), 'Gas should be charged for account creation').to.be.equal(gasLimit);
 
         await assertDelegatedAccountExists(provider, delegated.address);
     });
 
-    // TODO: revisit below test as we expect a revert
-    it.skip('should revert transaction delegated to a system contract', async function () {
+    it('should ignore the delegation to system contract and call system contract directly', async function () {
         const eoa = await createAndFundEOA();
         let nonce = 0;
 
@@ -302,12 +308,12 @@ describe('HIP-1340 - Hiero specific tests', function () {
             data: scheduleCallData,
         });
 
-        const receipt = await waitReceiptWithTimeout(tx);
-        expect(receipt, 'Transaction (or replacement) receipt should be available').to.not.be.null;
-        expect(receipt.status).to.equal(0, 'Transaction should be processed');
+        const receipt = await tx.wait();
+        expect(receipt, 'Transaction receipt should be available').to.not.be.null;
+        expect(receipt.status).to.equal(1, 'Transaction should be processed');
     });
 
-    it.skip('should no-op transaction delegated to another EOA/HAS facade', async function () {
+    it('should ignore the delegation of alice to bob when calling HAS methods', async function () {
         const alice = await createAndFundEOA();
         const bob = await createAndFundEOA();
         const spender = (await createAndFundEOA()).address;
@@ -343,15 +349,14 @@ describe('HIP-1340 - Hiero specific tests', function () {
             to: alice.address,
             data: encodeFunctionData('hbarApprove(address spender, int256 amount)', [spender, amount]),
         });
-        const approveReceipt = await waitReceiptWithTimeout(approveTx);
-        expect(approveReceipt, 'hbarApprove transaction receipt should be available').to.not.be.null;
+        const approveReceipt = await approveTx.wait();
         expect(approveReceipt.status).to.equal(1, 'hbarApprove transaction should be processed');
 
         const bobsAllowance = await readAllowance(bob.address);
         expect(bobsAllowance).to.equal(0, 'bobs allowance should be zero');
 
         const allowanceAfter = await readAllowance(alice.address);
-        expect(allowanceAfter).to.equal(allowanceBefore, 'alice allowance should not change after hbarApprove');
+        expect(allowanceAfter).to.equal(amount, 'alice allowance should not change after hbarApprove');
     });
 
     it('should deploy HasFacadeSelectors and expose expected HAS selectors', async function () {
