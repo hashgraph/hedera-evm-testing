@@ -358,6 +358,80 @@ describe('HIP-1340 - Hiero specific tests', function () {
         expect(allowanceAfter).to.equal(amount, 'alice allowance should not change after hbarApprove');
     });
 
+    describe('EOA delegated to HTS system contract (0x167) should no-op', function () {
+        let eoa, nonce, tokenCreateContract, tokenAddress, tokenContract;
+
+        beforeEach(async function () {
+            eoa = await createAndFundEOA();
+            nonce = 0;
+
+            await sendDelegation(eoa, HTS_ADDRESS, nonce);
+            nonce += 2;
+            await verifyDelegation(eoa.address, HTS_ADDRESS);
+
+            tokenCreateContract = await Utils.deployTokenCreateContract();
+            tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
+            tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, provider);
+        });
+
+        const sendAndCaptureOutcome = async (to, data) => {
+            try {
+                const tx = await eoa.sendTransaction({
+                    chainId: network.chainId,
+                    nonce: nonce++,
+                    gasLimit: GAS_LIMIT_1_000_000.gasLimit,
+                    to,
+                    data,
+                });
+                const receipt = await tx.wait();
+                return {reverted: receipt.status === 0, receipt};
+            } catch (error) {
+                return {reverted: true, receipt: null, error};
+            }
+        };
+
+        it('should no-op a valid system-contract method call (mintToken) with value sent via delegated EOA', async function () {
+            const supplyBefore = await tokenContract.totalSupply();
+
+            // Mint directly via HTS precompile to prove it works
+            await (await tokenCreateContract.mintTokenPublic(tokenAddress, 100, [])).wait();
+            const supplyAfterDirect = await tokenContract.totalSupply();
+            const expectedSupply = supplyBefore + 100n;
+            expect(supplyAfterDirect).to.equal(expectedSupply, 'Direct mint should increase supply');
+
+            // Same mintToken calldata routed through the delegated EOA — should be a no-op
+            const mintCalldata = encodeFunctionData(
+                'mintToken(address token, int64 amount, bytes[] metadata)',
+                [tokenAddress, 50, []],
+            );
+            const delegatedOutcome = await sendAndCaptureOutcome(eoa.address, mintCalldata);
+            expect(delegatedOutcome.reverted, 'Delegated mint calldata should no-op and not revert').to.be.false;
+            expect(delegatedOutcome.receipt.status).to.equal(1, 'Transaction should succeed');
+
+            const supplyAfterDelegated = await tokenContract.totalSupply();
+            expect(supplyAfterDelegated).to.equal(expectedSupply, 'Supply should be unchanged after delegated mint (no-op)');
+        });
+
+        it('should no-op when calling delegated EOA with empty calldata', async function () {
+            // For empty call we expect the HTS system contract to revert, but be no-op for the delegated EOA.
+            const directOutcome = await sendAndCaptureOutcome(HTS_ADDRESS, '0x');
+            expect(directOutcome.reverted, 'empty calldata via direct HTS call should revert').to.be.true;
+            const delegatedOutcome = await sendAndCaptureOutcome(eoa.address, '0x');
+            expect(delegatedOutcome.reverted, 'empty calldata via delegation should not revert').to.be.false;
+            expect(delegatedOutcome.receipt.status).to.equal(1, 'empty calldata via delegated EOA should no-op and not revert');
+        });
+
+        it('should no-op when calling delegated EOA with non-existent method selector', async function () {
+            // For non-existent method selector we both HTS system contract and delegated EOA should not revert, but be no-op.
+            const directOutcome = await sendAndCaptureOutcome(HTS_ADDRESS, '0xdeadbeef');
+            expect(directOutcome.reverted, 'non-existent method selector via direct HTS call should not revert').to.be.false;
+            expect(directOutcome.receipt.status).to.equal(1, 'non-existent method selector via direct HTS call should succeed');
+            const delegatedOutcome = await sendAndCaptureOutcome(eoa.address, '0xdeadbeef');
+            expect(delegatedOutcome.reverted, 'non-existent method selector via delegation should not revert').to.be.false;
+            expect(delegatedOutcome.receipt.status).to.equal(1, 'non-existent method selector via delegated EOA should succeed');
+        });
+    });
+
     it('should deploy HasFacadeSelectors and expose expected HAS selectors', async function () {
         const {contract} = await deploy(HAS_SELECTORS_CONTRACT);
         const hbarAllowanceSelector = contract.interface.getFunction('hbarAllowance(address)').selector;
@@ -376,7 +450,10 @@ describe('HIP-1340 - Hiero specific tests', function () {
         await authorizeEOADelegation(eoa, hasSelectorsAddress, eoaNonce++);
         await verifyDelegation(eoa.address, hasSelectorsAddress);
 
-        const eventIface = new ethers.Interface(['event HbarAllowanceCalled(address indexed caller, address indexed spender)', 'event HbarApproveCalled(address indexed caller, address indexed spender, int256 amount)', 'event SetUnlimitedAutomaticAssociationsCalled(address indexed caller, bool enabled)',]);
+        const eventIface = new ethers.Interface([
+            'event HbarAllowanceCalled(address indexed caller, address indexed spender)',
+            'event HbarApproveCalled(address indexed caller, address indexed spender, int256 amount)',
+            'event SetUnlimitedAutomaticAssociationsCalled(address indexed caller, bool enabled)',]);
 
         const spender = (await createAndFundEOA()).address;
         const sendAndAssertProxiedCall = async (signature, args, blockedEvent) => {
@@ -402,7 +479,9 @@ describe('HIP-1340 - Hiero specific tests', function () {
         const allowanceResult = await provider.call({
             to: eoa.address, data: encodeFunctionData('hbarAllowance(address spender)', [spender]),
         });
-        const [responseCode, allowance] = new ethers.Interface(['function hbarAllowance(address spender) returns (int64 responseCode, int256 allowance)',]).decodeFunctionResult('hbarAllowance', allowanceResult);
+        const [responseCode, allowance] =
+            new ethers.Interface(['function hbarAllowance(address spender) returns (int64 responseCode, int256 allowance)',])
+                .decodeFunctionResult('hbarAllowance', allowanceResult);
         expect(responseCode).to.equal(22n, 'hbarAllowance should return SUCCESS response code');
         expect(allowance).to.equal(123n, 'hbarAllowance should reflect the amount from hbarApprove');
 
