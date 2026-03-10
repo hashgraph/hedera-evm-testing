@@ -92,29 +92,36 @@ async function transferHtsTokenViaDelegation(eoa, tokenAddress, to, amount, nonc
 }
 
 /**
- * Executes a batch of calls through a delegated EOA's Smart Wallet `executeBatch()`.
- * Each call is a tuple of `(address target, uint256 value, bytes data)`.
+ * Grants KYC for the given token to one or more addresses.
  *
- * @param {import('ethers').BaseWallet} eoa - The delegated EOA
- * @param {Array<{target: string, value: bigint, data: string}>} calls - Array of calls to execute
- * @param {number} [nonce] - Optional explicit transaction nonce
- * @param {number} [gasLimit=1_500_000] - Gas limit
- * @returns {Promise<import('ethers').TransactionReceipt | null>}
+ * @param {import('ethers').Contract} tokenCreateContract - The deployed TokenCreateContract
+ * @param {string} tokenAddress - The HTS token address
+ * @param {string[]} addresses - Addresses to grant KYC to
  */
-async function executeBatchViaDelegation(eoa, calls, nonce, gasLimit = 1_500_000) {
-    const network = await eoa.provider.getNetwork();
-    const receipt = await (await eoa.sendTransaction({
-        chainId: network.chainId,
-        gasLimit,
-        ...(nonce !== undefined ? { nonce } : {}),
-        to: eoa.address,
-        data: encodeFunctionData(
-            'executeBatch((address target, uint256 value, bytes data)[] calls)',
-            [calls.map(c => [c.target, c.value, c.data])]
-        ),
-    })).wait();
-    log('Executed batch of %d calls from %s', calls.length, eoa.address);
-    return receipt;
+async function grantKyc(tokenCreateContract, tokenAddress, addresses) {
+    for (const addr of addresses) {
+        await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, addr)).wait();
+    }
 }
 
-module.exports = { associateHtsToken, associateHtsTokenViaDelegation, transferHtsTokenViaDelegation, executeBatchViaDelegation, HTS_ADDRESS };
+/**
+ * Transfers HTS tokens from the treasury (TokenCreateContract) to one or more recipients.
+ *
+ * @param {import('ethers').Contract} tokenCreateContract
+ * @param {string} tokenAddress
+ * @param {Array<{address: string, amount: bigint}>} recipients
+ */
+async function fundAccountsWithHtsToken(tokenCreateContract, tokenAddress, recipients) {
+    for (const {address, amount} of recipients) {
+        await (await tokenCreateContract.transferTokenPublic(tokenAddress, address, amount)).wait();
+    }
+}
+
+module.exports = {
+    associateHtsToken,
+    associateHtsTokenViaDelegation,
+    transferHtsTokenViaDelegation,
+    grantKyc,
+    fundAccountsWithHtsToken,
+    HTS_ADDRESS,
+};
