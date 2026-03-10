@@ -221,8 +221,9 @@ async function mintForNonFungibleTokenTests(
       requestMetadata,
     );
     mintTransactionHashes.push(mintTransaction.hash);
-    const serialNumbersObject = (await mintTransaction.wait()).logs.find(
-      (e) => e.fragment.name === Constants.Events.MintedToken,
+    const mintReceipt = await mintTransaction.wait();
+    const serialNumbersObject = mintReceipt.logs.find(
+      (e) => e.fragment?.name === Constants.Events.MintedToken,
     ).args.serialNumbers;
     serialNumbers = serialNumbers.concat(
       Array.from(serialNumbersObject.values()),
