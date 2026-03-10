@@ -4,9 +4,8 @@ const { contractDeployAndFund } = require("../../../../utils/contract");
 const Constants = require("../../../../utils/constants");
 
 /**
- * Create test contracts, includes token create contract ('TokenCreateContract'),
- * transfer contract ('HTSSystemContractTransfersExecutorContract') and few
- * 'AirDropClaimAndReceiverContract' contracts.
+ * Create test contracts, includes token create contract ('TokenCreateContract') and
+ * transfer contract ('HTSSystemContractTransfersExecutorContract')
  * @param { Number } receivers amount of receiver ('AirDropClaimAndReceiverContract') contracts to create
  * @param { Number } receiversBalance amount of HBAR to transfer to each receiver
  * @param { Object } context tests context
