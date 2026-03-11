@@ -34,7 +34,7 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - token and account creati
         const eoa1Balance = await erc20.contract.balanceOf(eoa1.address);
         assert(eoa1Balance === 5_000n, `EOA1 balance should be 5_000 but got ${eoa1Balance}`);
 
-        await erc20.contract.transfer(eoa2.address, 7_000n, { nonce: 3 }).then(tx => tx.wait());
+        await erc20.contract.transfer(eoa2.address, 7_000n).then(tx => tx.wait());
         const eoa2Balance = await erc20.contract.balanceOf(eoa2.address);
         assert(eoa2Balance === 7_000n, `EOA2 balance should be 7_000 but got ${eoa2Balance}`);
 
