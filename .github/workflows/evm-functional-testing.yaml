@@ -94,7 +94,7 @@ jobs:
       - name: Install Solo
         run: npm install --global @hashgraph/solo@${SOLO_VERSION}
         env:
-          SOLO_VERSION: 0.54.0
+          SOLO_VERSION: 0.60.0
 
       - name: Setup Kind
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
