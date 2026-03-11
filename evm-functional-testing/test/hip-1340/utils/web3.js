@@ -6,7 +6,7 @@ const { ethers, network } = require('hardhat');
 
 const { MirrorNode } = require('evm-functional-testing/mirror-node');
 const { getAccountInfo, getContractByteCode } = require('./sdk.js');
-const { GAS_LIMIT_1_000_000 } = require("../../../utils/constants");
+
 
 /**
  * @returns {boolean} True if the connected network is an Ethereum-based network (e.g., Geth), false if it's a Hedera-based network (e.g., SOLO).
@@ -21,46 +21,80 @@ function isEthNetwork() {
 const gas = {
     base: 21_000,
     /**
-     * @param {number} n
-     * @returns
+     * Returns additional intrinsic gas for `n` EIP-7702 authorizations.
+     *
+     * @param {number} n - Number of authorization entries.
+     * @returns {number} Additional gas units.
      */
-    auth: n => n * 25_000,
-    hollow: () => isEthNetwork() ? 0 : 570_000,
+    codeAuthorization: n => n * 25_000,
+    /**
+     * Returns extra gas needed for Hedera account creation path.
+     * On Ethereum-based networks this is zero.
+     *
+     * @returns {number} Additional gas units.
+     */
+    accountCreationCost: () => isEthNetwork() ? 0 : 570_000,
 };
 
 const units = {
-    /** @param {bigint} n */
+    /**
+     * Converts tinybar units to wei-like denomination used in tests.
+     *
+     * @param {bigint} n - Amount in tinybars.
+     * @returns {bigint} Converted amount.
+     */
     tinybar: n => n * 1_00000_00000n,
 
-    /** @param {bigint} n */
+    /**
+     * Converts hbar units to tinybar-based denomination used in tests.
+     *
+     * @param {bigint} n - Amount in hbars.
+     * @returns {bigint} Converted amount.
+     */
     hbar: n => n * units.tinybar(1_0000_0000n),
+}
+
+const EOADefaultBalance = ethers.parseUnits('1000', 'ether');
+
+/**
+ * Builds the cartesian product for a list of dimensions.
+ *
+ * @template T
+ * @param {...T[]} dimensions - Lists that define each axis of the product.
+ * @returns {T[][]} All combinations, one item per dimension.
+ */
+function cartesianProduct(...dimensions) {
+    return dimensions.reduce(
+        (acc, cur) => acc.flatMap(prefix => cur.map(item => [...prefix, item])),
+        [[]]
+    );
 }
 
 /**
  * Returns EIP-7702's designator code for a given Ethereum address.
  *
  * @param {string} address - An EVM address
- * @returns
+ * @returns {string} Hex-encoded delegation designator bytecode.
  */
-function designatorFor(address) {
+function delegationIndicatorFor(address) {
     assert(/^0x[0-9a-fA-F]{40}$/.test(address), `Invalid Ethereum address: ${address}`);
     return `0xef0100${address.slice(2)}`;
 }
 
 /**
- * Returns the provided value `n` as an EVM address representation.
+ * Returns the provided value `n` as a long-zero EVM address.
  * Useful to convert small integers to padded addresses,
  * such as precompile or system contract addresses.
  *
- * @param {number | bigint} n
+ * @param {number | bigint} n 
  * @returns {string}
  */
-function asAddress(n) {
+function asLongZeroAddress(n) {
     return `0x${n.toString(16).padStart(40, '0')}`;
 }
 
 /**
- * @param {string} address
+ * @param {string} address 
  * @returns {Promise<[number, number, number]>} An array containing the nonces from the JSON-RPC Relay, Mirror Node, and Consensus Node (SDK) respectively.
  */
 async function getNonces(address) {
@@ -78,8 +112,8 @@ async function getNonces(address) {
 }
 
 /**
- * @param {string} address
- * @returns {Promise<[string, string, string]>} An array containing the code from the JSON-RPC Relay, Mirror Node (SDK), and delegation address respectively.
+ * @param {string} address 
+ * @returns {Promise<[string, string, string]>} An array containing the code from the JSON-RPC Relay, Mirror Node (SDK), and delegation address respectively. 
  */
 async function getCodes(address) {
     const toStr = buf => '0x' + Buffer.from(buf).toString('hex');
@@ -97,106 +131,10 @@ async function getCodes(address) {
 }
 
 /**
- * @type {ethers.BaseWallet}
- */
-let seedEOA = undefined;
-
-async function getSeedEOA(hbarBalance = 1_000_000n) {
-    if (seedEOA !== undefined) return seedEOA;
-
-    const provider = ethers.provider;
-    const network = await provider.getNetwork();
-
-    const operator = (await ethers.getSigners())[0];
-    const [nonce, eth_nonce, ethNonce] = await getNonces(operator.address);
-    assertEq(nonce, eth_nonce, 'Nonce mismatch between JSON-RPC Relay and Mirror Node');
-    assertEq(eth_nonce, ethNonce, 'Nonce mismatch between Mirror Node and SDK');
-
-    seedEOA = ethers.Wallet.createRandom(provider);
-    const resp = await operator.sendTransaction({
-        type: 2,
-        chainId: network.chainId,
-        nonce,
-        gasLimit: gas.base + gas.hollow(),
-        value: units.hbar(hbarBalance),
-        to: seedEOA.address,
-    });
-    await resp.wait();
-    log('Seed EOA `%s` created at transanction %s', seedEOA.address, resp.hash);
-
-    return seedEOA;
-}
-
-const EOADefaultBalance = ethers.parseUnits('1000', 'ether');
-
-/**
- * Creates and funds a new Externally Owned Account (EOA) on the connected network.
- *
- * @param {bigint} [tinyBarBalance=100_000_000n]
- * @returns {Promise<ethers.BaseWallet>} The funded EOA wallet
- */
-async function createAndFundEOA() {
-    const provider = ethers.provider;
-    const network = await provider.getNetwork();
-
-    const seed = await getSeedEOA();
-    const [nonce, eth_nonce, ethNonce] = await getNonces(seed.address);
-    assertEq(nonce, eth_nonce, 'Nonce mismatch between JSON-RPC Relay and Mirror Node');
-    assertEq(eth_nonce, ethNonce, 'Nonce mismatch between Mirror Node and SDK');
-
-    const eoa = ethers.Wallet.createRandom(provider);
-    const resp = await seed.sendTransaction({
-        type: 2,
-        chainId: network.chainId,
-        nonce,
-        gasLimit: 21_000 + gas.hollow(),
-        value: EOADefaultBalance,
-        to: eoa.address,
-    });
-    await resp.wait();
-    log('EOA `%s` created at transanction %s', eoa.address, resp.hash);
-
-    return eoa;
-}
-
-/**
- *
- * @param {ethers.BaseWallet} eoa
- * @param {string} delegateToAddress
- * @param {number} [eoaNonce]
- * @returns {Promise<ethers.BaseWallet>}
- */
-async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefined) {
-    assert(delegateToAddress !== asAddress(0), 'Delegation to zero address clears the delegation indicator');
-
-    const provider = ethers.provider;
-    const network = await provider.getNetwork();
-
-    await (await createAndFundEOA()).sendTransaction({
-        type: 4,
-        chainId: network.chainId,
-        nonce: 0,
-        gasLimit: gas.base + gas.auth(1),
-        to: ethers.ZeroAddress,
-        authorizationList: [await eoa.authorize({
-            chainId: 0,
-            nonce: eoaNonce,
-            address: delegateToAddress,
-        })],
-    }).then(tx => tx.wait());
-
-    const [code, contractBytecode, delegationAddress] = await getCodes(eoa.address);
-    // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
-    // assert(code === designatorFor(delegateToAddress.toLowerCase()));
-    assertEq(contractBytecode, designatorFor(delegateToAddress.toLowerCase()));
-    assertEq(delegationAddress, delegateToAddress.toLowerCase());
-    return eoa;
-}
-
-/**
  * Retrieves the compiled artifact for a given contract name.
  *
- * @param {string} contractPath
+ * @param {string} contractPath - Path under `contracts/` without `.sol` suffix.
+ * @returns {{abi: unknown[], bytecode: string, storageLayout: unknown}} Parsed artifact fields.
  */
 function getArtifact(contractPath) {
     const contractName = contractPath.split('/').pop();
@@ -208,13 +146,16 @@ function getArtifact(contractPath) {
 /**
  * Deploys a contract to the connected network.
  *
- * @param {string} contractName
- * @param {ethers.BaseWallet} [deployer]
- * @param {number} [gasLimit=5000000]
+ * @param {string} contractName - Contract path used by `getArtifact`.
+ * @param {unknown[]} [args] - Constructor arguments.
+ * @param {ethers.BaseWallet} [deployer] - Wallet used for deployment.
+ * @param {number} [gasLimit=5000000] - Max gas for deployment transaction.
  * @returns {Promise<{address: string, deployer: ethers.BaseWallet, contract: ethers.Contract}>}
  */
 async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
-    if (!deployer) deployer = await createAndFundEOA();
+    if (!deployer) {
+        deployer = (await ethers.getSigners())[0];
+    }
 
     assert(deployer.provider !== null, 'Deployer wallet must be connected to a provider');
     const network = await deployer.provider.getNetwork();
@@ -249,8 +190,8 @@ async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
 /**
  * Encodes function call data for a given function signature and values.
  *
- * @param {string} functionSignature
- * @param {unknown[]} [values]
+ * @param {string} functionSignature - Solidity signature, e.g. `transfer(address,uint256)`.
+ * @param {unknown[]} [values] - Positional argument values for the signature.
  * @returns {string}
  */
 function encodeFunctionData(functionSignature, values) {
@@ -262,35 +203,9 @@ function encodeFunctionData(functionSignature, values) {
 }
 
 /**
- * Executes a batch of calls through a delegated EOA's Smart Wallet `executeBatch()`.
- * Each call is a tuple of `(address target, uint256 value, bytes data)`.
- *
- * @param {import('ethers').BaseWallet} eoa - The delegated EOA
- * @param {Array<{target: string, value: bigint, data: string}>} calls - Array of calls to execute
- * @param {number} [nonce] - Optional explicit transaction nonce
- * @param {number} [gasLimit=1_500_000] - Gas limit
- * @returns {Promise<import('ethers').TransactionReceipt | null>}
- */
-async function executeBatchViaDelegation(eoa, calls, nonce, gasLimit = 1_500_000) {
-    const network = await eoa.provider.getNetwork();
-    const receipt = await (await eoa.sendTransaction({
-        chainId: network.chainId,
-        gasLimit,
-        ...(nonce !== undefined ? {nonce} : {}),
-        to: eoa.address,
-        data: encodeFunctionData(
-            'executeBatch((address target, uint256 value, bytes data)[] calls)',
-            [calls.map(c => [c.target, c.value, c.data])],
-        ),
-    })).wait();
-    log('Executed batch of %d calls from %s', calls.length, eoa.address);
-    return receipt;
-}
-
-/**
  * Converts a value to a hexadecimal string representing a `uint256`.
  *
- * @param {bigint | number} value The value to convert.
+ * @param {bigint | number | string} value The value to convert.
  * @returns {string} The hexadecimal string representation of the value as a `uint256`.
  */
 function asHexUint256(value) {
@@ -298,149 +213,8 @@ function asHexUint256(value) {
     return '0x' + str.padStart(64, '0');
 }
 
-/**
- * Sends a self-sponsored type-4 (EIP-7702) delegation where the EOA is
- * both the transaction sender and the authorization signer.
- *
- * @param {ethers.BaseWallet} eoa
- * @param {string} delegateToAddress - Contract address to delegate to
- * @param {number} [nonce] - Explicit tx nonce (authorization uses nonce + 1)
- * @returns {Promise<string>} The mined transaction hash
- */
-async function sendSelfSponsoredDelegation(eoa, delegateToAddress, nonce) {
-    const network = await eoa.provider.getNetwork();
-    const resp = await eoa.sendTransaction({
-        type: 4,
-        chainId: network.chainId,
-        ...(nonce !== undefined ? {nonce} : {}),
-        gasLimit: GAS_LIMIT_1_000_000.gasLimit,
-        to: eoa.address,
-        authorizationList: [await eoa.authorize({
-            chainId: network.chainId,
-            nonce: nonce !== undefined ? nonce + 1 : (await eoa.getNonce()) + 1,
-            address: delegateToAddress,
-        })],
-    });
-    await resp.wait();
-    return resp.hash;
-}
-
-/** Default delegation target used in "insufficient gas" delegation-creation tests. */
-const DELEGATION_TARGET_ADDRESS = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
-
-/** Gas limit used when sending a type-4 tx that is intended not to complete account creation. */
-const DELEGATION_CREATION_GAS_LIMIT = gas.base + 10_000;
-
-/**
- * Sends a type-4 tx where `eoa` sponsors a delegation for `delegated`
- * (which may be non-existing). Returns the raw `TransactionResponse` so
- * the caller can control receipt handling (e.g. timeout).
- *
- * @param {object} opts
- * @param {ethers.Wallet} opts.eoa - Sponsor/sender wallet
- * @param {ethers.Wallet} opts.delegated - Wallet whose delegation is being set
- * @param {string} [opts.delegationAddress] - Target address for the delegation
- * @param {string} [opts.to] - Transaction target (defaults to `eoa.address`)
- * @param {bigint} [opts.value=0n]
- * @param {number} [opts.gasLimit]
- * @returns {Promise<ethers.TransactionResponse>}
- */
-async function sendDelegationCreationTx({
-                                            eoa,
-                                            delegated,
-                                            delegationAddress = DELEGATION_TARGET_ADDRESS,
-                                            to,
-                                            value = 0n,
-                                            gasLimit = DELEGATION_CREATION_GAS_LIMIT,
-                                        }) {
-    const network = await eoa.provider.getNetwork();
-    return eoa.sendTransaction({
-        type: 4,
-        chainId: network.chainId,
-        nonce: 0,
-        to: to ?? eoa.address,
-        value,
-        gasLimit,
-        authorizationList: [await delegated.authorize({
-            chainId: network.chainId,
-            nonce: 0,
-            address: delegationAddress,
-        })],
-    });
-}
-
-/**
- * Verifies that an EOA's delegation bytecode matches the expected designator
- * by querying the Hedera SDK (consensus node) via the MirrorNode account ID.
- *
- * @param {string} eoaAddress - The EVM address of the delegated EOA
- * @param {string} expectedDelegationAddress - The address the EOA should be delegated to
- * @returns {Promise<string>} The Hedera account ID (e.g. "0.0.1234")
- */
-async function verifyDelegation(eoaAddress, expectedDelegationAddress) {
-    const {account} = await new MirrorNode().getAccount(eoaAddress);
-    log('Verifying delegation for %s (account %s)', eoaAddress, account);
-
-    const bytecode = await getContractByteCode(account);
-    const actual = Buffer.from(bytecode).toString('hex');
-    log("actual: %s", actual);
-    const expected = designatorFor(expectedDelegationAddress.toLowerCase()).slice(2);
-    assertEq(
-        actual,
-        expected,
-        `Delegation bytecode mismatch for ${eoaAddress}: expected ${expected}, got ${actual}`
-    );
-
-    return account;
-}
-
-/**
- * Asserts that the given address has no Hedera account and zero balance.
- *
- * @param {ethers.Provider} provider
- * @param {string} address
- */
-async function assertAccountDoesNotExist(provider, address) {
-    const { expect } = require('chai');
-    const delegatedAccount = await new MirrorNode().getAccount(address);
-    expect(delegatedAccount.account).to.be.equal(undefined, 'Account should not exist on Hedera');
-    expect(delegatedAccount._status?.messages?.[0]?.message).to.be.equal('Not found');
-    expect(await provider.getBalance(address)).to.be.equal(0);
-}
-
-/**
- * Asserts that the given address has a Hedera account.
- *
- * @param {ethers.Provider} provider
- * @param {string} address
- */
-async function assertAccountExists(provider, address) {
-    const { expect } = require('chai');
-    const delegatedAccount = await new MirrorNode().getAccount(address);
-    expect(delegatedAccount.account, 'Account should exist on Hedera').to.not.be.undefined;
-    expect(delegatedAccount._status?.messages?.[0]?.message, 'Account should not have Not found status').to.not.equal('Not found');
-}
-
 module.exports = {
-    gas,
-    units,
-    deploy,
-    designatorFor,
-    createAndFundEOA,
-    encodeFunctionData,
-    executeBatchViaDelegation,
-    asHexUint256,
-    getArtifact,
-    asAddress,
-    getNonces,
-    getCodes,
-    sendDelegation: sendSelfSponsoredDelegation,
-    verifyDelegation,
-    authorizeEOADelegation,
-    sendDelegationCreationTx,
-    DELEGATION_TARGET_ADDRESS,
-    DELEGATION_CREATION_GAS_LIMIT,
+    gas, units, deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256, getArtifact,
+    asLongZeroAddress, getNonces, getCodes, cartesianProduct,
     EOADefaultBalance,
-    assertAccountDoesNotExist,
-    assertAccountExists,
 };
