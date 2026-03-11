@@ -62,11 +62,14 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - token and account creati
         expect(await erc20.contract.balanceOf(receiver)).to.be.equal(3_800n);
     });
 
-    [
-        false,
-        true,
-    ].forEach(receiverSameAsDelegated => {
-        it(`should create the account when an EOA sponsors it receiverSameAsDelegated=${receiverSameAsDelegated}`, async function () {
+    const tests = [
+        { receiverSameAsDelegated: false },
+        { receiverSameAsDelegated: true },
+    ];
+
+    describe('account sponsorship behavior', function () {
+        tests.forEach(({ receiverSameAsDelegated }) => {
+            it(`should create the account when an EOA sponsors it (receiverSameAsDelegated=${receiverSameAsDelegated})`, async function () {
             const delegateAddress = '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc'.toLowerCase();
             const value = 10n * 1_00000_00000n;
             const sender = await this.testCtx.createAndFundEOA();
@@ -101,6 +104,7 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - token and account creati
             const [_code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
             expect(contractBytecode).to.be.equal(delegationIndicatorFor(delegateAddress));
             expect(delegationAddress).to.be.equal(delegateAddress);
+            });
         });
     });
 });

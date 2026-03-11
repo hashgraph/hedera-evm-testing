@@ -57,6 +57,20 @@ const units = {
 const EOADefaultBalance = ethers.parseUnits('1000', 'ether');
 
 /**
+ * Builds the cartesian product for a list of dimensions.
+ *
+ * @template T
+ * @param {...T[]} dimensions - Lists that define each axis of the product.
+ * @returns {T[][]} All combinations, one item per dimension.
+ */
+function cartesianProduct(...dimensions) {
+    return dimensions.reduce(
+        (acc, cur) => acc.flatMap(prefix => cur.map(item => [...prefix, item])),
+        [[]]
+    );
+}
+
+/**
  * Returns EIP-7702's designator code for a given Ethereum address.
  *
  * @param {string} address - An EVM address
@@ -201,6 +215,6 @@ function asHexUint256(value) {
 
 module.exports = {
     gas, units, deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256, getArtifact,
-    asLongZeroAddress, getNonces, getCodes,
+    asLongZeroAddress, getNonces, getCodes, cartesianProduct,
     EOADefaultBalance,
 };

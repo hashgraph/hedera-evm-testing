@@ -12,6 +12,7 @@ const {
     delegationIndicatorFor,
     encodeFunctionData,
     asLongZeroAddress,
+    cartesianProduct,
 } = require('./utils/web3');
 
 describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegation setup', function () {
@@ -27,40 +28,50 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegation setup', funct
     });
 
     describe('EOA delegation setup via type 4 transactions', function () {
-        [
+        const receivers = [
             { fn: () => ethers.Wallet.createRandom(), desc: 'Random EVM address' },
             { fn: t => t.testCtx.createAndFundEOA(), desc: 'Pre-funded EOA' },
             { fn: () => deploy('contracts/hip-1340/AlwaysSucceed'), desc: 'Deployed contract that succeeds' },
-        ].flatMap(receiver =>
-            [
-                undefined,
-                encodeFunctionData('usedToGenerateSomeCalldata(uint256)', [0x123]),
-            ].flatMap(data =>
-                [
-                    'EXTERNAL',
-                    'SELF',
-                ].flatMap(trigger =>
-                    [
-                        0n,
-                        1234n,
-                    ].flatMap(value =>
-                        [
-                            { fn: () => 0, desc: 'all chains' },
-                            { fn: t => t.network.chainId, desc: 'specific chain id of current network' },
-                        ].flatMap(delegateToChainId =>
-                            [
-                                asLongZeroAddress(1),
-                                asLongZeroAddress(0x167),
-                                '0x0000000000000000000000000000000000068cDa',
-                                '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
-                            ].flatMap(delegateToAddress => ({ receiver, data, trigger, value, delegateToChainId, delegateToAddress }))))))
-        ).forEach(({ receiver, data, trigger, value, delegateToChainId, delegateToAddress }) => {
+        ];
+        const dataCases = [
+            undefined,
+            encodeFunctionData('usedToGenerateSomeCalldata(uint256)', [0x123]),
+        ];
+        const triggers = ['EXTERNAL', 'SELF'];
+        const values = [0n, 1234n];
+        const delegateToChainIds = [
+            { fn: () => 0, desc: 'all chains' },
+            { fn: t => t.network.chainId, desc: 'specific chain id of current network' },
+        ];
+        const delegateToAddresses = [
+            asLongZeroAddress(1),
+            asLongZeroAddress(0x167),
+            '0x0000000000000000000000000000000000068cDa',
+            '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
+        ];
+
+        const tests = cartesianProduct(
+            receivers,
+            dataCases,
+            triggers,
+            values,
+            delegateToChainIds,
+            delegateToAddresses,
+        ).map(([receiver, data, trigger, value, delegateToChainId, delegateToAddress]) => ({
+            receiver,
+            data,
+            trigger,
+            value,
+            delegateToChainId,
+            delegateToAddress,
+        }));
+
+        tests.forEach(({ receiver, data, trigger, value, delegateToChainId, delegateToAddress }) => {
             it(`should store delegation designator via type 4 transaction to '${receiver.desc}' from ${trigger} when sending '${value !== 0n ? 'non-' : ''}zero (${value} th)' with '${data ? 'data' : 'no data'}' delegating to '${delegateToChainId.desc}' and '${delegateToAddress}'`, async function () {
                 const [sender, senderNonce] = [await this.testCtx.createAndFundEOA(), new Nonce()];
                 const to = (await receiver.fn(this)).address;
-                const [delegated, delegatedNonce] = trigger === 'SELF'
-                    ? [sender, senderNonce]
-                    : [await this.testCtx.createAndFundEOA(), new Nonce()];
+                const delegated = trigger === 'SELF' ? sender : await this.testCtx.createAndFundEOA();
+                const delegatedNonce = trigger === 'SELF' ? senderNonce : new Nonce();
 
                 await sender.sendTransaction({
                     type: 4,

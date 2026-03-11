@@ -6,7 +6,7 @@ const { ethers } = require('hardhat');
 const { Hip1340TestContext, Nonce } = require('./utils/test-context');
 
 const web3 = require('./utils/web3');
-const { deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256 } = require('./utils/web3');
+const { deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256, cartesianProduct } = require('./utils/web3');
 
 describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegated execution', function () {
     before(async function () {
@@ -20,15 +20,12 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegated execution', fu
         await this.testCtx.init();
     });
 
-    [
-        'EXTERNAL',
-        'SELF',
-    ].flatMap(trigger =>
-        [
-            'EXTERNAL',
-            'SELF',
-        ].flatMap(authSenderTrigger => ({ trigger, authSenderTrigger }))
-    ).forEach(({ trigger, authSenderTrigger }) => {
+    const tests = cartesianProduct(
+        ['EXTERNAL', 'SELF'],
+        ['EXTERNAL', 'SELF'],
+    ).map(([trigger, authSenderTrigger]) => ({ trigger, authSenderTrigger }));
+
+    tests.forEach(({ trigger, authSenderTrigger }) => {
         it(`should get store and logs when a delegated EOA is the target of a transaction from \`${trigger}\` ${authSenderTrigger}`, async function () {
             const value = 42;
 
@@ -62,7 +59,8 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegated execution', fu
             const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
             const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmit.address, 0, storeAndEmitCall]);
 
-            const [delegatedExecutionSender, delegatedExecutionSenderNonce] = trigger === 'SELF' ? [eoa, eoaNonce] : [from, fromNonce];
+            const delegatedExecutionSender = trigger === 'SELF' ? eoa : from;
+            const delegatedExecutionSenderNonce = trigger === 'SELF' ? eoaNonce : fromNonce;
             const receipt = await delegatedExecutionSender.sendTransaction({
                 chainId: this.network.chainId,
                 to: eoa.address,
