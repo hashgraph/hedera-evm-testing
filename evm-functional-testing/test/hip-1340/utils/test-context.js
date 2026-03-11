@@ -23,22 +23,29 @@ class Hip1340TestContext {
     }
 
     /**
-     * @param {bigint} [hbarBalance=1_000_000n]
+     * @param {bigint} [hbarBalance=100_000n]
      * @returns {Promise<void>}
      */
-    async init(hbarBalance = 1_000_000n) {
+    async init(hbarBalance = 100_000n) {
         await this._getSeedEOA(hbarBalance);
     }
 
     /**
-     * @param {bigint} [hbarBalance=1_000_000n]
+     * @param {bigint} [hbarBalance=100_000n]
      * @returns {Promise<ethers.BaseWallet>}
      */
-    async _getSeedEOA(hbarBalance = 1_000_000n) {
+    async _getSeedEOA(hbarBalance = 100_000n) {
         if (this.seedEOA !== undefined) return this.seedEOA;
 
         const network = await this.provider.getNetwork();
         const operator = (await ethers.getSigners())[0];
+
+        // On Ethereum-based local networks, reuse the pre-funded signer directly.
+        if ([1337n, 31337n].includes(network.chainId)) {
+            this.seedEOA = operator;
+            return this.seedEOA;
+        }
+
         const [nonce] = await getNonces(operator.address);
 
         this.seedEOA = ethers.Wallet.createRandom(this.provider);
