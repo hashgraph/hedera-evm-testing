@@ -22,8 +22,28 @@ env:
 
 jobs:
   evm-functional-regression:
-    name: Standard
+    name: Standard (${{ matrix.shard }})
     runs-on: smart-contracts-linux-medium
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: HIP-1215
+            test_args: "test/hip-1215/*.test.js"
+          - shard: HIP-632
+            test_args: "test/hip-632/hip-632.test.js"
+          - shard: HTS transfer events
+            test_args: "test/hts/transfer-events/transfer-events.test.js"
+          - shard: HIP-1340 baseline
+            test_args: "test/hip-1340/hip1340-baseline.test.js"
+          - shard: HIP-1340 EIP-7702 (solo)
+            test_args: "test/hip-1340/hip1340-hts-delegation-noop-value.test.js"
+          - shard: HIP-1340 EIP-7702 Ethereum Specific (solo) - delegation setup
+            test_args: "test/hip-1340/hip1340-delegation-setup.test.js --grep 'Ethereum Specific tests'"
+          - shard: HIP-1340 EIP-7702 Ethereum Specific (solo) - delegated execution
+            test_args: "test/hip-1340/hip1340-delegated-execution.test.js --grep 'Ethereum Specific tests'"
+          - shard: HIP-1340 EIP-7702 Ethereum Specific (solo) - token and account creation
+            test_args: "test/hip-1340/hip1340-token-and-account-creation.test.js --grep 'Ethereum Specific tests'"
     steps:
 
       - name: Harden Runner
@@ -122,7 +142,7 @@ jobs:
 
       - name: Run the tests
         if: ${{ steps.run_solo.outcome == 'success' }}
-        run: npx hardhat test --network solo
+        run: npx hardhat test ${{ matrix.test_args }} --network solo
         working-directory: evm-testing/evm-functional-testing
 
       - name: Stop solo
@@ -151,7 +171,7 @@ jobs:
         working-directory: evm-functional-testing
 
       - name: Run HIP-1340 - EIP-7702 tests against Hardhat local network
-        run: npx hardhat test --grep 'HIP-1340 - EIP-7702 features' --network hardhat
+        run: npx hardhat test test/hip-1340/hip1340-*.test.js --grep 'Ethereum Specific tests' --network hardhat
         working-directory: evm-functional-testing
 
   hip1340-eip7702-ethereum-geth-testing:
@@ -180,7 +200,7 @@ jobs:
         run: docker run --name geth --publish 8545:8545 --detach ethereum/client-go:v1.17.1 --dev --verbosity 3 --http --http.api eth --http.addr 0.0.0.0
 
       - name: Run HIP-1340 - EIP-7702 tests against Geth local network
-        run: npx hardhat test --grep 'HIP-1340 - EIP-7702 features' --network geth
+        run: npx hardhat test test/hip-1340/hip1340-*.test.js --grep 'Ethereum Specific tests' --network geth
         working-directory: evm-functional-testing
 
       - name: Stop Geth container

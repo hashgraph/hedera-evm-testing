@@ -10,11 +10,19 @@ contract SenderAndOrigin {
 
 contract C {
     event SenderAndOriginEvent(address indexed msgSender, address indexed txOrigin);
-    event CodeLengthAndHashEvent(uint256 indexed codeLength, bytes32 indexed codeHash);
+    event CodeDetailsEvent(
+        uint256 indexed senderCodeLength,
+        bytes32 indexed senderCodeHash,
+        uint256 indexed originCodeLength,
+        bytes32 originCodeHash
+    );
     function logSenderAndOrigin() external {
         emit SenderAndOriginEvent(msg.sender, tx.origin);
-
-        emit CodeLengthAndHashEvent(msg.sender.code.length, msg.sender.codehash);
-        emit CodeLengthAndHashEvent(tx.origin.code.length, tx.origin.codehash);
+        emit CodeDetailsEvent(
+            msg.sender.code.length,
+            msg.sender.codehash,
+            tx.origin.code.length,
+            tx.origin.codehash
+        );
     }
 }

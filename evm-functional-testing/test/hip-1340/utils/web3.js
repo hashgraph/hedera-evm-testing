@@ -21,41 +21,61 @@ function isEthNetwork() {
 const gas = {
     base: 21_000,
     /**
-     * @param {number} n 
-     * @returns 
+     * Returns additional intrinsic gas for `n` EIP-7702 authorizations.
+     *
+     * @param {number} n - Number of authorization entries.
+     * @returns {number} Additional gas units.
      */
-    auth: n => n * 25_000,
-    hollow: () => isEthNetwork() ? 0 : 570_000,
+    codeAuthorization: n => n * 25_000,
+    /**
+     * Returns extra gas needed for Hedera account creation path.
+     * On Ethereum-based networks this is zero.
+     *
+     * @returns {number} Additional gas units.
+     */
+    accountCreationCost: () => isEthNetwork() ? 0 : 570_000,
 };
 
 const units = {
-    /** @param {bigint} n */
+    /**
+     * Converts tinybar units to wei-like denomination used in tests.
+     *
+     * @param {bigint} n - Amount in tinybars.
+     * @returns {bigint} Converted amount.
+     */
     tinybar: n => n * 1_00000_00000n,
 
-    /** @param {bigint} n */
+    /**
+     * Converts hbar units to tinybar-based denomination used in tests.
+     *
+     * @param {bigint} n - Amount in hbars.
+     * @returns {bigint} Converted amount.
+     */
     hbar: n => n * units.tinybar(1_0000_0000n),
 }
+
+const EOADefaultBalance = ethers.parseUnits('1000', 'ether');
 
 /**
  * Returns EIP-7702's designator code for a given Ethereum address.
  *
  * @param {string} address - An EVM address
- * @returns 
+ * @returns {string} Hex-encoded delegation designator bytecode.
  */
-function designatorFor(address) {
+function delegationIndicatorFor(address) {
     assert(/^0x[0-9a-fA-F]{40}$/.test(address), `Invalid Ethereum address: ${address}`);
     return `0xef0100${address.slice(2)}`;
 }
 
 /**
- * Returns the provided value `n` as an EVM address representation.
+ * Returns the provided value `n` as a long-zero EVM address.
  * Useful to convert small integers to padded addresses,
  * such as precompile or system contract addresses.
  *
  * @param {number | bigint} n 
  * @returns {string}
  */
-function asAddress(n) {
+function asLongZeroAddress(n) {
     return `0x${n.toString(16).padStart(40, '0')}`;
 }
 
@@ -97,106 +117,10 @@ async function getCodes(address) {
 }
 
 /**
- * @type {ethers.BaseWallet}
- */
-let seedEOA = undefined;
-
-async function getSeedEOA(hbarBalance = 1_000_000n) {
-    if (seedEOA !== undefined) return seedEOA;
-
-    const provider = ethers.provider;
-    const network = await provider.getNetwork();
-
-    const operator = (await ethers.getSigners())[0];
-    const [nonce, eth_nonce, ethNonce] = await getNonces(operator.address);
-    assertEq(nonce, eth_nonce, 'Nonce mismatch between JSON-RPC Relay and Mirror Node');
-    assertEq(eth_nonce, ethNonce, 'Nonce mismatch between Mirror Node and SDK');
-
-    seedEOA = ethers.Wallet.createRandom(provider);
-    const resp = await operator.sendTransaction({
-        type: 2,
-        chainId: network.chainId,
-        nonce,
-        gasLimit: gas.base + gas.hollow(),
-        value: units.hbar(hbarBalance),
-        to: seedEOA.address,
-    });
-    await resp.wait();
-    log('Seed EOA `%s` created at transanction %s', seedEOA.address, resp.hash);
-
-    return seedEOA;
-}
-
-const EOADefaultBalance = ethers.parseUnits('1000', 'ether');
-
-/**
- * Creates and funds a new Externally Owned Account (EOA) on the connected network.
- *
- * @param {bigint} [tinyBarBalance=100_000_000n]
- * @returns {Promise<ethers.BaseWallet>} The funded EOA wallet
- */
-async function createAndFundEOA() {
-    const provider = ethers.provider;
-    const network = await provider.getNetwork();
-
-    const seed = await getSeedEOA();
-    const [nonce, eth_nonce, ethNonce] = await getNonces(seed.address);
-    assertEq(nonce, eth_nonce, 'Nonce mismatch between JSON-RPC Relay and Mirror Node');
-    assertEq(eth_nonce, ethNonce, 'Nonce mismatch between Mirror Node and SDK');
-
-    const eoa = ethers.Wallet.createRandom(provider);
-    const resp = await seed.sendTransaction({
-        type: 2,
-        chainId: network.chainId,
-        nonce,
-        gasLimit: 21_000 + gas.hollow(),
-        value: EOADefaultBalance,
-        to: eoa.address,
-    });
-    await resp.wait();
-    log('EOA `%s` created at transanction %s', eoa.address, resp.hash);
-
-    return eoa;
-}
-
-/**
- * 
- * @param {ethers.BaseWallet} eoa 
- * @param {string} delegateToAddress 
- * @param {number} [eoaNonce] 
- * @returns {Promise<ethers.BaseWallet>}
- */
-async function authorizeEOADelegation(eoa, delegateToAddress, eoaNonce = undefined) {
-    assert(delegateToAddress !== asAddress(0), 'Delegation to zero address clears the delegation indicator');
-
-    const provider = ethers.provider;
-    const network = await provider.getNetwork();
-
-    await (await createAndFundEOA()).sendTransaction({
-        type: 4,
-        chainId: network.chainId,
-        nonce: 0,
-        gasLimit: gas.base + gas.auth(1),
-        to: ethers.ZeroAddress,
-        authorizationList: [await eoa.authorize({
-            chainId: 0,
-            nonce: eoaNonce,
-            address: delegateToAddress,
-        })],
-    }).then(tx => tx.wait());
-
-    const [code, contractBytecode, delegationAddress] = await getCodes(eoa.address);
-    // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
-    // assert(code === designatorFor(delegateToAddress.toLowerCase()));
-    assertEq(contractBytecode, designatorFor(delegateToAddress.toLowerCase()));
-    assertEq(delegationAddress, delegateToAddress.toLowerCase());
-    return eoa;
-}
-
-/**
  * Retrieves the compiled artifact for a given contract name.
  *
- * @param {string} contractPath 
+ * @param {string} contractPath - Path under `contracts/` without `.sol` suffix.
+ * @returns {{abi: unknown[], bytecode: string, storageLayout: unknown}} Parsed artifact fields.
  */
 function getArtifact(contractPath) {
     const contractName = contractPath.split('/').pop();
@@ -208,13 +132,16 @@ function getArtifact(contractPath) {
 /**
  * Deploys a contract to the connected network.
  *
- * @param {string} contractName 
- * @param {ethers.BaseWallet} [deployer]
- * @param {number} [gasLimit=5000000]
+ * @param {string} contractName - Contract path used by `getArtifact`.
+ * @param {unknown[]} [args] - Constructor arguments.
+ * @param {ethers.BaseWallet} [deployer] - Wallet used for deployment.
+ * @param {number} [gasLimit=5000000] - Max gas for deployment transaction.
  * @returns {Promise<{address: string, deployer: ethers.BaseWallet, contract: ethers.Contract}>}
  */
 async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
-    if (!deployer) deployer = await createAndFundEOA();
+    if (!deployer) {
+        deployer = (await ethers.getSigners())[0];
+    }
 
     assert(deployer.provider !== null, 'Deployer wallet must be connected to a provider');
     const network = await deployer.provider.getNetwork();
@@ -248,9 +175,9 @@ async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
 
 /**
  * Encodes function call data for a given function signature and values.
- * 
- * @param {string} functionSignature 
- * @param {unknown[]} [values]
+ *
+ * @param {string} functionSignature - Solidity signature, e.g. `transfer(address,uint256)`.
+ * @param {unknown[]} [values] - Positional argument values for the signature.
  * @returns {string}
  */
 function encodeFunctionData(functionSignature, values) {
@@ -263,8 +190,8 @@ function encodeFunctionData(functionSignature, values) {
 
 /**
  * Converts a value to a hexadecimal string representing a `uint256`.
- * 
- * @param {bigint | number} value The value to convert.
+ *
+ * @param {bigint | number | string} value The value to convert.
  * @returns {string} The hexadecimal string representation of the value as a `uint256`.
  */
 function asHexUint256(value) {
@@ -273,7 +200,7 @@ function asHexUint256(value) {
 }
 
 module.exports = {
-    gas, units, deploy, designatorFor, createAndFundEOA, encodeFunctionData, asHexUint256, getArtifact,
-    asAddress, getNonces, getCodes, authorizeEOADelegation,
+    gas, units, deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256, getArtifact,
+    asLongZeroAddress, getNonces, getCodes,
     EOADefaultBalance,
 };
