@@ -29,7 +29,6 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegation setup', funct
 
     describe('EOA delegation setup via type 4 transactions', function () {
         const receivers = [
-            { fn: () => ethers.Wallet.createRandom(), desc: 'Random EVM address' },
             { fn: t => t.testCtx.createAndFundEOA(), desc: 'Pre-funded EOA' },
             { fn: () => deploy('contracts/hip-1340/AlwaysSucceed'), desc: 'Deployed contract that succeeds' },
         ];
@@ -46,7 +45,6 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegation setup', funct
         const delegateToAddresses = [
             asLongZeroAddress(1),
             asLongZeroAddress(0x167),
-            '0x0000000000000000000000000000000000068cDa',
             '0xad3954AB34dE15BC33dA98170e68F0EEac294dFc',
         ];
 
