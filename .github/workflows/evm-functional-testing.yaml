@@ -22,7 +22,7 @@ env:
 
 jobs:
   evm-functional-regression:
-    name: Standard (${{ matrix.shard }})
+    name: EVM Functional Testing (${{ matrix.shard }})
     runs-on: smart-contracts-linux-medium
     strategy:
       fail-fast: false
@@ -209,3 +209,17 @@ jobs:
       - name: Stop Geth container
         if: always()
         run: docker stop geth
+
+  standard:
+    name: Standard
+    runs-on: smart-contracts-linux-medium
+    needs:
+      - evm-functional-regression
+    if: ${{ always() }}
+    steps:
+      - name: Validate standard matrix result
+        run: |
+          if [ "${{ needs.evm-functional-regression.result }}" != "success" ]; then
+            echo "Standard matrix result: ${{ needs.evm-functional-regression.result }}"
+            exit 1
+          fi
