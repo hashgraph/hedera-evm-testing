@@ -176,7 +176,7 @@ jobs:
 
   hip1340-eip7702-ethereum-geth-testing:
     name: HIP-1340 - EIP-7702 Ethereum/Geth Testing
-    runs-on: smart-contracts-linux-small
+    runs-on: smart-contracts-linux-medium
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
@@ -197,7 +197,7 @@ jobs:
         working-directory: evm-functional-testing
 
       - name: Start Geth container
-        run: docker run --name geth --publish 8545:8545 --detach ethereum/client-go:alltools-v1.17.1 geth --dev --verbosity 3 --http --http.api eth --http.addr 0.0.0.0
+        run: docker run --name geth --publish 8545:8545 --detach ethereum/client-go:alltools-v1.17.0 geth --dev --verbosity 3 --http --http.api eth --http.addr 0.0.0.0
 
       - name: Run HIP-1340 - EIP-7702 tests against Geth local network
         run: npx hardhat test test/hip-1340/hip1340-*.test.js --grep 'Ethereum Specific tests' --network geth
