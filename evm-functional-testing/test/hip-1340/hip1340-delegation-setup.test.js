@@ -9,7 +9,7 @@ const {
     gas,
     units,
     deploy,
-    delegationIndicatorFor,
+    verifyDelegation,
     encodeFunctionData,
     asLongZeroAddress,
     cartesianProduct,
@@ -94,9 +94,7 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegation setup', funct
                     expect(ethNonce).to.be.equal(walletNonce.cur, `Nonce for '${walletDesc}' should be ${walletNonce.cur} but got ${ethNonce}`);
                 }
 
-                const [_code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
-                expect(contractBytecode).to.be.equal(delegationIndicatorFor(delegateToAddress.toLowerCase()));
-                expect(delegationAddress).to.be.equal(delegateToAddress.toLowerCase());
+                await verifyDelegation(delegated.address, delegateToAddress);
             });
         });
     });
@@ -152,9 +150,7 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegation setup', funct
             })],
         }).then(tx => tx.wait());
 
-        const [_code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
-        expect(contractBytecode).to.be.equal(delegationIndicatorFor(secondDelegation.toLowerCase()));
-        expect(delegationAddress).to.be.equal(secondDelegation.toLowerCase());
+        await verifyDelegation(eoa.address, secondDelegation);
     });
 
     it('should clear existing delegation indicator when delegating to zero address', async function () {
@@ -201,9 +197,7 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegation setup', funct
         const [_nonce, _eth_nonce, ethNonce] = await web3.getNonces(eoa.address);
         expect(ethNonce).to.be.equal(4);
 
-        const [_code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
-        expect(contractBytecode).to.be.equal(delegationIndicatorFor(asLongZeroAddress(3)));
-        expect(delegationAddress).to.be.equal(asLongZeroAddress(3));
+        await verifyDelegation(eoa.address, asLongZeroAddress(3));
     });
 
     it(`should use the last valid (w.r.t. nonce) authorization when multiple authorizations are sent (and the EOA's nonce should be also incremented accordingly)`, async function () {
@@ -225,9 +219,7 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegation setup', funct
         const [_nonce, _eth_nonce, ethNonce] = await web3.getNonces(eoa.address);
         expect(ethNonce).to.be.equal(3);
 
-        const [_code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
-        expect(contractBytecode).to.be.equal(delegationIndicatorFor(asLongZeroAddress(2)));
-        expect(delegationAddress).to.be.equal(asLongZeroAddress(2));
+        await verifyDelegation(eoa.address, asLongZeroAddress(2));
     });
 
     it('should authorize delegation of an existing account when exact gas is sent', async function () {
@@ -247,9 +239,7 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegation setup', funct
             })],
         }).then(tx => tx.wait());
 
-        const [_code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
-        expect(contractBytecode).to.be.equal(delegationIndicatorFor(delegateToAddress));
-        expect(delegationAddress).to.be.equal(delegateToAddress);
+        await verifyDelegation(eoa.address, delegateToAddress);
     });
 
     it.skip('should revert type 4 transaction when not enough gas is sent', async function () {

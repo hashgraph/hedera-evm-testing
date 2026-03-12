@@ -203,6 +203,153 @@ function encodeFunctionData(functionSignature, values) {
 }
 
 /**
+ * Sends a type-4 delegation authorization transaction sponsored by another EOA.
+ *
+ * @param {{
+ *   sponsor: import('ethers').BaseWallet,
+ *   eoa: import('ethers').BaseWallet,
+ *   delegateToAddress: string,
+ *   chainId: bigint,
+ *   eoaNonce?: number,
+ *   gasLimit?: number,
+ * }} params
+ * @returns {Promise<import('ethers').TransactionReceipt | null>}
+ */
+async function sendDelegation({
+    sponsor,
+    eoa,
+    delegateToAddress,
+    chainId,
+    eoaNonce = undefined,
+    gasLimit = gas.base + gas.codeAuthorization(1),
+}) {
+    return (await sponsor.sendTransaction({
+        type: 4,
+        chainId,
+        nonce: 0,
+        gasLimit,
+        to: ethers.ZeroAddress,
+        authorizationList: [await eoa.authorize({
+            chainId: 0,
+            nonce: eoaNonce,
+            address: delegateToAddress,
+        })],
+    })).wait();
+}
+
+/**
+ * Verifies delegation indicator bytecode/address for a delegated EOA.
+ *
+ * @param {string} eoaAddress
+ * @param {string} delegateToAddress
+ * @returns {Promise<void>}
+ */
+async function verifyDelegation(eoaAddress, delegateToAddress) {
+    const [_code, contractBytecode, delegationAddress] = await getCodes(eoaAddress);
+    assertEq(contractBytecode, delegationIndicatorFor(delegateToAddress.toLowerCase()));
+    assertEq(delegationAddress, delegateToAddress.toLowerCase());
+}
+
+/**
+ * Sends a type-4 transaction that may create/authorize a delegated account.
+ *
+ * @param {{
+ *   eoa: import('ethers').BaseWallet,
+ *   delegated: import('ethers').BaseWallet,
+ *   chainId: bigint,
+ *   to?: string,
+ *   value?: bigint,
+ *   gasLimit?: number,
+ *   delegatedToAddress?: string,
+ * }} params
+ * @returns {Promise<import('ethers').TransactionResponse>}
+ */
+async function sendDelegationCreationTx({
+    eoa,
+    delegated,
+    chainId,
+    to = ethers.ZeroAddress,
+    value = 0n,
+    gasLimit = gas.base + gas.codeAuthorization(1),
+    delegatedToAddress = ethers.Wallet.createRandom().address,
+}) {
+    return eoa.sendTransaction({
+        type: 4,
+        chainId,
+        nonce: 0,
+        gasLimit,
+        to,
+        value,
+        authorizationList: [await delegated.authorize({
+            chainId: 0,
+            nonce: 0,
+            address: delegatedToAddress,
+        })],
+    });
+}
+
+/**
+ * Executes Smart Wallet `executeBatch` via a delegated EOA.
+ *
+ * @param {{
+ *   eoa: import('ethers').BaseWallet,
+ *   calls: Array<{target: string, value: bigint, data: string}>,
+ *   nonce: number,
+ *   chainId: bigint,
+ *   gasLimit?: number,
+ * }} params
+ * @returns {Promise<import('ethers').TransactionReceipt | null>}
+ */
+async function executeBatchViaDelegation({
+    eoa,
+    calls,
+    nonce,
+    chainId,
+    gasLimit = 1_500_000,
+}) {
+    const tupleCalls = calls.map(({target, value, data}) => [target, value, data]);
+    return (await eoa.sendTransaction({
+        chainId,
+        nonce,
+        gasLimit,
+        to: eoa.address,
+        data: encodeFunctionData(
+            'executeBatch((address target,uint256 value,bytes data)[] calls)',
+            [tupleCalls]
+        ),
+    })).wait();
+}
+
+/**
+ * Asserts that the given address has no Hedera account and zero balance.
+ *
+ * @param {import('ethers').Provider} provider
+ * @param {string} address
+ * @returns {Promise<void>}
+ */
+async function assertAccountDoesNotExist(provider, address) {
+    const { expect } = require('chai');
+    const delegatedAccount = await new MirrorNode().getAccount(address);
+    expect(delegatedAccount.account).to.be.equal(undefined, 'Account should not exist on Hedera');
+    expect(delegatedAccount._status?.messages?.[0]?.message).to.be.equal('Not found');
+    expect(await provider.getBalance(address)).to.be.equal(0n);
+}
+
+/**
+ * Asserts that the given address has a Hedera account.
+ *
+ * @param {import('ethers').Provider} provider
+ * @param {string} address
+ * @returns {Promise<void>}
+ */
+async function assertAccountExists(provider, address) {
+    const { expect } = require('chai');
+    const delegatedAccount = await new MirrorNode().getAccount(address);
+    expect(delegatedAccount.account, 'Account should exist on Hedera').to.not.be.undefined;
+    expect(delegatedAccount._status?.messages?.[0]?.message, 'Account should not have Not found status').to.not.equal('Not found');
+}
+
+/**
  * Converts a value to a hexadecimal string representing a `uint256`.
  *
  * @param {bigint | number | string} value The value to convert.
@@ -216,5 +363,7 @@ function asHexUint256(value) {
 module.exports = {
     gas, units, deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256, getArtifact,
     asLongZeroAddress, getNonces, getCodes, cartesianProduct,
+    sendDelegation, verifyDelegation, sendDelegationCreationTx, executeBatchViaDelegation,
+    assertAccountDoesNotExist, assertAccountExists,
     EOADefaultBalance,
 };
