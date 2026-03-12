@@ -199,10 +199,14 @@ jobs:
       - name: Start Geth container
         run: |
           set -euo pipefail
-          IMAGE="ethereum/client-go:v1.17.1"
+          PLATFORM="linux/amd64"
+          # Pinned to the linux/amd64 manifest digest for ethereum/client-go:v1.17.1.
+          IMAGE="ethereum/client-go@sha256:041eea7dcecce7b76c5432b015c1e3d3a5635a030096be561a2d8b652f952847"
+          uname -a
+          docker version
           for attempt in 1 2 3; do
-            echo "Pulling ${IMAGE} (attempt ${attempt}/3)"
-            if docker pull "${IMAGE}"; then
+            echo "Pulling ${IMAGE} for ${PLATFORM} (attempt ${attempt}/3)"
+            if docker pull --platform "${PLATFORM}" "${IMAGE}"; then
               break
             fi
             if [ "${attempt}" -eq 3 ]; then
@@ -211,7 +215,7 @@ jobs:
             fi
             sleep $((attempt * 10))
           done
-          docker run --name geth --publish 8545:8545 --detach "${IMAGE}" --dev --verbosity 3 --http --http.api eth --http.addr 0.0.0.0
+          docker run --platform "${PLATFORM}" --name geth --publish 8545:8545 --detach "${IMAGE}" --dev --verbosity 3 --http --http.api eth --http.addr 0.0.0.0
 
       - name: Run HIP-1340 - EIP-7702 tests against Geth local network
         run: npx hardhat test test/hip-1340/hip1340-*.test.js --grep 'Ethereum Specific tests' --network geth
