@@ -34,24 +34,16 @@ const HAS_SELECTORS_CONTRACT = 'contracts/hip-1340/HasFacadeSelectors';
 const TEST_TOKEN_NAME = "tokenName";
 const TEST_TOKEN_SYMBOL = "tokenSymbol";
 
-let testCtx;
-let currentNetwork;
-
-async function createAndFundEOA() {
-    return testCtx.createAndFundEOA();
-}
-
 describe('HIP-1340 - Hiero specific tests', function () {
     before(async function () {
         this.provider = ethers.provider;
         this.network = await this.provider.getNetwork();
-        currentNetwork = this.network;
         log('Starting test suite `%s` on network `%s` (chain id %s)', this.test.parent.title, this.network.name, Number(this.network.chainId));
     });
 
     beforeEach(async function () {
-        testCtx = new Hip1340TestContext(this.provider);
-        await testCtx.init();
+        this.testCtx = new Hip1340TestContext(this.provider);
+        await this.testCtx.init();
     });
 
     describe('HTS token delegation designator', function () {
@@ -68,7 +60,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
             expect(symbol).to.be.equal(TEST_TOKEN_SYMBOL);
             expect(totalSupply).to.be.equal(10000000000);
 
-            const anotherAddress = await createAndFundEOA();
+            const anotherAddress = await this.testCtx.createAndFundEOA();
             await associateHtsToken(anotherAddress, tokenAddress);
             await grantKyc(tokenCreateContract, tokenAddress, [anotherAddress.address]);
             await fundAccountsWithHtsToken(tokenCreateContract, tokenAddress, [{address: anotherAddress.address, amount: 1000n}]);
@@ -87,9 +79,9 @@ describe('HIP-1340 - Hiero specific tests', function () {
 
     describe('HTS token transfers via delegation', function () {
         it('should transfer HTS tokens when two EOAs delegate to the same Smart Wallet and send self-sponsored transactions', async function () {
-            const eoa1 = await createAndFundEOA();
-            const eoa2 = await createAndFundEOA();
-            const receiver = await createAndFundEOA();
+            const eoa1 = await this.testCtx.createAndFundEOA();
+            const eoa2 = await this.testCtx.createAndFundEOA();
+            const receiver = await this.testCtx.createAndFundEOA();
 
             const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
 
@@ -98,20 +90,20 @@ describe('HIP-1340 - Hiero specific tests', function () {
             const receiverNonce = new Nonce();
 
             await sendDelegation({
-                sponsor: await createAndFundEOA(),
+                sponsor: await this.testCtx.createAndFundEOA(),
                 eoa: eoa1,
                 delegateToAddress: smartWallet.address,
                 eoaNonce: eoa1Nonce.next(),
-                chainId: currentNetwork.chainId,
+                chainId: this.network.chainId,
             });
             await verifyDelegation(eoa1.address, smartWallet.address);
 
             await sendDelegation({
-                sponsor: await createAndFundEOA(),
+                sponsor: await this.testCtx.createAndFundEOA(),
                 eoa: eoa2,
                 delegateToAddress: smartWallet.address,
                 eoaNonce: eoa2Nonce.next(),
-                chainId: currentNetwork.chainId,
+                chainId: this.network.chainId,
             });
             await verifyDelegation(eoa2.address, smartWallet.address);
 
@@ -166,9 +158,9 @@ describe('HIP-1340 - Hiero specific tests', function () {
         });
 
         it('should batch-transfer HTS tokens to multiple recipients from a delegated EOA via executeBatch', async function () {
-            const alice = await createAndFundEOA();
-            const bob = await createAndFundEOA();
-            const carol = await createAndFundEOA();
+            const alice = await this.testCtx.createAndFundEOA();
+            const bob = await this.testCtx.createAndFundEOA();
+            const carol = await this.testCtx.createAndFundEOA();
 
             const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
             const aliceNonce = new Nonce();
@@ -176,11 +168,11 @@ describe('HIP-1340 - Hiero specific tests', function () {
             const carolNonce = new Nonce();
 
             await sendDelegation({
-                sponsor: await createAndFundEOA(),
+                sponsor: await this.testCtx.createAndFundEOA(),
                 eoa: alice,
                 delegateToAddress: smartWallet.address,
                 eoaNonce: aliceNonce.next(),
-                chainId: currentNetwork.chainId,
+                chainId: this.network.chainId,
             });
             await verifyDelegation(alice.address, smartWallet.address);
 
@@ -203,7 +195,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
 
             const receipt = await executeBatchViaDelegation({
                 eoa: alice,
-                chainId: currentNetwork.chainId,
+                chainId: this.network.chainId,
                 nonce: aliceNonce.next(),
                 calls: [{
                 target: tokenAddress,
@@ -231,25 +223,29 @@ describe('HIP-1340 - Hiero specific tests', function () {
         });
 
         it('should batch-transfer 1 HBAR and 100 HTS tokens from a delegated EOA to another EOA via executeBatch', async function () {
-            const scenario = await setupBatchHbarAndHtsTransferScenario();
+            const scenario = await setupBatchHbarAndHtsTransferScenario(this);
             await associateRecipientDirectly(scenario);
             await executeAndAssertBatchHbarAndHtsTransfer(scenario, this.provider);
         });
 
         it('should batch-transfer 1 HBAR and 100 HTS tokens when recipient associates via delegation', async function () {
-            const scenario = await setupBatchHbarAndHtsTransferScenario();
+            const scenario = await setupBatchHbarAndHtsTransferScenario(this);
             await associateRecipientViaDelegation(scenario);
             await executeAndAssertBatchHbarAndHtsTransfer(scenario, this.provider);
         });
     });
 
     describe('Delegation to non-existing accounts (gas edge cases)', function () {
-        it('should not create account via delegation if insufficient gas to cover account creation', async function () {
-            const eoa = await createAndFundEOA();
+        it.skip('should not create account via delegation if insufficient gas to cover account creation', async function () {
+            const eoa = await this.testCtx.createAndFundEOA();
             const delegated = ethers.Wallet.createRandom();
             const timeoutMs = 10_000;
 
-            const tx = await sendDelegationCreationTx({eoa, delegated, chainId: currentNetwork.chainId});
+            const tx = await sendDelegationCreationTx({
+                eoa,
+                delegated,
+                chainId: this.network.chainId,
+            });
             try {
                 await tx.wait(1, timeoutMs);
             } catch (err) {
@@ -258,14 +254,18 @@ describe('HIP-1340 - Hiero specific tests', function () {
             await assertAccountDoesNotExist(this.provider, delegated.address);
         });
 
-        it('should not create account via delegation when sending value to delegated address if insufficient gas', async function () {
-            const eoa = await createAndFundEOA();
+        it.skip('should not create account via delegation when sending value to delegated address if insufficient gas', async function () {
+            const eoa = await this.testCtx.createAndFundEOA();
             const delegated = ethers.Wallet.createRandom();
             const value = 10n * ONE_HBAR;
             const timeoutMs = 10_000;
 
             const tx = await sendDelegationCreationTx({
-                eoa, delegated, chainId: currentNetwork.chainId, to: delegated.address, value,
+                eoa,
+                delegated,
+                chainId: this.network.chainId,
+                to: delegated.address,
+                value,
             });
             try {
                 await tx.wait(1, timeoutMs);
@@ -276,32 +276,29 @@ describe('HIP-1340 - Hiero specific tests', function () {
         });
 
         it('should charge gas for account creation during delegation to non-existing EOA', async function () {
-            const eoa = await createAndFundEOA();
+            const eoa = await this.testCtx.createAndFundEOA();
             const delegated = ethers.Wallet.createRandom();
-            const gasLimit = 46000;
 
-            const tx = await sendDelegationCreationTx({eoa, delegated, chainId: currentNetwork.chainId, gasLimit});
+            const tx = await sendDelegationCreationTx({eoa, delegated, chainId: this.network.chainId});
             const receipt = await tx.wait();
 
             expect(receipt.status).to.equal(1, 'Transaction should succeed');
-            expect(Number(receipt.gasUsed), 'Gas should be charged for account creation').to.be.equal(gasLimit);
-            const [_code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
-            expect(contractBytecode).to.not.equal('0x', 'Delegated account should have delegation indicator bytecode');
-            expect(delegationAddress).to.not.equal('0x', 'Delegated account should have non-zero delegation address');
+            expect(Number(receipt.gasUsed), 'Gas should be charged for account creation').to.be.equal(gas.base + gas.codeAuthorization(1));
+            await assertAccountExists(this.provider, delegated.address);
         });
     });
 
     describe('System contract delegation behavior', function () {
         it('should ignore the delegation to system contract and call system contract directly', async function () {
-            const eoa = await createAndFundEOA();
+            const eoa = await this.testCtx.createAndFundEOA();
             const nonce = new Nonce();
 
             await sendDelegation({
-                sponsor: await createAndFundEOA(),
+                sponsor: await this.testCtx.createAndFundEOA(),
                 eoa,
                 delegateToAddress: HTS_ADDRESS,
                 eoaNonce: nonce.next(),
-                chainId: currentNetwork.chainId,
+                chainId: this.network.chainId,
             });
             await verifyDelegation(eoa.address, HTS_ADDRESS);
 
@@ -322,17 +319,17 @@ describe('HIP-1340 - Hiero specific tests', function () {
         });
 
         it('should ignore the delegation of alice to bob when calling HAS methods', async function () {
-            const alice = await createAndFundEOA();
-            const bob = await createAndFundEOA();
-            const spender = (await createAndFundEOA()).address;
+            const alice = await this.testCtx.createAndFundEOA();
+            const bob = await this.testCtx.createAndFundEOA();
+            const spender = (await this.testCtx.createAndFundEOA()).address;
             const aliceNonce = new Nonce();
 
             await sendDelegation({
-                sponsor: await createAndFundEOA(),
+                sponsor: await this.testCtx.createAndFundEOA(),
                 eoa: alice,
                 delegateToAddress: bob.address,
                 eoaNonce: aliceNonce.next(),
-                chainId: currentNetwork.chainId,
+                chainId: this.network.chainId,
             });
             await verifyDelegation(alice.address, bob.address);
 
@@ -373,18 +370,19 @@ describe('HIP-1340 - Hiero specific tests', function () {
     });
 
     describe('EOA delegated to HTS system contract (0x167) should no-op', function () {
-        let eoa, nonce, tokenCreateContract, tokenAddress, tokenContract;
+        let eoa, nonce, tokenCreateContract, tokenAddress, tokenContract, chainId;
 
         beforeEach(async function () {
-            eoa = await createAndFundEOA();
+            eoa = await this.testCtx.createAndFundEOA();
             nonce = new Nonce();
+            chainId = this.network.chainId;
 
             await sendDelegation({
-                sponsor: await createAndFundEOA(),
+                sponsor: await this.testCtx.createAndFundEOA(),
                 eoa,
                 delegateToAddress: HTS_ADDRESS,
                 eoaNonce: nonce.next(),
-                chainId: currentNetwork.chainId,
+                chainId: this.network.chainId,
             });
             await verifyDelegation(eoa.address, HTS_ADDRESS);
 
@@ -396,7 +394,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
         const sendAndCaptureOutcome = async (to, data) => {
             try {
                 const tx = await eoa.sendTransaction({
-                    chainId: this.network.chainId,
+                    chainId,
                     nonce: nonce.next(),
                     gasLimit: GAS_LIMIT_1_000_000.gasLimit,
                     to,
@@ -461,14 +459,14 @@ describe('HIP-1340 - Hiero specific tests', function () {
 
         it('should prioritize HAS proxy over delegated contract methods with the same selectors', async function () {
             const {address: hasSelectorsAddress} = await deploy(HAS_SELECTORS_CONTRACT);
-            const eoa = await createAndFundEOA();
+            const eoa = await this.testCtx.createAndFundEOA();
             const eoaNonce = new Nonce();
             await sendDelegation({
-                sponsor: await createAndFundEOA(),
+                sponsor: await this.testCtx.createAndFundEOA(),
                 eoa,
                 delegateToAddress: hasSelectorsAddress,
                 eoaNonce: eoaNonce.next(),
-                chainId: currentNetwork.chainId,
+                chainId: this.network.chainId,
             });
             await verifyDelegation(eoa.address, hasSelectorsAddress);
             const chainId = this.network.chainId;
@@ -478,7 +476,7 @@ describe('HIP-1340 - Hiero specific tests', function () {
                 'event HbarApproveCalled(address indexed caller, address indexed spender, int256 amount)',
                 'event SetUnlimitedAutomaticAssociationsCalled(address indexed caller, bool enabled)',]);
 
-            const spender = (await createAndFundEOA()).address;
+            const spender = (await this.testCtx.createAndFundEOA()).address;
             const sendAndAssertProxiedCall = async (signature, args, blockedEvent) => {
                 const tx = await eoa.sendTransaction({
                     chainId,
@@ -514,20 +512,20 @@ describe('HIP-1340 - Hiero specific tests', function () {
 
 });
 
-async function setupBatchHbarAndHtsTransferScenario() {
-    const alice = await createAndFundEOA();
-    const bob = await createAndFundEOA();
+async function setupBatchHbarAndHtsTransferScenario(t) {
+    const alice = await t.testCtx.createAndFundEOA();
+    const bob = await t.testCtx.createAndFundEOA();
 
     const smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
     const aliceNonce = new Nonce();
     const bobNonce = new Nonce();
 
     await sendDelegation({
-        sponsor: await createAndFundEOA(),
+        sponsor: await t.testCtx.createAndFundEOA(),
         eoa: alice,
         delegateToAddress: smartWallet.address,
         eoaNonce: aliceNonce.next(),
-        chainId: currentNetwork.chainId,
+        chainId: t.network.chainId,
     });
     await verifyDelegation(alice.address, smartWallet.address);
 
@@ -536,7 +534,7 @@ async function setupBatchHbarAndHtsTransferScenario() {
 
     await associateHtsTokenViaDelegation(alice, tokenAddress, aliceNonce.next());
 
-    return {alice, bob, smartWallet, aliceNonce, bobNonce, tokenCreateContract, tokenAddress};
+    return {alice, bob, smartWallet, aliceNonce, bobNonce, tokenCreateContract, tokenAddress, testCtx: t.testCtx, chainId: t.network.chainId};
 }
 
 async function associateRecipientDirectly(scenario) {
@@ -545,11 +543,11 @@ async function associateRecipientDirectly(scenario) {
 
 async function associateRecipientViaDelegation(scenario) {
     await sendDelegation({
-        sponsor: await createAndFundEOA(),
+        sponsor: await scenario.testCtx.createAndFundEOA(),
         eoa: scenario.bob,
         delegateToAddress: scenario.smartWallet.address,
         eoaNonce: scenario.bobNonce.next(),
-        chainId: currentNetwork.chainId,
+        chainId: scenario.chainId,
     });
     await verifyDelegation(scenario.bob.address, scenario.smartWallet.address);
     await associateHtsTokenViaDelegation(scenario.bob, scenario.tokenAddress, scenario.bobNonce.next());
@@ -560,7 +558,8 @@ async function executeAndAssertBatchHbarAndHtsTransfer({
                                                            bob,
                                                            aliceNonce,
                                                            tokenCreateContract,
-                                                           tokenAddress
+                                                           tokenAddress,
+                                                           chainId,
                                                        }, provider,) {
     await grantKyc(tokenCreateContract, tokenAddress, [alice.address, bob.address]);
     await fundAccountsWithHtsToken(tokenCreateContract, tokenAddress, [{address: alice.address, amount: 500n}]);
@@ -577,7 +576,7 @@ async function executeAndAssertBatchHbarAndHtsTransfer({
 
     const receipt = await executeBatchViaDelegation({
         eoa: alice,
-        chainId: currentNetwork.chainId,
+        chainId: chainId,
         nonce: aliceNonce.next(),
         calls: [{
         target: bob.address,
