@@ -6,6 +6,9 @@ set -e
 # It also deploy some pre-requirements for hardhat test like:
 #   - create accounts with preconfigured keys and initial balance
 
+MIRROR_NODE_VERSION=0.149.0
+RELAY_RELEASE=0.75.0
+
 WORK_DIR="$(pwd)"
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
 APP_PROPERTIES_PATH="local/application.properties"
@@ -60,8 +63,8 @@ solo_start() {
   solo consensus network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
   solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
   solo consensus node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
-  solo mirror node add --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
-  solo relay node add --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+  solo mirror node add --mirror-node-version ${MIRROR_NODE_VERSION} --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+  solo relay node add --relay-release ${RELAY_RELEASE} --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   solo explorer node add --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # add test accounts to the network
