@@ -176,7 +176,7 @@ jobs:
 
   hip1340-eip7702-ethereum-geth-testing:
     name: HIP-1340 - EIP-7702 Ethereum/Geth Testing
-    runs-on: smart-contracts-linux-medium
+    runs-on: smart-contracts-linux-small
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
