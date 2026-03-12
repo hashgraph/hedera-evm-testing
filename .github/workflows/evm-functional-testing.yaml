@@ -19,6 +19,7 @@ permissions:
 
 env:
   SOLO_CLUSTER_NAME: solo-evm-e2e
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   evm-functional-regression:
