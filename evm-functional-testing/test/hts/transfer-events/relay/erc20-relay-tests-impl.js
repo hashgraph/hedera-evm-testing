@@ -378,7 +378,9 @@ class Erc20RelayTestsImpl {
     ];
 
     const receipt = await (
-      await htsContract.claimAirdrops(pendingAirdrops)
+      await htsContract.claimAirdrops(pendingAirdrops, {
+        gasLimit: 100_000, //TODO remove gas override after Relay will fix estimateGas error handling or MN will fix CONTRACT_EXECUTION_EXCEPTION
+      })
     ).wait();
     console.log(
       "%s FT claimAirdrops pendingAirdrops:%s",
