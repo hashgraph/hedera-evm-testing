@@ -10,8 +10,8 @@ const PREVIEWNET_PRIVATE_KEYS = process.env.PREVIEWNET_PRIVATE_KEYS
   : [];
 
 const TESTNET_PRIVATE_KEYS = process.env.TESTNET_PRIVATE_KEYS
-    ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
-    : [];
+  ? process.env.TESTNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
+  : [];
 
 const MAINNET_PRIVATE_KEYS = process.env.MAINNET_PRIVATE_KEYS
   ? process.env.MAINNET_PRIVATE_KEYS.split(",").map((key) => key.trim())
@@ -38,7 +38,15 @@ module.exports = {
   defaultNetwork: "solo",
   // see https://v2.hardhat.org/hardhat-runner/docs/config
   networks: {
-    hardhat: {loggingEnabled:false},
+    hardhat: {
+      loggingEnabled: false,
+      accounts: {
+        mnemonic: "test test test test test test test test test test test junk",
+        initialIndex: 0,
+        count: 10,
+        accountsBalance: "10000000000000000000000000",
+      },
+    },
     solo: {
       url: "http://localhost:7546",
       chainId: 298,
@@ -53,17 +61,18 @@ module.exports = {
       sdkClient: {
         operatorId: "0.0.1002",
         // private key of Solo local network. Configured at 'test.sh' file of this folder
-        operatorKey: "3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68",
-        networkNode: { '127.0.0.1:50211': '0.0.3' },
+        operatorKey:
+          "3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68",
+        networkNode: { "127.0.0.1:50211": "0.0.3" },
       },
       mirrorNodeUrl: "http://localhost:8081",
     },
     geth: {
-      url: 'http://localhost:8545',
+      url: "http://localhost:8545",
       chainId: 1337,
       accounts: [
-        '0xb71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291',
-      ]
+        "0xb71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291",
+      ],
     },
     previewnet: {
       url: "https://previewnet.hashio.io/api",
