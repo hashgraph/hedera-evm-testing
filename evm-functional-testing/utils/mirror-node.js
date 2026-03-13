@@ -1,13 +1,16 @@
 const log = require('node:util').debuglog('hip:mirror-node');
 
+const hre = require('hardhat');
+
 class MirrorNode {
     /** @type {string} */
     #mirrorNodeUrl;
 
     /**
-     * @param {string} mirrorNodeUrl 
+     * @param {string} mirrorNodeUrl The Mirror Node URL to fetch data from.
+     * If not provided, defaults to the `mirrorNodeUrl` property specified in the Hardhat configuration for the current network.
      */
-    constructor(mirrorNodeUrl = 'http://localhost:8081') {
+    constructor(mirrorNodeUrl = hre.network.config.mirrorNodeUrl) {
         this.#mirrorNodeUrl = mirrorNodeUrl;
     }
 

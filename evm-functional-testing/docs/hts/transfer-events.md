@@ -19,7 +19,7 @@ logs-compliant Transfer event. This is critical for:
 EVM Integration Tests: Execute via Hardhat to verify Relay and SDK visibility.
 
 ```sh
-npx hardhat test --network local --grep "HTS System Contract testing. ERC Transfer events tests"
+npx hardhat test --network solo --grep "HTS System Contract testing. ERC Transfer events tests"
 ```
 
 ## Testing Scope

@@ -176,7 +176,7 @@ async function getChildTransactionsByScheduleId(
   );
   if (transactions.length > 0) {
     const txId = transactions[0].transaction_id;
-    const query = getMirrorNodeUrl(hre.network.name) + "/transactions/" + txId;
+    const query = getMirrorNodeUrl() + "/transactions/" + txId;
     const response = await fetch(query);
     const json = await response.json();
     return json.transactions.length;
