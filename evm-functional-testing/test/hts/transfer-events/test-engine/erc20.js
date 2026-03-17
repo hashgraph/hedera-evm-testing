@@ -123,6 +123,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
         context.ftTokenAddress,
         receiver,
         ResponseCodeEnum.SUCCESS,
+        context.IHederaTokenService,
       );
     });
   });

@@ -337,7 +337,7 @@ class Erc20RelayTestsImpl {
     console.log(
       "%s FT airdropTokens tokenTransfers:%s",
       receipt.hash,
-        JSON.stringify(tokenTransfers),
+      JSON.stringify(tokenTransfers),
     );
     await validateRcWithErcEvent(
       receipt,
@@ -361,6 +361,7 @@ class Erc20RelayTestsImpl {
     tokenAddress,
     receiverWallet,
     responseCode,
+    IHederaTokenService,
   ) {
     const htsContract = new ethers.Contract(
       htsAddress,
