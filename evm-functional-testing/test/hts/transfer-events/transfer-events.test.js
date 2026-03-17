@@ -43,11 +43,12 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
     // ethers.provider.originalEstimateGas = ethers.provider.estimateGas;
     // ethers.provider.estimateGas = async (tx) =>
     //   (await ethers.provider.originalEstimateGas(tx)) / 10n * 12n; // * 1.2
-    // Import the ABI for SDK tests and set up an ethers.js interface using the abi
+
+    // Import the ABI and set up an ethers.js interface using the ABI, for SDK tests 'encodeFunctionParameters'
     context.transferAbiInterface = new ethers.Interface(
       (
         await hre.artifacts.readArtifact(
-            Constants.Contract.HTSSystemContractTransfersExecutorContract,
+          Constants.Contract.HTSSystemContractTransfersExecutorContract,
         )
       ).abi,
     );
