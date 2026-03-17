@@ -50,7 +50,7 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
 
   it(`should succeed and contain ERC20 and ERC721 events for HTS(${displayAddress}) FT/NFT claimAirdrops`, async () => {
     // not associated receiver for pending airdrop
-    const receiver = await createReceiver(2, context.IHRC904AccountFacade);
+    const receiver = await createReceiver(2);
     const serial = context.serialNumbers.shift();
     // send pending airdrop
     await testsImpl.airdropTokensTest(

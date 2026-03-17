@@ -52,13 +52,13 @@ async function createTestContracts(receivers, receiversBalance, context) {
   // create receiverWallets
   for (let i = 0; i < receivers; i++) {
     retval.push(
-      await createReceiver(receiversBalance, context.IHRC904AccountFacade),
+      await createReceiver(receiversBalance),
     );
   }
   return retval;
 }
 
-async function createReceiver(receiversBalance, IHRC904AccountFacade) {
+async function createReceiver(receiversBalance) {
   const signers = await ethers.getSigners();
   // create new receiver account
   const receiver = ethers.Wallet.createRandom(ethers.provider);
@@ -68,9 +68,9 @@ async function createReceiver(receiversBalance, IHRC904AccountFacade) {
   });
   await transaction.wait(); // wait for receipt
   // wrap new receiver account to receiverAbiInterface facade
-  const receiverFacade = new ethers.Contract(
+  const receiverFacade = await ethers.getContractAt(
+    Constants.Contract.IHRC904AccountFacade,
     receiver.address,
-    IHRC904AccountFacade,
     receiver,
   );
   // disable Unlimited Automatic Associations

@@ -52,7 +52,7 @@ const Contract = {
   // --- util contracts
   IHederaTokenService: "IHederaTokenService",
   IHRC904AccountFacade: "IHRC904AccountFacade",
-  IHRC719TokenFacade: "IHRC719TokenFacade",
+  IHRC719TokenFacade: "IHRC719",
   TokenCreateContract: "TokenCreateContract",
   // --- htp-632 tests
   HIP632Contract: "HIP632Contract",

@@ -106,7 +106,7 @@ async function erc20EventsTests(testsImpl, htsAddress, runProxyTests, context) {
 
     it(`should succeed and contain ERC20 events for HTS(${displayAddress}) FT claimAirdrops`, async () => {
       // not associated receiver for pending airdrop
-      const receiver = await createReceiver(2, context.IHRC904AccountFacade);
+      const receiver = await createReceiver(2);
       // send pending airdrop
       await testsImpl.airdropTokensTest(
         htsAddress,
