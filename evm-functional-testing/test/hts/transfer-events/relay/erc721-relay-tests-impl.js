@@ -340,7 +340,6 @@ class Erc721RelayTestsImpl {
     receiverWallet,
     serialNumber,
     responseCode,
-    IHederaTokenService,
   ) {
     const htsContract = new ethers.Contract(
       htsAddress,

@@ -147,7 +147,6 @@ async function erc721EventsTests(
         receiver,
         serial,
         ResponseCodeEnum.SUCCESS,
-        context.IHederaTokenService,
       );
     });
   });

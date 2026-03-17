@@ -16,9 +16,9 @@ async function createTestContracts(receivers, receiversBalance, context) {
   // create token create contract
   let tokenContract;
   if (process.env.TRANSFER_EVENTS_TOKEN_CONTRACT_ADDRESS) {
-    tokenContract = new ethers.Contract(
+    tokenContract = await ethers.getContractAt(
+      Constants.Contract.TokenCreateContract,
       process.env.TRANSFER_EVENTS_TOKEN_CONTRACT_ADDRESS,
-      context.tokenCreateAbiInterface,
       signers[0],
     );
     console.log(
@@ -114,9 +114,10 @@ async function createFungibleTokenAndAssociate(
     );
   }
   // associated for receiverWallets
-  const receiverFacade1 = new ethers.Contract(
+
+  const receiverFacade1 = await ethers.getContractAt(
+    Constants.Contract.IHRC719TokenFacade,
     tokenAddress,
-    context.IHRC719TokenFacade,
     receiverWallet1,
   );
   await (
@@ -124,9 +125,9 @@ async function createFungibleTokenAndAssociate(
       gasLimit: 1_000_000,
     })
   ).wait();
-  const receiverFacade2 = new ethers.Contract(
+  const receiverFacade2 = await ethers.getContractAt(
+    Constants.Contract.IHRC719TokenFacade,
     tokenAddress,
-    context.IHRC719TokenFacade,
     receiverWallet2,
   );
   await (
@@ -174,9 +175,9 @@ async function createNonFungibleTokenAndAssociate(
     transferContract.target,
   );
   // associated for receiverWallets
-  const receiverFacade1 = new ethers.Contract(
+  const receiverFacade1 = await ethers.getContractAt(
+    Constants.Contract.IHRC719TokenFacade,
     tokenAddress,
-    context.IHRC719TokenFacade,
     receiverWallet1,
   );
   await (
@@ -184,9 +185,9 @@ async function createNonFungibleTokenAndAssociate(
       gasLimit: 1_000_000,
     })
   ).wait();
-  const receiverFacade2 = new ethers.Contract(
+  const receiverFacade2 = await ethers.getContractAt(
+    Constants.Contract.IHRC719TokenFacade,
     tokenAddress,
-    context.IHRC719TokenFacade,
     receiverWallet2,
   );
   await (

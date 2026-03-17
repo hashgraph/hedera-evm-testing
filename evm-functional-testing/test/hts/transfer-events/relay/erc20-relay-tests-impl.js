@@ -361,7 +361,6 @@ class Erc20RelayTestsImpl {
     tokenAddress,
     receiverWallet,
     responseCode,
-    IHederaTokenService,
   ) {
     const htsContract = new ethers.Contract(
       htsAddress,

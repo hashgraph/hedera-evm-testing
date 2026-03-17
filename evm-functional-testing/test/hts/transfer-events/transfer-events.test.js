@@ -44,21 +44,11 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
     // ethers.provider.estimateGas = async (tx) =>
     //   (await ethers.provider.originalEstimateGas(tx)) / 10n * 12n; // * 1.2
     // Import the ABI for SDK tests and set up an ethers.js interface using the abi
-    context.tokenCreateAbiInterface = new ethers.Interface(
-      (
-        await hre.artifacts.readArtifact(Constants.Contract.TokenCreateContract)
-      ).abi,
-    );
     context.transferAbiInterface = new ethers.Interface(
       (
         await hre.artifacts.readArtifact(
             Constants.Contract.HTSSystemContractTransfersExecutorContract,
         )
-      ).abi,
-    );
-    context.IHRC719TokenFacade = new ethers.Interface(
-      (
-        await hre.artifacts.readArtifact(Constants.Contract.IHRC719TokenFacade)
       ).abi,
     );
     context.IHederaTokenService = new ethers.Interface(
@@ -90,7 +80,7 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
         );
       });
 
-      xdescribe("Relay -> HTS(0x16c) -> ERC20 events", async () => {
+      describe("Relay -> HTS(0x16c) -> ERC20 events", async () => {
         await erc20EventsTests(
           new Erc20RelayTestsImpl(),
           HTS_ADDRESS_V2,
@@ -100,7 +90,7 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
       });
     });
 
-    xdescribe("Relay -> HTS -> ERC721 events", async () => {
+    describe("Relay -> HTS -> ERC721 events", async () => {
       before(async () => {
         await setupNonFungibleTokenTests(context, 30);
       });
@@ -124,7 +114,7 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
       });
     });
 
-    xdescribe("Relay -> HTS -> ERC20 and ERC721 events", async () => {
+    describe("Relay -> HTS -> ERC20 and ERC721 events", async () => {
       before(async () => {
         await setupFungibleTokenTests(context);
         await setupNonFungibleTokenTests(context, 10);
@@ -148,7 +138,7 @@ describe("HTS System Contract testing. ERC Transfer events tests", async () => {
     });
   });
 
-  xdescribe("SDK -> HTS -> ERC events", async () => {
+  describe("SDK -> HTS -> ERC events", async () => {
     // We are instantiating sdkClient and closing it exactly for 'SDK ERC events'
     // because in case of client inactivity it is failing 'k8s port-forward' with error:
     // E0120 21:23:09.172052   39098 portforward.go:424] "Unhandled Error" err="an error occurred forwarding 50211 -> 50211: error forwarding port 50211 to pod c9f41fb7b0a16561e179d721824d79e8cda557c61d541f5d2bb0a157d7400076, uid : failed to execute portforward in network namespace \"/var/run/netns/cni-7f0d3f76-aa7a-deab-34d6-82ba722243d0\": readfrom tcp4 127.0.0.1:42616->127.0.0.1:50211: write tcp4 127.0.0.1:42616->127.0.0.1:50211: write: broken pipe"

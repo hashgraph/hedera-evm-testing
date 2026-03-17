@@ -72,7 +72,6 @@ async function erc20AndErc721EventsTests(testsImpl, htsAddress, context) {
       receiver,
       serial,
       ResponseCodeEnum.SUCCESS,
-      context.IHederaTokenService,
     );
   });
 }
