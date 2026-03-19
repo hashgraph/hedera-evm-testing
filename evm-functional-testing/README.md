@@ -53,7 +53,7 @@ npx hardhat test --network solo
 ### Specific Solo version install
 
 ```sh
-npm install -g @hashgraph/solo@0.54.0
+npm install -g @hashgraph/solo@0.60.0
 ```
 
 ### Deploy manual
@@ -85,6 +85,12 @@ If you need to stream the logs directly from the pods you can use the following:
 
 ```sh
 kubectl exec -it -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') -c root-container svc/network-node1 -- tail -f /opt/hgcapp/services-hedera/HapiApp2.0/output/hgcaa.log /opt/hgcapp/services-hedera/HapiApp2.0/output/swirlds.log
+```
+
+#### Mirror Node Logs
+
+```sh
+kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/mirror-1-web3
 ```
 
 #### Relay Logs
