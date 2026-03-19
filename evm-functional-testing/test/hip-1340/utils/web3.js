@@ -203,38 +203,71 @@ function encodeFunctionData(functionSignature, values) {
 }
 
 /**
- * Sends a type-4 delegation authorization transaction sponsored by another EOA.
- *
- * @param {{
- *   sponsor: import('ethers').BaseWallet,
- *   eoa: import('ethers').BaseWallet,
- *   delegateToAddress: string,
- *   chainId: bigint,
- *   eoaNonce?: number,
- *   gasLimit?: number,
- * }} params
- * @returns {Promise<import('ethers').TransactionReceipt | null>}
+ * Builder for type-4 delegation authorization transactions.
  */
-async function sendDelegation({
-    sponsor,
-    eoa,
-    delegateToAddress,
-    chainId,
-    eoaNonce = undefined,
-    gasLimit = gas.base + gas.codeAuthorization(1),
-}) {
-    return (await sponsor.sendTransaction({
-        type: 4,
-        chainId,
-        nonce: 0,
-        gasLimit,
-        to: ethers.ZeroAddress,
-        authorizationList: [await eoa.authorize({
-            chainId: 0,
-            nonce: eoaNonce,
-            address: delegateToAddress,
-        })],
-    })).wait();
+class DelegationTransactionBuilder {
+    constructor() {
+        this.sender = null;
+        this.chainId = null;
+        this.senderNonce = 0;
+        this.authorizations = [];
+        this.toAddress = ethers.ZeroAddress;
+        this.value = 0n;
+        this.gasLimit = gas.base + gas.codeAuthorization(1);
+    }
+
+    from(wallet) {
+        this.sender = wallet;
+        return this;
+    }
+
+    withChainId(chainId) {
+        this.chainId = chainId;
+        return this;
+    }
+
+    withAuthorization(authorityWallet, delegationAddress, nonce = undefined) {
+        this.authorizations.push({ authorityWallet, delegationAddress, nonce });
+        return this;
+    }
+
+    to(address) {
+        this.toAddress = address;
+        return this;
+    }
+
+    withValue(value) {
+        this.value = value;
+        return this;
+    }
+
+    withGasLimit(limit) {
+        this.gasLimit = limit;
+        return this;
+    }
+
+    async send() {
+        assert(this.sender && this.chainId && this.authorizations.length > 0);
+        const authList = await Promise.all(
+            this.authorizations.map(({authorityWallet, delegationAddress, nonce}) =>
+                authorityWallet.authorize({
+                    chainId: 0,
+                    nonce: nonce ?? 0,
+                    address: delegationAddress,
+                })
+            )
+        );
+
+        return this.sender.sendTransaction({
+            type: 4,
+            chainId: this.chainId,
+            nonce: this.senderNonce,
+            gasLimit: this.gasLimit,
+            to: this.toAddress,
+            value: this.value,
+            authorizationList: authList,
+        });
+    }
 }
 
 /**
@@ -248,44 +281,6 @@ async function verifyDelegation(eoaAddress, delegateToAddress) {
     const [_code, contractBytecode, delegationAddress] = await getCodes(eoaAddress);
     assertEq(contractBytecode, delegationIndicatorFor(delegateToAddress.toLowerCase()));
     assertEq(delegationAddress, delegateToAddress.toLowerCase());
-}
-
-/**
- * Sends a type-4 transaction that may create/authorize a delegated account.
- *
- * @param {{
- *   eoa: import('ethers').BaseWallet,
- *   delegated: import('ethers').BaseWallet,
- *   chainId: bigint,
- *   to?: string,
- *   value?: bigint,
- *   gasLimit?: number,
- *   delegatedToAddress?: string,
- * }} params
- * @returns {Promise<import('ethers').TransactionResponse>}
- */
-async function sendDelegationCreationTx({
-    eoa,
-    delegated,
-    chainId,
-    to = ethers.ZeroAddress,
-    value = 0n,
-    gasLimit = gas.base + gas.codeAuthorization(1),
-    delegatedToAddress = ethers.Wallet.createRandom().address,
-}) {
-    return eoa.sendTransaction({
-        type: 4,
-        chainId,
-        nonce: 0,
-        gasLimit,
-        to,
-        value,
-        authorizationList: [await delegated.authorize({
-            chainId: 0,
-            nonce: 0,
-            address: delegatedToAddress,
-        })],
-    });
 }
 
 /**
@@ -363,7 +358,7 @@ function asHexUint256(value) {
 module.exports = {
     gas, units, deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256, getArtifact,
     asLongZeroAddress, getNonces, getCodes, cartesianProduct,
-    sendDelegation, verifyDelegation, sendDelegationCreationTx, executeBatchViaDelegation,
+    DelegationTransactionBuilder, verifyDelegation, executeBatchViaDelegation,
     assertAccountDoesNotExist, assertAccountExists,
     EOADefaultBalance,
 };
