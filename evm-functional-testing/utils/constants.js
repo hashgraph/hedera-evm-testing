@@ -50,6 +50,9 @@ const Path = {};
 
 const Contract = {
   // --- util contracts
+  IHederaTokenService: "IHederaTokenService",
+  IHRC904AccountFacade: "IHRC904AccountFacade",
+  IHRC719TokenFacade: "IHRC719",
   TokenCreateContract: "TokenCreateContract",
   // --- htp-632 tests
   HIP632Contract: "HIP632Contract",
@@ -62,7 +65,7 @@ const Contract = {
 };
 
 const Cost = {
-  CREATE_TOKEN_COST: "35000000000000000000",
+  CREATE_TOKEN_COST: "10000000000000000000",
 };
 
 const TINYBAR_TO_WEIBAR_COEF = 10_000_000_000n;

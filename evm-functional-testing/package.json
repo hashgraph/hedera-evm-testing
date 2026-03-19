@@ -15,9 +15,11 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@hiero-ledger/hiero-contracts": "^0.1.0-rc.1",
+    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
     "@nomicfoundation/solidity-analyzer": "0.1.2",
     "chai": "4.5.0",
     "dotenv": "17.2.0",
+    "hardhat-dependency-compiler": "^1.2.1",
     "solidity-coverage": "0.8.16"
   },
   "devDependencies": {
