@@ -1,0 +1,127 @@
+const log = require('node:util').debuglog('hip-1340:hts');
+
+const { HTS_ADDRESS } = require('../../../utils/constants');
+const { encodeFunctionData } = require('./web3');
+
+/**
+ * Associates an EOA with an HTS token by calling the HTS precompile directly.
+ *
+ * @param {import('ethers').BaseWallet} eoa - The EOA to associate
+ * @param {string} tokenAddress - The HTS token address
+ * @param {number} [nonce] - Optional explicit transaction nonce
+ * @param {number} [gasLimit=1_500_000] - Gas limit
+ * @returns {Promise<import('ethers').TransactionReceipt | null>}
+ */
+async function associateHtsToken(eoa, tokenAddress, nonce, gasLimit = 1_500_000) {
+    const network = await eoa.provider.getNetwork();
+    const receipt = await eoa.sendTransaction({
+        chainId: network.chainId,
+        gasLimit,
+        ...(nonce !== undefined ? { nonce } : {}),
+        to: HTS_ADDRESS,
+        data: encodeFunctionData(
+            'associateToken(address account, address token)',
+            [eoa.address, tokenAddress]
+        ),
+    });
+    await receipt.wait();
+    log('Associated %s with HTS token %s', eoa.address, tokenAddress);
+    return receipt;
+}
+
+/**
+ * Associates a delegated EOA with an HTS token by routing through
+ * the Smart Wallet's `execute()` to the HTS precompile.
+ *
+ * @param {import('ethers').BaseWallet} eoa - The delegated EOA to associate
+ * @param {string} tokenAddress - The HTS token address
+ * @param {number} [nonce] - Optional explicit transaction nonce
+ * @param {number} [gasLimit=1_500_000] - Gas limit
+ * @returns {Promise<import('ethers').TransactionReceipt | null>}
+ */
+async function associateHtsTokenViaDelegation(eoa, tokenAddress, nonce, gasLimit = 1_500_000) {
+    const network = await eoa.provider.getNetwork();
+    const associateCalldata = encodeFunctionData(
+        'associateToken(address account, address token)',
+        [eoa.address, tokenAddress]
+    );
+    const receipt = await (await eoa.sendTransaction({
+        chainId: network.chainId,
+        gasLimit,
+        ...(nonce !== undefined ? { nonce } : {}),
+        to: eoa.address,
+        data: encodeFunctionData(
+            'execute(address target, uint256 value, bytes calldata data)',
+            [HTS_ADDRESS, 0, associateCalldata]
+        ),
+    })).wait();
+    log('Associated %s with HTS token %s (via delegation)', eoa.address, tokenAddress);
+    return receipt;
+}
+
+/**
+ * Transfers HTS tokens from a delegated EOA to a recipient by routing
+ * an ERC20 `transfer()` call through the Smart Wallet's `execute()`.
+ *
+ * @param {import('ethers').BaseWallet} eoa - The delegated EOA that holds the tokens
+ * @param {string} tokenAddress - The HTS token address
+ * @param {string} to - The recipient address
+ * @param {bigint} amount - The amount of tokens to transfer
+ * @param {number} [nonce] - Optional explicit transaction nonce
+ * @param {number} [gasLimit=1_500_000] - Gas limit
+ * @returns {Promise<import('ethers').TransactionReceipt | null>}
+ */
+async function transferHtsTokenViaDelegation(eoa, tokenAddress, to, amount, nonce, gasLimit = 1_500_000) {
+    const network = await eoa.provider.getNetwork();
+    const transferCalldata = encodeFunctionData(
+        'transfer(address to, uint256 value)',
+        [to, amount]
+    );
+    const receipt = await (await eoa.sendTransaction({
+        chainId: network.chainId,
+        gasLimit,
+        ...(nonce !== undefined ? { nonce } : {}),
+        to: eoa.address,
+        data: encodeFunctionData(
+            'execute(address target, uint256 value, bytes calldata data)',
+            [tokenAddress, 0, transferCalldata]
+        ),
+    })).wait();
+    log('Transferred %s HTS tokens from %s to %s (via delegation)', amount, eoa.address, to);
+    return receipt;
+}
+
+/**
+ * Grants KYC for the given token to one or more addresses.
+ *
+ * @param {import('ethers').Contract} tokenCreateContract - The deployed TokenCreateContract
+ * @param {string} tokenAddress - The HTS token address
+ * @param {string[]} addresses - Addresses to grant KYC to
+ */
+async function grantKyc(tokenCreateContract, tokenAddress, addresses) {
+    for (const addr of addresses) {
+        await (await tokenCreateContract.grantTokenKycPublic(tokenAddress, addr)).wait();
+    }
+}
+
+/**
+ * Transfers HTS tokens from the treasury (TokenCreateContract) to one or more recipients.
+ *
+ * @param {import('ethers').Contract} tokenCreateContract
+ * @param {string} tokenAddress
+ * @param {Array<{address: string, amount: bigint}>} recipients
+ */
+async function fundAccountsWithHtsToken(tokenCreateContract, tokenAddress, recipients) {
+    for (const {address, amount} of recipients) {
+        await (await tokenCreateContract.transferTokenPublic(tokenAddress, address, amount)).wait();
+    }
+}
+
+module.exports = {
+    associateHtsToken,
+    associateHtsTokenViaDelegation,
+    transferHtsTokenViaDelegation,
+    grantKyc,
+    fundAccountsWithHtsToken,
+    HTS_ADDRESS,
+};

@@ -4,9 +4,8 @@ const { Hip1340TestContext } = require('./utils/test-context');
 
 const {
     asLongZeroAddress,
+    verifyDelegation,
     encodeFunctionData,
-    delegationIndicatorFor,
-    getCodes
 } = require('./utils/web3');
 
 describe('HIP-1340 - EIP-7702 delegation to HTS system contract', function () {
@@ -28,9 +27,7 @@ describe('HIP-1340 - EIP-7702 delegation to HTS system contract', function () {
             await t.testCtx.createAndFundEOA(),
             t.delegateToAddress
         );
-        const [_, contractBytecode, delegationAddress] = await getCodes(eoa.address);
-        expect(contractBytecode).to.equal(delegationIndicatorFor(t.delegateToAddress.toLowerCase()));
-        expect(delegationAddress).to.equal(t.delegateToAddress.toLowerCase());
+        await verifyDelegation(eoa.address, t.delegateToAddress);
 
         const balance = await t.provider.getBalance(eoa.address);
         const data = encodeFunctionData('approve(address token, address spender, uint256 amount)', [eoa.address, t.sender.address, 1000]);

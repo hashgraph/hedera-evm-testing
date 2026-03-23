@@ -5,8 +5,7 @@ const { expect } = require('chai');
 const { ethers } = require('hardhat');
 const { Hip1340TestContext, Nonce } = require('./utils/test-context');
 
-const web3 = require('./utils/web3');
-const { deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256, cartesianProduct } = require('./utils/web3');
+const { deploy, verifyDelegation, delegationIndicatorFor, encodeFunctionData, asHexUint256, cartesianProduct } = require('./utils/web3');
 
 describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegated execution', function () {
     before(async function () {
@@ -52,9 +51,7 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegated execution', fu
                 })],
             }).then(tx => tx.wait());
 
-            const [_code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
-            expect(contractBytecode).to.be.equal(delegationIndicatorFor(smartWallet.address.toLowerCase()));
-            expect(delegationAddress).to.be.equal(smartWallet.address.toLowerCase());
+            await verifyDelegation(eoa.address, smartWallet.address);
 
             const storeAndEmitCall = encodeFunctionData('storeAndEmit(uint256 value)', [value]);
             const data = encodeFunctionData('execute(address target, uint256 value, bytes calldata data)', [storeAndEmit.address, 0, storeAndEmitCall]);
@@ -109,9 +106,7 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - delegated execution', fu
             })],
         }).then(tx => tx.wait());
 
-        const [_code, contractBytecode, delegationAddress] = await web3.getCodes(eoa.address);
-        expect(contractBytecode).to.be.equal(delegationIndicatorFor(smartWallet.address.toLowerCase()));
-        expect(delegationAddress).to.be.equal(smartWallet.address.toLowerCase());
+        await verifyDelegation(eoa.address, smartWallet.address);
 
         expect(receipt.logs.length).to.be.equal(1);
         expect(receipt.logs[0]).to.deep.include({

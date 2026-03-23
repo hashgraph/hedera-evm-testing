@@ -5,7 +5,7 @@ const { ethers } = require('hardhat');
 const { Hip1340TestContext } = require('./utils/test-context');
 
 const web3 = require('./utils/web3');
-const { gas, delegationIndicatorFor, deploy, encodeFunctionData } = require('./utils/web3');
+const { gas, verifyDelegation, deploy, encodeFunctionData } = require('./utils/web3');
 
 describe('HIP-1340 - EIP-7702 Ethereum Specific tests - token and account creation behavior', function () {
     before(async function () {
@@ -101,9 +101,7 @@ describe('HIP-1340 - EIP-7702 Ethereum Specific tests - token and account creati
                 expect(ethNonce).to.be.equal(walletNonce, `Nonce for '${walletName}' should be ${walletNonce} but got ${ethNonce}`);
             }
 
-            const [_code, contractBytecode, delegationAddress] = await web3.getCodes(delegated.address);
-            expect(contractBytecode).to.be.equal(delegationIndicatorFor(delegateAddress));
-            expect(delegationAddress).to.be.equal(delegateAddress);
+            await verifyDelegation(delegated.address, delegateAddress);
             });
         });
     });
