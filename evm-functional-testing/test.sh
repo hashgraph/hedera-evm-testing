@@ -12,6 +12,7 @@ RELAY_RELEASE=0.75.0
 WORK_DIR="$(pwd)"
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
 APP_PROPERTIES_PATH="local/application.properties"
+RELAY_DIR="../../hiero-json-rpc-relay/charts"
 RELAY_YAML_PATH="local/values.yaml"
 
 export SOLO_BASE_NAME=hedera
@@ -64,7 +65,8 @@ solo_start() {
   solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
   solo consensus node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
   solo mirror node add --mirror-node-version ${MIRROR_NODE_VERSION} --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
-  solo relay node add --relay-release ${RELAY_RELEASE} --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+#  solo relay node add --relay-release ${RELAY_RELEASE} --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+  solo relay node add --relay-chart-dir "${RELAY_DIR}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   solo explorer node add --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # add test accounts to the network

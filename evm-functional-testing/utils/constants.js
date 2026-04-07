@@ -62,6 +62,9 @@ const Contract = {
   HTSSystemContractTransfersExecutorContract:
     "HTSSystemContractTransfersExecutorContract",
   AirDropClaimAndReceiverContract: "AirDropClaimAndReceiverContract",
+  // --- access list
+  AccessListCallerContract: "AccessListCallerContract",
+  AccessListTargetContract: "AccessListTargetContract",
 };
 
 const Cost = {

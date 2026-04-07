@@ -102,7 +102,7 @@ kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata
 #### Relay WS Logs
 
 ```sh
-kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/relay-node1-ws
+kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/relay-1-ws
 ```
 ### Destroy
 

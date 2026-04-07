@@ -9,7 +9,7 @@ const {
   GAS_LIMIT_1_000,
   MAX_EXPIRY,
 } = require("../../utils/constants");
-const { randomAddress } = require("../../utils/address");
+const { randomAddress } = require("../../utils/random");
 const {
   addTestCallData,
   hasScheduleCapacityCallData,

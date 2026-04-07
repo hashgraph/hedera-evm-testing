@@ -39,12 +39,12 @@ module.exports = {
   dependencyCompiler: {
     // TODO after switching to hardhat3 'solidity.npmFilesToBuild' can be used. See https://hardhat.org/docs/cookbook/npm-artifacts
     paths: [
-        // used for test/hts/transfer-events
+      // used for test/hts/transfer-events
       "@hiero-ledger/hiero-contracts/account-service/IHRC904AccountFacade.sol",
       "@hiero-ledger/hiero-contracts/token-service/IHRC719.sol",
     ],
   },
-  defaultNetwork: "solo",
+  defaultNetwork: "hardhat",
   // see https://v2.hardhat.org/hardhat-runner/docs/config
   networks: {
     hardhat: {

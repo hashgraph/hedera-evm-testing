@@ -3,7 +3,7 @@ const {
   GAS_LIMIT_2_000_000,
   GAS_LIMIT_1_000_000,
 } = require("../../utils/constants");
-const { randomAddress } = require("../../utils/address");
+const { randomAddress } = require("../../utils/random");
 const {
   addTestCallData,
   expectScheduleCallEvent,
