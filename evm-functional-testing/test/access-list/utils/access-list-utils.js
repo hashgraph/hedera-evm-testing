@@ -1,4 +1,6 @@
 const { randomAddress, randomStorageSlot } = require("../../../utils/random");
+const {ethers} = require("hardhat");
+const Constants = require("../../../utils/constants");
 
 const SLOT_MASK =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -52,7 +54,20 @@ async function callWithAccessList(
     .then((tx) => tx.wait());
 }
 
+async function createEoa(balance) {
+  const signers = await ethers.getSigners();
+  // create new receiver account
+  const eoa = ethers.Wallet.createRandom(ethers.provider);
+  const transaction = await signers[0].sendTransaction({
+    to: eoa.address,
+    value: Constants.ONE_HBAR * BigInt(balance),
+  });
+  await transaction.wait(); // wait for receipt
+  return eoa;
+}
+
 module.exports = {
   callWithRandomAccessList,
   callWithAccessList,
+  createEoa,
 };

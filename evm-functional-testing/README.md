@@ -23,8 +23,9 @@ The folder contains:
 - [HIP-1340 (Pectra support)](https://hips.hedera.com/hip/hip-1340)
 
 ### Tests Docs
-- [HIP-1340](docs/hip-1340.md)
+- [HIP-1340 Code Delegation](docs/hip-1340/hip-1340.md)
 - [HTS Transfer events](docs/hts/transfer-events.md)
+- [EIP-2930 Access List](docs/hts/transfer-events.md)
 
 ## Run tests
 

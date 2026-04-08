@@ -44,7 +44,7 @@ module.exports = {
       "@hiero-ledger/hiero-contracts/token-service/IHRC719.sol",
     ],
   },
-  defaultNetwork: "hardhat",
+  defaultNetwork: "solo",
   // see https://v2.hardhat.org/hardhat-runner/docs/config
   networks: {
     hardhat: {

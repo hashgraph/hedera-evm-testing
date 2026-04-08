@@ -1,10 +1,11 @@
 const { ethers } = require("hardhat");
-const { strictEqual: assertEq } = require("node:assert");
+const { strict: assert } = require("node:assert");
 const { contractDeployAndFund } = require("../../utils/contract");
 const Constants = require("../../utils/constants");
 const {
   callWithAccessList,
   callWithRandomAccessList,
+  createEoa,
 } = require("./utils/access-list-utils");
 const { encodeFunctionData } = require("../hip-1340/utils/web3");
 const { randomAddress, randomStorageSlot } = require("../../utils/random");
@@ -43,7 +44,7 @@ describe("EIP-2930 AccessList testing", async () => {
           accessList: [],
         })
         .then((tx) => tx.wait());
-      assertEq(emptyAccessListReceipt.gasUsed, legacyReceipt.gasUsed);
+      assert.equal(emptyAccessListReceipt.gasUsed, legacyReceipt.gasUsed);
     });
 
     it("should increases intrinsic gas with access list", async () => {
@@ -54,7 +55,7 @@ describe("EIP-2930 AccessList testing", async () => {
           [],
         )
       ).gasUsed;
-      assertEq(
+      assert.equal(
         (
           await callWithRandomAccessList(
             callerContract,
@@ -64,7 +65,7 @@ describe("EIP-2930 AccessList testing", async () => {
         ).gasUsed,
         emptyAccessListGas + 2400n, // +2400n for Address
       );
-      assertEq(
+      assert.equal(
         (
           await callWithRandomAccessList(
             callerContract,
@@ -74,7 +75,7 @@ describe("EIP-2930 AccessList testing", async () => {
         ).gasUsed,
         emptyAccessListGas + 2400n + 1900n, // +2400n for Address, +1900 for Storage Slot
       );
-      assertEq(
+      assert.equal(
         (
           await callWithRandomAccessList(
             callerContract,
@@ -95,7 +96,7 @@ describe("EIP-2930 AccessList testing", async () => {
           .then((tx) => tx.wait())
       ).gasUsed;
       const sameAddress = randomAddress();
-      assertEq(
+      assert.equal(
         (
           await callerContract
             .execute({
@@ -115,7 +116,7 @@ describe("EIP-2930 AccessList testing", async () => {
         emptyAccessListGas + 2400n * 2n, // +2400n x 2 for Addresses
       );
       const sameSlot = randomStorageSlot();
-      assertEq(
+      assert.equal(
         (
           await callerContract
             .execute({
@@ -146,7 +147,7 @@ describe("EIP-2930 AccessList testing", async () => {
           .then((tx) => tx.wait())
       ).gasUsed;
       // -100 for SLOAD
-      assertEq(
+      assert.equal(
         (
           await callerContract
             .execute({
@@ -164,7 +165,7 @@ describe("EIP-2930 AccessList testing", async () => {
         emptyStorageKeysGas - 100n,
       );
       // -100 x 2 for SLOAD x 2
-      assertEq(
+      assert.equal(
         (
           await callerContract
             .execute({
@@ -183,7 +184,7 @@ describe("EIP-2930 AccessList testing", async () => {
         emptyStorageKeysGas - 200n,
       );
       // -100 x 3 for SLOAD x 3, -100 for SSTORE
-      assertEq(
+      assert.equal(
         (
           await callerContract
             .execute({
@@ -208,17 +209,17 @@ describe("EIP-2930 AccessList testing", async () => {
       const emptyAccessListGas = (
         await callWithAccessList(callerContract, targetContract.target, null)
       ).gasUsed;
-      assertEq(
+      assert.equal(
         (await callWithAccessList(callerContract, targetContract.target, []))
           .gasUsed,
         emptyAccessListGas - 100n, // -100 for CALL
       );
-      assertEq(
+      assert.equal(
         (await callWithAccessList(callerContract, targetContract.target, [0]))
           .gasUsed,
         emptyAccessListGas - 200n, // -100 for CALL, -100 for SLOAD
       );
-      assertEq(
+      assert.equal(
         (
           await callWithAccessList(
             callerContract,
@@ -228,7 +229,7 @@ describe("EIP-2930 AccessList testing", async () => {
         ).gasUsed,
         emptyAccessListGas - 300n, // -100 for CALL, -100 x 2 for SLOAD x 2
       );
-      assertEq(
+      assert.equal(
         (
           await callWithAccessList(
             callerContract,
@@ -252,11 +253,60 @@ describe("EIP-2930 AccessList testing", async () => {
       const hssInAccessListGas = (
         await callerContract
           .callHssPrecompile(expirySecond, 1_000_000, {
-            accessList: [HSS_ADDRESS],
+            accessList: [
+              {
+                address: HSS_ADDRESS,
+                storageKeys: [],
+              },
+            ],
           })
           .then((tx) => tx.wait())
       ).gasUsed;
-      assertEq(hssInAccessListGas, emptyAccessListGas);
+      assert.equal(hssInAccessListGas, emptyAccessListGas);
+    });
+
+    //TODO finish on Hedera, Hardhat 2 do not fully support EIP-7702
+    it("should apply discount to SLOAD and SSTORE operations for Code Delegation", async () => {
+      const eoa = await createEoa(10);
+      // set code delegation
+      await eoa
+        .sendTransaction({
+          type: 4,
+          to: callerContract.target,
+          data: encodeFunctionData("execute()"),
+          authorizationList: [
+            await eoa.authorize({
+              chainId: 2,
+              nonce: 0,
+              address: targetContract.target,
+            }),
+          ],
+        })
+        .then((tx) => tx.wait());
+      // check gas
+      const callerContractFromEoa = await callerContract.connect(eoa);
+      const emptyAccessListGas = (
+        await callerContract
+          .connect(eoa)
+          .callDelegation()
+          .then((tx) => tx.wait())
+      ).gasUsed;
+      // // -100 for CALL
+      assert.equal(
+        (
+          await callerContractFromEoa
+            .callDelegation({
+              accessList: [
+                {
+                  address: targetContract.target,
+                  storageKeys: [],
+                },
+              ],
+            })
+            .then((tx) => tx.wait())
+        ).gasUsed,
+        emptyAccessListGas - 100n,
+      );
     });
 
     //TODO this should include a discount
@@ -285,14 +335,14 @@ describe("EIP-2930 AccessList testing", async () => {
         ],
         data: data,
       });
-      assertEq(noDiscountGas - 200n, withDiscountGas);
+      assert.equal(noDiscountGas - 200n, withDiscountGas);
     });
 
     it("should not change eth_call with access list", async () => {
       const data = encodeFunctionData("call(address target)", [
         targetContract.target,
       ]);
-      assertEq(
+      assert.equal(
         await signers[0].call({
           to: callerContract.target,
           accessList: [
@@ -316,6 +366,35 @@ describe("EIP-2930 AccessList testing", async () => {
   });
 
   describe("negative cases", async () => {
-    //TODO
+    it("should fail if not enough gas for access list", async () => {
+      const emptyAccessListGas = (
+        await callerContract.execute().then((tx) => tx.wait())
+      ).gasUsed;
+      await assert.rejects(
+        () =>
+          callerContract.execute({
+            gasLimit: emptyAccessListGas + 1000n,
+            accessList: [
+              {
+                address: callerContract.target,
+                storageKeys: [],
+              },
+            ],
+          }),
+        { message: "Transaction ran out of gas" },
+      );
+    });
+
+    it("should fail when required gas exceeds block gas limit", async () => {
+      await assert.rejects(
+        () =>
+          callWithRandomAccessList(
+            callerContract,
+            targetContract.target,
+            Array.from({ length: 100 }, () => 100),
+          ),
+        { message: /Transaction requires at least/ },
+      );
+    });
   });
 });
