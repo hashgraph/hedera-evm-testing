@@ -57,7 +57,7 @@ jobs:
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00  # v4.7.1
         with:
           distribution: temurin
-          java-version: 21.0.6
+          java-version: 25
 
       - name: Setup Gradle
         uses: step-security/gradle-actions/setup-gradle@c2d874d5f9d267a85a1b5829c6b5a569e33e05c8 # v5.0.0
