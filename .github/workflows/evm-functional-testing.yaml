@@ -57,7 +57,7 @@ jobs:
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00  # v4.7.1
         with:
           distribution: temurin
-          java-version: 21.0.6
+          java-version: 25
 
       - name: Setup Gradle
         uses: step-security/gradle-actions/setup-gradle@c2d874d5f9d267a85a1b5829c6b5a569e33e05c8 # v5.0.0
@@ -96,7 +96,7 @@ jobs:
       - name: Install Solo
         run: npm install --global @hashgraph/solo@${SOLO_VERSION}
         env:
-          SOLO_VERSION: 0.60.0
+          SOLO_VERSION: 0.61.0
 
       - name: Setup Kind
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
