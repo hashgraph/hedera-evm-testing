@@ -43,36 +43,30 @@ npx hardhat test --network solo
 
 ### Requirements
 
-- Software <https://solo.hiero.org/v0.54.0/docs/step-by-step-guide/#required-software>
-- Solo <https://solo.hiero.org/v0.54.0/docs/step-by-step-guide/#1-installing-solo>
+- Prerequisites <https://solo.hiero.org/docs/simple-solo-setup/quickstart/#prerequisites>
+- Solo <https://solo.hiero.org/docs/simple-solo-setup/quickstart/#install-solo-cli>
 
 ### Documentation
 
-- Doc: <https://solo.hiero.org/v0.54.0/docs/step-by-step-guide/>
-- Doc with local consensus node build: <https://solo.hiero.org/v0.54.0/docs/platform-developer/>
+- Doc: <https://solo.hiero.org/docs/>
 
 ### Specific Solo version install
 
 ```sh
-npm install -g @hashgraph/solo@0.60.0
+npm install -g @hashgraph/solo@0.69.0
 ```
 
 ### Deploy manual
 
-With 'local build' consensus node from <https://solo.hiero.org/v0.54.0/docs/platform-developer/>
-
 ```sh
+# Deploy with local CN
 ./test.sh solo start
+
+# Deploy with local CN and Relay
+./test.sh solo start -lr
 ```
 
-### Deploy quick (!!! do not use)
-
-With 'release' version. !!! This should not be used. Added as an example !!!
-
-```bash
-solo quick-start single deploy --cluster-ref="kind-${SOLO_CLUSTER_NAME}" --cluster-setup-namespace="${SOLO_CLUSTER_SETUP_NAMESPACE}" --deployment="${SOLO_DEPLOYMENT}" --namespace="${SOLO_NAMESPACE}"
-```
-
+It will deploy:
 - Consensus Node gRPC port forward enabled on `localhost:50211`
 - Mirror Node port forward enabled on `localhost:8081`
 - Explorer port forward enabled on `http://localhost:8080`
