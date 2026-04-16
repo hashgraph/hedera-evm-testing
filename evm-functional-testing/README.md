@@ -53,7 +53,7 @@ npx hardhat test --network solo
 ### Specific Solo version install
 
 ```sh
-npm install -g @hashgraph/solo@0.69.0
+npm install -g @hashgraph/solo@0.65.0
 ```
 
 ### Deploy manual
@@ -63,7 +63,7 @@ npm install -g @hashgraph/solo@0.69.0
 ./test.sh solo start
 
 # Deploy with local CN and Relay
-./test.sh solo start -lr
+./test.sh solo start -r
 ```
 
 It will deploy:

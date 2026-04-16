@@ -9,17 +9,18 @@ set -e
 WORK_DIR="$(pwd)"
 
 ######################### CN configs #########################
-export CONSENSUS_NODE_DIR="../../hiero-consensus-node"
-export APP_PROPERTIES_PATH="local/application.properties"
+LOCAL_CN=true
+CONSENSUS_NODE_DIR="../../hiero-consensus-node"
+APP_PROPERTIES_PATH="local/application.properties"
 
 ######################### MN configs #########################
-export MIRROR_NODE_VERSION=0.149.0
+MIRROR_NODE_VERSION=0.149.0
 
 ######################### Relay configs #########################
-LOCAL_RELAY=false
-export RELAY_RELEASE=0.75.0
-export RELAY_DIR="../../hiero-json-rpc-relay/charts"
-export RELAY_YAML_PATH="local/values.yaml"
+LOCAL_RELAY=true
+RELAY_RELEASE=0.77.0-SNAPSHOT
+RELAY_DIR="../../hiero-json-rpc-relay"
+RELAY_YAML_PATH="local/values.yaml"
 
 ######################### Solo configs #########################
 export SOLO_BASE_NAME=hedera
@@ -56,36 +57,43 @@ solo_start() {
   # Solo deploy
   check_k8s_context
   solo init --dev
-  solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
   solo cluster-ref config connect --cluster-ref kind-${SOLO_CLUSTER_NAME} --context kind-${SOLO_CLUSTER_NAME} --dev
   solo deployment config create -n "${SOLO_NAMESPACE}" --deployment "${SOLO_DEPLOYMENT}" --dev
   solo deployment cluster attach --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --num-consensus-nodes 1 --dev
+  solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
+
   # CN deploy
   solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
-  # local CN build (./gradlew assemble) in consensus node dir
-  cd "${CONSENSUS_NODE_DIR}"
-  ./gradlew assemble
-  cd "${WORK_DIR}"
-  # /local CN build
   solo consensus network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
-  solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
+  if [ "$LOCAL_CN" = true ] ; then
+    # local CN build
+    cd "${CONSENSUS_NODE_DIR}"
+      ./gradlew assemble
+    cd "${WORK_DIR}"
+    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
+  else
+    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+  fi
   solo consensus node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+
   # MN deploy
-  solo mirror node add --mirror-node-version ${MIRROR_NODE_VERSION} --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+  solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+
   # Relay deploy
   if [ "$LOCAL_RELAY" = true ] ; then
     # local Relay build
-    cd "${RELAY_DIR}"/hedera-json-rpc
+    cd "${RELAY_DIR}/charts/hedera-json-rpc"
       rm -rf charts
       rm Chart.lock
       helm dependency build
     cd "${WORK_DIR}"
     # /local Relay build
-    solo relay node add --relay-chart-dir "${RELAY_DIR}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+    solo relay node add --relay-chart-dir "${RELAY_DIR}/charts" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   else
-    solo relay node add --relay-release ${RELAY_RELEASE} --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   fi
   solo explorer node add --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+
   # Add test accounts to the network
   solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
   solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
@@ -120,26 +128,33 @@ solo_destroy() {
 ######################### main #########################
 case "$1" in
   solo)
-    case "$2" in
+    shift
+    case "$1" in
       start)
-        case "$3" in
-          -lr)
-            LOCAL_RELAY=true
-            ;;
-        esac
+        shift
+        while getopts 'r' flag; do
+          case "${flag}" in
+            r) LOCAL_RELAY=true ;;
+            *) echo "Usage: [-r] Deploy local Relay"
+               exit 1 ;;
+          esac
+        done
         solo_start
         ;;
       stop)
+        shift
         solo_stop
         ;;
       status)
+        shift
         solo_status
         ;;
       destroy)
+        shift
         solo_destroy
         ;;
     	*)
-    		echo "Usage: [start [-lr] Deploy local Relay | stop | status | destroy ]"
+    		echo "Usage: [ start | stop | status | destroy ]"
     		exit 1
     		;;
     esac
