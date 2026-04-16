@@ -9,7 +9,7 @@ set -e
 WORK_DIR="$(pwd)"
 
 ######################### CN configs #########################
-LOCAL_CN=true
+LOCAL_CN_BUILD=true
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
 APP_PROPERTIES_PATH="local/application.properties"
 
@@ -17,7 +17,7 @@ APP_PROPERTIES_PATH="local/application.properties"
 MIRROR_NODE_VERSION=0.149.0
 
 ######################### Relay configs #########################
-LOCAL_RELAY=true
+LOCAL_RELAY_BUILD=true
 RELAY_RELEASE=0.77.0-SNAPSHOT
 RELAY_DIR="../../hiero-json-rpc-relay"
 RELAY_YAML_PATH="local/values.yaml"
@@ -65,10 +65,10 @@ solo_start() {
   # CN deploy
   solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
   solo consensus network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
-  if [ "$LOCAL_CN" = true ] ; then
+  if [ "$LOCAL_CN_BUILD" = true ] ; then
     # local CN build
     cd "${CONSENSUS_NODE_DIR}"
-      ./gradlew assemble
+    ./gradlew assemble
     cd "${WORK_DIR}"
     solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
   else
@@ -80,18 +80,14 @@ solo_start() {
   solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # Relay deploy
-  if [ "$LOCAL_RELAY" = true ] ; then
+  if [ "$LOCAL_RELAY_BUILD" = true ] ; then
     # local Relay build
-    cd "${RELAY_DIR}/charts/hedera-json-rpc"
-      rm -rf charts
-      rm Chart.lock
-      helm dependency build
+    cd "${RELAY_DIR}"
+    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" .
     cd "${WORK_DIR}"
-    # /local Relay build
-    solo relay node add --relay-chart-dir "${RELAY_DIR}/charts" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
-  else
-    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+    kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" --name "${SOLO_CLUSTER_NAME}"
   fi
+  solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   solo explorer node add --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # Add test accounts to the network
@@ -132,13 +128,6 @@ case "$1" in
     case "$1" in
       start)
         shift
-        while getopts 'r' flag; do
-          case "${flag}" in
-            r) LOCAL_RELAY=true ;;
-            *) echo "Usage: [-r] Deploy local Relay"
-               exit 1 ;;
-          esac
-        done
         solo_start
         ;;
       stop)
