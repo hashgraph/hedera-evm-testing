@@ -23,6 +23,7 @@ async function callWithRandomAccessList(
   }
   return await callerContract
     .call(targetContractAddress, {
+      gasLimit: 100_000, //TODO remove after MN will support gasEstimate
       accessList: accessList,
     })
     .then((tx) => tx.wait());

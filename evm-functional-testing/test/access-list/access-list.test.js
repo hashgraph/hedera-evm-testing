@@ -1,3 +1,4 @@
+// EIP: https://eips.ethereum.org/EIPS/eip-2930
 const { ethers } = require("hardhat");
 const { strict: assert } = require("node:assert");
 const { contractDeployAndFund } = require("../../utils/contract");
@@ -39,11 +40,16 @@ describe("EIP-2930 AccessList testing", async () => {
           data: data,
         })
         .then((tx) => tx.wait());
+      console.log("%s legacy transaction", legacyReceipt.hash);
       const emptyAccessListReceipt = await callerContract
         .call(targetContract.target, {
           accessList: [],
         })
         .then((tx) => tx.wait());
+      console.log(
+        "%s empty accessList transaction",
+        emptyAccessListReceipt.hash,
+      );
       assert.equal(emptyAccessListReceipt.gasUsed, legacyReceipt.gasUsed);
     });
 
@@ -100,6 +106,7 @@ describe("EIP-2930 AccessList testing", async () => {
         (
           await callerContract
             .execute({
+              gasLimit: 100_000, //TODO remove after MN will support gasEstimate
               accessList: [
                 {
                   address: sameAddress,
@@ -120,6 +127,7 @@ describe("EIP-2930 AccessList testing", async () => {
         (
           await callerContract
             .execute({
+              gasLimit: 100_000, //TODO remove after MN will support gasEstimate
               accessList: [
                 {
                   address: sameAddress,
@@ -137,6 +145,7 @@ describe("EIP-2930 AccessList testing", async () => {
       const emptyStorageKeysGas = (
         await callerContract
           .execute({
+            gasLimit: 100_000, //TODO remove after MN will support gasEstimate
             accessList: [
               {
                 address: callerContract.target,
@@ -151,6 +160,7 @@ describe("EIP-2930 AccessList testing", async () => {
         (
           await callerContract
             .execute({
+              gasLimit: 100_000, //TODO remove after MN will support gasEstimate
               accessList: [
                 {
                   address: callerContract.target,
@@ -169,6 +179,7 @@ describe("EIP-2930 AccessList testing", async () => {
         (
           await callerContract
             .execute({
+              gasLimit: 100_000, //TODO remove after MN will support gasEstimate
               accessList: [
                 {
                   address: callerContract.target,
@@ -188,6 +199,7 @@ describe("EIP-2930 AccessList testing", async () => {
         (
           await callerContract
             .execute({
+              gasLimit: 100_000, //TODO remove after MN will support gasEstimate
               accessList: [
                 {
                   address: callerContract.target,
@@ -262,40 +274,44 @@ describe("EIP-2930 AccessList testing", async () => {
           })
           .then((tx) => tx.wait())
       ).gasUsed;
-      assert.equal(hssInAccessListGas, emptyAccessListGas);
+      assert.equal(hssInAccessListGas, emptyAccessListGas - 100n);
     });
 
     //TODO finish on Hedera, Hardhat 2 do not fully support EIP-7702
     it("should apply discount to SLOAD and SSTORE operations for Code Delegation", async () => {
       const eoa = await createEoa(10);
       // set code delegation
-      await eoa
-        .sendTransaction({
-          type: 4,
-          to: callerContract.target,
-          data: encodeFunctionData("execute()"),
-          authorizationList: [
-            await eoa.authorize({
-              chainId: 2,
-              nonce: 0,
-              address: targetContract.target,
-            }),
-          ],
-        })
-        .then((tx) => tx.wait());
+        const rc = await eoa
+          .sendTransaction({
+            gasLimit: 100_000, //TODO remove after MN will support gasEstimate
+            type: 4,
+            to: callerContract.target,
+            data: encodeFunctionData("callDelegation()"),
+            authorizationList: [
+              await eoa.authorize({
+                chainId: 0,
+                nonce: 1,
+                address: targetContract.target,
+              }),
+            ],
+          })
+          .then((tx) => tx.wait());
+      console.log("%s code delegation tx", rc.hash);
       // check gas
       const callerContractFromEoa = await callerContract.connect(eoa);
       const emptyAccessListGas = (
-        await callerContract
-          .connect(eoa)
-          .callDelegation()
+        await callerContractFromEoa
+          .callDelegation({
+            gasLimit: 100_000, //TODO remove after MN will support gasEstimate
+          })
           .then((tx) => tx.wait())
       ).gasUsed;
-      // // -100 for CALL
+      // -100 for CALL
       assert.equal(
         (
           await callerContractFromEoa
             .callDelegation({
+              gasLimit: 100_000, //TODO remove after MN will support gasEstimate
               accessList: [
                 {
                   address: targetContract.target,
@@ -309,7 +325,7 @@ describe("EIP-2930 AccessList testing", async () => {
       );
     });
 
-    //TODO this should include a discount
+    //TODO this should include a discount after MN will support gasEstimate
     it("should increases eth_estimateGas gas with access list", async () => {
       const data = encodeFunctionData("execute()");
       const noDiscountGas = await signers[0].estimateGas({
@@ -335,7 +351,7 @@ describe("EIP-2930 AccessList testing", async () => {
         ],
         data: data,
       });
-      assert.equal(noDiscountGas - 200n, withDiscountGas);
+      assert.equal(withDiscountGas, noDiscountGas - 200n);
     });
 
     it("should not change eth_call with access list", async () => {

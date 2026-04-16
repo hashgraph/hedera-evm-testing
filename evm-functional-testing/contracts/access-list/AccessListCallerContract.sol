@@ -9,6 +9,8 @@ contract AccessListCallerContract {
 
     address internal constant HSS = address(0x16b);
 
+    event Result(uint256 result);
+
     function execute() public returns (uint256 response) {
         res1 = local1 + local2;
         return res1;
@@ -18,6 +20,7 @@ contract AccessListCallerContract {
         (bool success, bytes memory result) = target.call(abi.encodeWithSignature("execute()"));
         if (success) {
             response = abi.decode(result, (uint256));
+            emit Result(response);
         } else {
             revert();
         }
@@ -36,6 +39,7 @@ contract AccessListCallerContract {
         (bool success, bytes memory result) = msg.sender.call(abi.encodeWithSignature("executeDelegation(uint256,uint256)", 12, 13));
         if (success) {
             response = abi.decode(result, (uint256));
+            emit Result(response);
         } else {
             revert();
         }
