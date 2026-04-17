@@ -19,7 +19,7 @@ const { gas, deploy, getNonces, DelegationTransactionBuilder } = require('./util
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
 
-describe('Atomic Batch: CryptoCreate + EIP-7702 delegation', function () {
+describe('Atomic Batch: EIP-7702 delegation', function () {
     let client, provider, network, smartWalletAddress, sponsor;
 
     before(async function () {
@@ -125,6 +125,7 @@ describe('Atomic Batch: CryptoCreate + EIP-7702 delegation', function () {
             .from(sponsor)
             .withChainId(network.chainId)
             .withSenderNonce(sponsorNonce)
+            .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
             .withAuthorization(accountA, smartWalletAddress, 0)
             .sign();
         // Parse signed bytes through EthereumTransactionDataEip7702 for additional fail fast validation
