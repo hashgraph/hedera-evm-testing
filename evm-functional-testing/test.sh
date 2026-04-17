@@ -14,11 +14,13 @@ CONSENSUS_NODE_DIR="../../hiero-consensus-node"
 APP_PROPERTIES_PATH="local/application.properties"
 
 ######################### MN configs #########################
-MIRROR_NODE_VERSION=0.149.0
+LOCAL_MN_BUILD=true
+MIRROR_NODE_DIR="../../hiero-mirror-node"
+MIRROR_NODE_VERSION=0.152.0
 
 ######################### Relay configs #########################
 LOCAL_RELAY_BUILD=true
-RELAY_RELEASE=0.77.0-SNAPSHOT
+RELAY_RELEASE=0.76.0
 RELAY_DIR="../../hiero-json-rpc-relay"
 RELAY_YAML_PATH="local/values.yaml"
 
@@ -77,13 +79,21 @@ solo_start() {
   solo consensus node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
 
   # MN deploy
+  if [ "$LOCAL_MN_BUILD" = true ] ; then
+    # local MN build
+    cd "${MIRROR_NODE_DIR}"
+    cd web3
+    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}-local" .
+    //TODO
+    cd "${WORK_DIR}"
+  fi
   solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # Relay deploy
   if [ "$LOCAL_RELAY_BUILD" = true ] ; then
     # local Relay build
     cd "${RELAY_DIR}"
-    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" .
+    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${MIRROR_NODE_VERSION}-local" .
     cd "${WORK_DIR}"
     kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" --name "${SOLO_CLUSTER_NAME}"
   fi

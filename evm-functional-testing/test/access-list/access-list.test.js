@@ -277,25 +277,24 @@ describe("EIP-2930 AccessList testing", async () => {
       assert.equal(hssInAccessListGas, emptyAccessListGas - 100n);
     });
 
-    //TODO finish on Hedera, Hardhat 2 do not fully support EIP-7702
     it("should apply discount to SLOAD and SSTORE operations for Code Delegation", async () => {
       const eoa = await createEoa(10);
       // set code delegation
-        const rc = await eoa
-          .sendTransaction({
-            gasLimit: 100_000, //TODO remove after MN will support gasEstimate
-            type: 4,
-            to: callerContract.target,
-            data: encodeFunctionData("callDelegation()"),
-            authorizationList: [
-              await eoa.authorize({
-                chainId: 0,
-                nonce: 1,
-                address: targetContract.target,
-              }),
-            ],
-          })
-          .then((tx) => tx.wait());
+      const rc = await eoa
+        .sendTransaction({
+          gasLimit: 100_000, //TODO remove after MN will support gasEstimate
+          type: 4,
+          to: callerContract.target,
+          data: encodeFunctionData("callDelegation()"),
+          authorizationList: [
+            await eoa.authorize({
+              chainId: 0,
+              nonce: 1,
+              address: targetContract.target,
+            }),
+          ],
+        })
+        .then((tx) => tx.wait());
       console.log("%s code delegation tx", rc.hash);
       // check gas
       const callerContractFromEoa = await callerContract.connect(eoa);
@@ -388,16 +387,18 @@ describe("EIP-2930 AccessList testing", async () => {
       ).gasUsed;
       await assert.rejects(
         () =>
-          callerContract.execute({
-            gasLimit: emptyAccessListGas + 1000n,
-            accessList: [
-              {
-                address: callerContract.target,
-                storageKeys: [],
-              },
-            ],
-          }),
-        { message: "Transaction ran out of gas" },
+          callerContract
+            .execute({
+              gasLimit: emptyAccessListGas + 1000n,
+              accessList: [
+                {
+                  address: callerContract.target,
+                  storageKeys: [],
+                },
+              ],
+            })
+            .then((tx) => tx.wait()),
+        { message: /transaction execution reverted/ },
       );
     });
 
@@ -409,7 +410,7 @@ describe("EIP-2930 AccessList testing", async () => {
             targetContract.target,
             Array.from({ length: 100 }, () => 100),
           ),
-        { message: /Transaction requires at least/ },
+        { message: /Oversized data/ },
       );
     });
   });
