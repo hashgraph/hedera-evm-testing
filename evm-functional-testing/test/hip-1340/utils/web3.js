@@ -209,7 +209,7 @@ class DelegationTransactionBuilder {
     constructor() {
         this.sender = null;
         this.chainId = null;
-        this.senderNonce = 0;
+        this.senderNonce = null;
         this.authorizations = [];
         this.toAddress = ethers.ZeroAddress;
         this.value = 0n;
@@ -246,7 +246,12 @@ class DelegationTransactionBuilder {
         return this;
     }
 
-    async send() {
+    withSenderNonce(nonce) {
+        this.senderNonce = nonce;
+        return this;
+    }
+
+    async buildTx() {
         assert(this.sender && this.chainId && this.authorizations.length > 0);
         const authList = await Promise.all(
             this.authorizations.map(({authorityWallet, delegationAddress, nonce}) =>
@@ -257,16 +262,23 @@ class DelegationTransactionBuilder {
                 })
             )
         );
-
-        return this.sender.sendTransaction({
+        return {
             type: 4,
             chainId: this.chainId,
-            nonce: this.senderNonce,
+            nonce: this.senderNonce ?? await this.sender.getNonce(),
             gasLimit: this.gasLimit,
             to: this.toAddress,
             value: this.value,
             authorizationList: authList,
-        });
+        };
+    }
+
+    async send() {
+        return this.sender.sendTransaction(await this.buildTx());
+    }
+
+    async sign() {
+        return this.sender.signTransaction(await this.buildTx());
     }
 }
 
