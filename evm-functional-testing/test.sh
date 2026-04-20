@@ -19,7 +19,7 @@ MIRROR_NODE_DIR="../../hiero-mirror-node"
 MIRROR_NODE_VERSION=0.152.0
 
 ######################### Relay configs #########################
-LOCAL_RELAY_BUILD=true
+LOCAL_RELAY_BUILD=false
 RELAY_RELEASE=0.76.0
 RELAY_DIR="../../hiero-json-rpc-relay"
 RELAY_YAML_PATH="local/values.yaml"
@@ -82,22 +82,36 @@ solo_start() {
   if [ "$LOCAL_MN_BUILD" = true ] ; then
     # local MN build
     cd "${MIRROR_NODE_DIR}"
-    cd web3
-    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}-local" .
-    //TODO
+    ./gradlew :web3:clean :web3:build -x test && ./gradlew :rest:clean :rest:build -x test && ./gradlew :rest-java:clean :rest-java:build -x test
+    docker build -t "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}-local" web3
+    kind load docker-image "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}-local" --name "${SOLO_CLUSTER_NAME}"
+    docker build -t "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}-local" rest
+    kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}-local" --name "${SOLO_CLUSTER_NAME}"
+    docker build -t "gcr.io/mirrornode/hedera-mirror-rest-java:${MIRROR_NODE_VERSION}-local" rest-java
+    kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest-java:${MIRROR_NODE_VERSION}-local" --name "${SOLO_CLUSTER_NAME}"
+    cd charts/hedera-mirror
+    helm dependency build
     cd "${WORK_DIR}"
+    solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}-local" --mirror-node-chart-dir "${MIRROR_NODE_DIR}/charts" --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+  else
+    solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
   fi
-  solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # Relay deploy
   if [ "$LOCAL_RELAY_BUILD" = true ] ; then
     # local Relay build
     cd "${RELAY_DIR}"
-    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${MIRROR_NODE_VERSION}-local" .
+    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}-local" .
+    kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}-local" --name "${SOLO_CLUSTER_NAME}"
+    cd charts/hedera-json-rpc
+    helm dependency build
     cd "${WORK_DIR}"
-    kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" --name "${SOLO_CLUSTER_NAME}"
+    solo relay node add --relay-release "${RELAY_RELEASE}-local" --relay-chart-dir "${RELAY_DIR}/charts" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+  else
+    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   fi
-  solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+
+  # Explorer deploy
   solo explorer node add --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
 
   # Add test accounts to the network
