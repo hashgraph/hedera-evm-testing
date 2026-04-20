@@ -82,13 +82,11 @@ solo_start() {
   if [ "$LOCAL_MN_BUILD" = true ] ; then
     # local MN build
     cd "${MIRROR_NODE_DIR}"
-    ./gradlew :web3:clean :web3:build -x test && ./gradlew :rest:clean :rest:build -x test && ./gradlew :rest-java:clean :rest-java:build -x test
+    ./gradlew :web3:clean :web3:build -x test && ./gradlew :rest:clean :rest:build -x test
     docker build -t "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}-local" web3
     kind load docker-image "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}-local" --name "${SOLO_CLUSTER_NAME}"
     docker build -t "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}-local" rest
     kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}-local" --name "${SOLO_CLUSTER_NAME}"
-    docker build -t "gcr.io/mirrornode/hedera-mirror-rest-java:${MIRROR_NODE_VERSION}-local" rest-java
-    kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest-java:${MIRROR_NODE_VERSION}-local" --name "${SOLO_CLUSTER_NAME}"
     cd charts/hedera-mirror
     helm dependency build
     cd "${WORK_DIR}"
@@ -132,17 +130,17 @@ solo_stop() {
   solo_destroy
 }
 
-solo_status() {
-  cat ~/.solo/local-config.yaml || true
-  echo "-------------------------------------------------------------------------"
-  kubectl get pods -n "${SOLO_NAMESPACE}"
-}
-
 solo_destroy() {
   kubectl delete namespace "${SOLO_NAMESPACE}" || true
   kubectl delete namespace "${SOLO_CLUSTER_SETUP_NAMESPACE}" || true
   kind delete cluster -n "${SOLO_CLUSTER_NAME}" || true
   rm -rf ~/.solo
+}
+
+solo_status() {
+  cat ~/.solo/local-config.yaml || true
+  echo "-------------------------------------------------------------------------"
+  kubectl get pods -n "${SOLO_NAMESPACE}"
 }
 
 ######################### main #########################

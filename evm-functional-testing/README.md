@@ -67,7 +67,7 @@ npm install -g @hashgraph/solo@0.65.0
   - it will build MN at your `MIRROR_NODE_DIR`
   - this will work because `solo relay node add` will use `--relay-release` image tag event with updated chart
 - To deploy with locally build Relay, at `./test.sh` set `LOCAL_RELAY_BUILD=true`, 
-  - you will need to override `appVersion` for your locally build version at:
+  - you will need to override `appVersion` for your locally build image tag (e.g `appVersion: 0.152.0-local`) at:
     - `${MIRROR_NODE_DIR}/charts/hedera-mirror-rest` 
     - `${MIRROR_NODE_DIR}/charts/hedera-mirror-web3` 
   - it will build Relay at your `RELAY_DIR`
