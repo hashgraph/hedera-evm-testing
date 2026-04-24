@@ -18,9 +18,13 @@ LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
 MIRROR_NODE_VERSION=0.152.0
 # if images are set, we will load this images to kind cluster instead of official MN images
-# TODO images seems not working because of --pinger
 MIRROR_NODE_WEB3_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
-MIRROR_NODE_REST_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-rest:pectra"
+# TODO "rest" image seems broken. It fails the tests, mb because of --pinger
+# Q to MN team:
+#  where pinger service is running?
+#  where eth_estimateGas is executed? at rest service?
+# TODO ---------------------------------------------------------------------
+#MIRROR_NODE_REST_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-rest:pectra"
 MIRROR_NODE_IMPORTER_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-importer:pectra"
 
 ######################### Relay configs #########################
