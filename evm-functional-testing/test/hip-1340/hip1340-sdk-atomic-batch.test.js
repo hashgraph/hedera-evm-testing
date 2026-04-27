@@ -20,7 +20,7 @@ const { gas, deploy, getNonces, DelegationTransactionBuilder } = require('./util
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
 
 describe('Atomic Batch: EIP-7702 delegation', function () {
-    let client, provider, network, smartWalletAddress, sponsor;
+    let client, provider, network, smartWalletAddress, sponsor, zeroBalanceAccount;
 
     before(async function () {
         provider = ethers.provider;
@@ -34,6 +34,24 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
         ({ address: smartWalletAddress } = await deploy(SIMPLE_7702_ACCOUNT));
 
         sponsor = new ethers.Wallet(hre.network.config.accounts[0], provider);
+
+        zeroBalanceAccount = ethers.Wallet.createRandom(provider);
+        const zeroBalanceAccountKey = PrivateKey.fromStringECDSA(zeroBalanceAccount.privateKey);
+        const zeroBalanceAccountReceipt = await (
+            await (
+                await new AccountCreateTransaction()
+                    .setECDSAKeyWithAlias(zeroBalanceAccountKey.publicKey)
+                    .setInitialBalance(new Hbar(0))
+                    .freezeWith(client)
+                    .sign(zeroBalanceAccountKey)
+            ).execute(client)
+        ).getReceipt(client);
+
+        expect(zeroBalanceAccountReceipt.status.toString()).to.equal('SUCCESS');
+        const zeroBalanceAccountInfo = await new AccountInfoQuery()
+            .setAccountId(AccountId.fromEvmAddress(0, 0, zeroBalanceAccount.address))
+            .execute(client);
+        expect(zeroBalanceAccountInfo.balance).to.equal(0);
     });
 
     after(function () {
@@ -59,8 +77,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             expect(createReceipt.accountId).to.not.be.null;
 
             // Inner tx 1: type-4 delegation on pre-existing account A, wrapped in EthereumTransaction.
-            // Fetch the sponsor's consensus-node nonce explicitly — mirror/provider can lag
-            // after a prior test submitted a type-4 via the SDK batch path.
+            // Fetch the sponsor's consensus-node nonce explicitly
             const [, , sponsorNonce] = await getNonces(sponsor.address);
             const rawType4Tx = await new DelegationTransactionBuilder()
                 .from(sponsor)
@@ -164,6 +181,5 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             expect(actualDelegation.toLowerCase()).to.equal(smartWalletAddress.toLowerCase());
         });
     })
-
 
 });
