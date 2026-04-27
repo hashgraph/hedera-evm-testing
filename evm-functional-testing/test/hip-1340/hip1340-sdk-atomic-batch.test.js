@@ -23,6 +23,11 @@ const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702A
 /**
  * Creates a new ECDSA-aliased Hedera account via the SDK and returns the
  * matching ethers wallet (so callers can sign EVM txs with the same key).
+ *
+ * @param {import('@hiero-ledger/sdk').Client} client - SDK client used to submit and pay for the AccountCreateTransaction.
+ * @param {import('ethers').Provider} provider - ethers provider attached to the returned wallet.
+ * @param {Hbar} initialBalance - Starting balance for the new account.
+ * @returns {Promise<import('ethers').BaseWallet>} ethers wallet backed by the same ECDSA key as the new Hedera account.
  */
 async function createEcdsaAliasedAccount(client, provider, initialBalance) {
     const wallet = ethers.Wallet.createRandom(provider);
@@ -39,6 +44,42 @@ async function createEcdsaAliasedAccount(client, provider, initialBalance) {
     expect(receipt.status.toString()).to.equal('SUCCESS');
     expect(receipt.accountId).to.not.be.null;
     return wallet;
+}
+
+/**
+ * Wraps signed type-4 bytes in an EthereumTransaction batchified under the
+ * operator key. fromBytes(...).toBytes() is a byte-equivalent round-trip that
+ * acts as a fail-fast validator for the RLP/authorizationList shape.
+ *
+ * @param {string} rawType4Tx - 0x-prefixed hex of a signed EIP-7702 (type-4) transaction.
+ * @param {import('@hiero-ledger/sdk').Client} client - SDK client whose operator key is used as the batch key.
+ * @returns {Promise<EthereumTransaction>} An EthereumTransaction frozen and signed by the operator, ready to be added to a BatchTransaction.
+ */
+async function wrapType4ForBatch(rawType4Tx, client) {
+    const eip7702Data = EthereumTransactionDataEip7702.fromBytes(
+        Buffer.from(rawType4Tx.slice(2), 'hex')
+    );
+    return new EthereumTransaction()
+        .setEthereumData(eip7702Data.toBytes())
+        .setMaxGasAllowanceHbar(new Hbar(2))
+        .batchify(client, client.operatorPublicKey);
+}
+
+/**
+ * Asserts that the given EVM address has its EIP-7702 delegation pointing at
+ * the expected smart wallet address.
+ *
+ * @param {import('@hiero-ledger/sdk').Client} client - SDK client used to issue the AccountInfoQuery.
+ * @param {string} evmAddress - 0x-prefixed EVM address of the (aliased) Hedera account whose delegation is being checked.
+ * @param {string} expectedDelegation - 0x-prefixed EVM address the account is expected to be delegated to.
+ * @returns {Promise<void>}
+ */
+async function expectDelegation(client, evmAddress, expectedDelegation) {
+    const accountInfo = await new AccountInfoQuery()
+        .setAccountId(AccountId.fromEvmAddress(0, 0, evmAddress))
+        .execute(client);
+    expect(hexlify(accountInfo.delegationAddress).toLowerCase())
+        .to.equal(expectedDelegation.toLowerCase());
 }
 
 describe('Atomic Batch: EIP-7702 delegation', function () {
@@ -77,21 +118,13 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
         });
 
         it('should commit delegation for pre-existing account', async function () {
-            // Inner tx 1: type-4 delegation on pre-existing account A, wrapped in EthereumTransaction.
             const rawType4Tx = await new DelegationTransactionBuilder()
                 .from(accountA)
                 .withChainId(network.chainId)
                 .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
                 .withAuthorization(accountA, smartWalletAddress, 1)
                 .sign();
-            // Parse signed bytes through EthereumTransactionDataEip7702 for additional fail fast validation
-            const eip7702Data = EthereumTransactionDataEip7702.fromBytes(
-                Buffer.from(rawType4Tx.slice(2), 'hex')
-            );
-            const delegationInnerTx = await new EthereumTransaction()
-                .setEthereumData(eip7702Data.toBytes())
-                .setMaxGasAllowanceHbar(new Hbar(2))
-                .batchify(client, client.operatorPublicKey);
+            const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
             const transferInnerTx = await new TransferTransaction()
                 .addHbarTransfer(client.operatorAccountId, new Hbar(-1))
@@ -106,33 +139,19 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             ).getReceipt(client);
 
             expect(batchReceipt.status.toString()).to.equal('SUCCESS');
-
-            // Expected: delegation on A is committed
-            const accountInfo = await new AccountInfoQuery()
-                .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
-                .execute(client);
-            expect(hexlify(accountInfo.delegationAddress).toLowerCase())
-                .to.equal(smartWalletAddress.toLowerCase());
+            await expectDelegation(client, accountA.address, smartWalletAddress);
         });
 
         it('should commit delegation for pre-existing account used as both from and authority on batch failure', async function () {
-            // Inner tx 1: type-4 delegation on pre-existing account A, wrapped in EthereumTransaction.
-            // Fetch the sponsor's consensus-node nonce explicitly
             const rawType4Tx = await new DelegationTransactionBuilder()
                 .from(accountA)
                 .withChainId(network.chainId)
                 .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
                 .withAuthorization(accountA, smartWalletAddress, 1)
                 .sign();
-            // Parse signed bytes through EthereumTransactionDataEip7702 for additional fail fast validation
-            const eip7702Data = EthereumTransactionDataEip7702.fromBytes(
-                Buffer.from(rawType4Tx.slice(2), 'hex')
-            );
-            const delegationInnerTx = await new EthereumTransaction()
-                .setEthereumData(eip7702Data.toBytes())
-                .setMaxGasAllowanceHbar(new Hbar(2))
-                .batchify(client, client.operatorPublicKey);
+            const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
+            // Transfer is invalid: zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
             const transferInnerTx = await new TransferTransaction()
                 .addHbarTransfer(zeroBalanceAccount.address, new Hbar(-1))
                 .addHbarTransfer(accountA.address, new Hbar(1))
@@ -149,29 +168,19 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                     expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
                 });
 
-            // Expected: delegation on A is committed
-            const accountInfo = await new AccountInfoQuery()
-                .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
-                .execute(client);
-            // TODO: switch to below asserts when atomic batch delegation persistence is fixed
-            // expect(hexlify(accountInfo.delegationAddress).toLowerCase())
-            //     .to.equal(smartWalletAddress.toLowerCase());
+            // TODO: assert delegation persistence with expectDelegation(client, accountA.address, smartWalletAddress)
+            // when atomic batch delegation persistence is fixed
         });
     })
 
     describe('Authority account created inside the atomic batch', function () {
         it('should create an account and set delegation to it', async function () {
-            // Generate ECDSA key for the new account
             // Start from an ethers wallet so we can call .authorize() later.
             // Import the same key into the SDK for AccountCreateTransaction.
-            const newAccountEthersWallet = ethers.Wallet.createRandom(provider);
-            const newAccountKey = PrivateKey.fromStringECDSA(newAccountEthersWallet.privateKey);
-            const newAccountEvmAddress = newAccountEthersWallet.address;
+            const newAccount = ethers.Wallet.createRandom(provider);
+            const newAccountKey = PrivateKey.fromStringECDSA(newAccount.privateKey);
 
             // Inner tx 1: AccountCreateTransaction
-            // Setting an ECDSA key auto-assigns the EVM alias (= newAccountEvmAddress).
-            // batchify(): sets batch key to operator key, freezes, signs with operator.
-            // We then add the new account's self-signature (required for ECDSA alias accounts).
             const accountCreateTx = await (
                 await new AccountCreateTransaction()
                     .setECDSAKeyWithAlias(newAccountKey.publicKey)
@@ -179,47 +188,26 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                     .batchify(client, client.operatorPublicKey)
             ).sign(newAccountKey);
 
-            // Build the signed type-4 raw bytes
-            // The sponsor (operator) pays gas; the new account signs only the authorizationList.
-            // chainId: 0  → auth valid on any chain
-            // nonce: 0    → new account starts at nonce 0 (it doesn't exist yet)
+            // Inner tx 2: type-4 delegation, sponsored by the operator (pays gas).
             const [, , sponsorNonce] = await getNonces(sponsor.address);
             const rawType4Tx = await new DelegationTransactionBuilder()
                 .from(sponsor)
                 .withChainId(network.chainId)
                 .withSenderNonce(sponsorNonce)
-                .withAuthorization(newAccountEthersWallet, smartWalletAddress, 0)
+                .withAuthorization(newAccount, smartWalletAddress, 0)
                 .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
                 .sign();
+            const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
-            // Parse signed bytes through EthereumTransactionDataEip7702 for additional fail fast validation
-            const eip7702Data = EthereumTransactionDataEip7702.fromBytes(
-                Buffer.from(rawType4Tx.slice(2), 'hex')  // strip '0x' prefix
-            );
-
-            // Inner tx 2: EthereumTransaction wrapping the type-4 data
-            const ethereumTx = await new EthereumTransaction()
-                .setEthereumData(eip7702Data.toBytes())
-                .setMaxGasAllowanceHbar(new Hbar(2))
-                .batchify(client, client.operatorPublicKey);
-
-            // Assemble and execute the BatchTransaction
             const batchReceipt = await (
                 await new BatchTransaction()
                     .addInnerTransaction(accountCreateTx)
-                    .addInnerTransaction(ethereumTx)
+                    .addInnerTransaction(delegationInnerTx)
                     .execute(client)
             ).getReceipt(client);
 
             expect(batchReceipt.status.toString()).to.equal('SUCCESS');
-
-            // Verify the delegation the SDK way
-            const accountInfo = await new AccountInfoQuery()
-                .setAccountId(AccountId.fromEvmAddress(0, 0, newAccountEvmAddress))
-                .execute(client);
-
-            const actualDelegation = hexlify(accountInfo.delegationAddress);
-            expect(actualDelegation.toLowerCase()).to.equal(smartWalletAddress.toLowerCase());
+            await expectDelegation(client, newAccount.address, smartWalletAddress);
         });
     })
 
@@ -231,8 +219,6 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
         });
 
         it('should commit delegation for pre-existing account on batch failure', async function () {
-            // Inner tx 1: type-4 delegation on pre-existing account A, wrapped in EthereumTransaction.
-            // Fetch the sponsor's consensus-node nonce explicitly
             const [, , sponsorNonce] = await getNonces(sponsor.address);
             const rawType4Tx = await new DelegationTransactionBuilder()
                 .from(sponsor)
@@ -241,15 +227,9 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
                 .withAuthorization(accountA, smartWalletAddress, 0)
                 .sign();
-            // Parse signed bytes through EthereumTransactionDataEip7702 for additional fail fast validation
-            const eip7702Data = EthereumTransactionDataEip7702.fromBytes(
-                Buffer.from(rawType4Tx.slice(2), 'hex')
-            );
-            const delegationInnerTx = await new EthereumTransaction()
-                .setEthereumData(eip7702Data.toBytes())
-                .setMaxGasAllowanceHbar(new Hbar(2))
-                .batchify(client, client.operatorPublicKey);
+            const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
+            // Transfer is invalid: zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
             const transferInnerTx = await new TransferTransaction()
                 .addHbarTransfer(zeroBalanceAccount.address, new Hbar(-1))
                 .addHbarTransfer(accountA.address, new Hbar(1))
@@ -266,13 +246,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                     expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
                 });
 
-            // Expected: delegation on A is committed
-            const accountInfo = await new AccountInfoQuery()
-                .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
-                .execute(client);
-            // TODO: switch to below asserts when atomic batch delegation persistence is fixed
-            // expect(hexlify(accountInfo.delegationAddress).toLowerCase())
-            //     .to.equal(smartWalletAddress.toLowerCase());
+            // TODO: assert delegation persistence with expectDelegation(client, accountA.address, smartWalletAddress)
+            // when atomic batch delegation persistence is fixed
         });
 
     })
