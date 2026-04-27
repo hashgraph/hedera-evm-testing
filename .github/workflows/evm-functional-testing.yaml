@@ -57,10 +57,10 @@ jobs:
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00  # v4.7.1
         with:
           distribution: temurin
-          java-version: 21.0.6
+          java-version: 25
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
+        uses: step-security/gradle-actions/setup-gradle@c2d874d5f9d267a85a1b5829c6b5a569e33e05c8 # v5.0.0
         with:
           cache-read-only: false
 
