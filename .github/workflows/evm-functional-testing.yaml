@@ -128,7 +128,7 @@ jobs:
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
         env:
-          MIRROR_NODE_VERSION: '0.152.0'
+          MIRROR_NODE_VERSION: '0.149.0'
           RELAY_RELEASE: '0.76.2'
           SOLO_NAMESPACE: solo-evm-e2e
           SOLO_DEPLOYMENT: solo-evm-deployment
