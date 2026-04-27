@@ -12,6 +12,12 @@ const { encodeFunctionData } = require("../hip-1340/utils/web3");
 const { randomAddress, randomStorageSlot } = require("../../utils/random");
 const { HSS_ADDRESS } = require("../../utils/constants");
 
+const storageSlot0 =
+  "0x0000000000000000000000000000000000000000000000000000000000000000";
+const storageSlot1 = "0x0000000000000000000000000000000000000000000000000000000000000001";
+const storageSlot2 =
+  "0x0000000000000000000000000000000000000000000000000000000000000002";
+
 describe("EIP-2930 AccessList testing", async () => {
   let signers, callerContract, targetContract;
 
@@ -61,6 +67,7 @@ describe("EIP-2930 AccessList testing", async () => {
           [],
         )
       ).gasUsed;
+      // +2400n for Address
       assert.equal(
         (
           await callWithRandomAccessList(
@@ -69,8 +76,9 @@ describe("EIP-2930 AccessList testing", async () => {
             [0],
           )
         ).gasUsed,
-        emptyAccessListGas + 2400n, // +2400n for Address
+        emptyAccessListGas + 2400n,
       );
+      // +2400n for Address, +1900 for Storage Slot
       assert.equal(
         (
           await callWithRandomAccessList(
@@ -79,8 +87,9 @@ describe("EIP-2930 AccessList testing", async () => {
             [1],
           )
         ).gasUsed,
-        emptyAccessListGas + 2400n + 1900n, // +2400n for Address, +1900 for Storage Slot
+        emptyAccessListGas + 2400n + 1900n,
       );
+      // +2400n x 2 for Addresses, +1900 x 5 for Storage Slots
       assert.equal(
         (
           await callWithRandomAccessList(
@@ -89,7 +98,7 @@ describe("EIP-2930 AccessList testing", async () => {
             [3, 2],
           )
         ).gasUsed,
-        emptyAccessListGas + 2400n * 2n + 1900n * 5n, // +2400n x 2 for Addresses, +1900 x 5 for Storage Slots
+        emptyAccessListGas + 2400n * 2n + 1900n * 5n,
       );
     });
 
@@ -102,6 +111,7 @@ describe("EIP-2930 AccessList testing", async () => {
           .then((tx) => tx.wait())
       ).gasUsed;
       const sameAddress = randomAddress();
+      // +2400n x 2 for Addresses
       assert.equal(
         (
           await callerContract
@@ -120,9 +130,10 @@ describe("EIP-2930 AccessList testing", async () => {
             })
             .then((tx) => tx.wait())
         ).gasUsed,
-        emptyAccessListGas + 2400n * 2n, // +2400n x 2 for Addresses
+        emptyAccessListGas + 2400n * 2n,
       );
       const sameSlot = randomStorageSlot();
+      // +2400n for Address, +1900 x 2 for Storage Slots
       assert.equal(
         (
           await callerContract
@@ -137,7 +148,7 @@ describe("EIP-2930 AccessList testing", async () => {
             })
             .then((tx) => tx.wait())
         ).gasUsed,
-        emptyAccessListGas + 2400n + 1900n * 2n, // +2400n for Address, +1900 x 2 for Storage Slots
+        emptyAccessListGas + 2400n + 1900n * 2n,
       );
     });
 
@@ -165,7 +176,7 @@ describe("EIP-2930 AccessList testing", async () => {
                 {
                   address: callerContract.target,
                   storageKeys: [
-                    "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    storageSlot0,
                   ],
                 },
               ],
@@ -184,8 +195,8 @@ describe("EIP-2930 AccessList testing", async () => {
                 {
                   address: callerContract.target,
                   storageKeys: [
-                    "0x0000000000000000000000000000000000000000000000000000000000000000",
-                    "0x0000000000000000000000000000000000000000000000000000000000000001",
+                    storageSlot0,
+                    storageSlot1,
                   ],
                 },
               ],
@@ -204,9 +215,9 @@ describe("EIP-2930 AccessList testing", async () => {
                 {
                   address: callerContract.target,
                   storageKeys: [
-                    "0x0000000000000000000000000000000000000000000000000000000000000000",
-                    "0x0000000000000000000000000000000000000000000000000000000000000001",
-                    "0x0000000000000000000000000000000000000000000000000000000000000002",
+                    storageSlot0,
+                    storageSlot1,
+                    storageSlot2,
                   ],
                 },
               ],
@@ -221,16 +232,19 @@ describe("EIP-2930 AccessList testing", async () => {
       const emptyAccessListGas = (
         await callWithAccessList(callerContract, targetContract.target, null)
       ).gasUsed;
+      // -100 for CALL
       assert.equal(
         (await callWithAccessList(callerContract, targetContract.target, []))
           .gasUsed,
-        emptyAccessListGas - 100n, // -100 for CALL
+        emptyAccessListGas - 100n,
       );
+      // -100 for CALL, -100 for SLOAD
       assert.equal(
         (await callWithAccessList(callerContract, targetContract.target, [0]))
           .gasUsed,
-        emptyAccessListGas - 200n, // -100 for CALL, -100 for SLOAD
+        emptyAccessListGas - 200n,
       );
+      // -100 for CALL, -100 x 2 for SLOAD x 2
       assert.equal(
         (
           await callWithAccessList(
@@ -239,8 +253,9 @@ describe("EIP-2930 AccessList testing", async () => {
             [0, 1],
           )
         ).gasUsed,
-        emptyAccessListGas - 300n, // -100 for CALL, -100 x 2 for SLOAD x 2
+        emptyAccessListGas - 300n,
       );
+      // -100 for CALL, -100 x 3 for SLOAD x 3, -100 for SSTORE
       assert.equal(
         (
           await callWithAccessList(
@@ -249,7 +264,7 @@ describe("EIP-2930 AccessList testing", async () => {
             [0, 1, 2],
           )
         ).gasUsed,
-        emptyAccessListGas - 500n, // // -100 for CALL, -100 x 3 for SLOAD x 3, -100 for SSTORE
+        emptyAccessListGas - 500n,
       );
     });
 
@@ -343,8 +358,8 @@ describe("EIP-2930 AccessList testing", async () => {
           {
             address: callerContract.target,
             storageKeys: [
-              "0x0000000000000000000000000000000000000000000000000000000000000000",
-              "0x0000000000000000000000000000000000000000000000000000000000000001",
+              storageSlot0,
+              storageSlot1,
             ],
           },
         ],
@@ -364,9 +379,9 @@ describe("EIP-2930 AccessList testing", async () => {
             {
               address: callerContract.target,
               storageKeys: [
-                "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "0x0000000000000000000000000000000000000000000000000000000000000001",
-                "0x0000000000000000000000000000000000000000000000000000000000000002",
+                storageSlot0,
+                storageSlot1,
+                storageSlot2,
               ],
             },
           ],
