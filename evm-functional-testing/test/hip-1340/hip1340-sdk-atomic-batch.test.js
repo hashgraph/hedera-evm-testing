@@ -20,6 +20,27 @@ const {gas, deploy, getNonces, DelegationTransactionBuilder} = require('./utils/
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
 
+/**
+ * Creates a new ECDSA-aliased Hedera account via the SDK and returns the
+ * matching ethers wallet (so callers can sign EVM txs with the same key).
+ */
+async function createEcdsaAliasedAccount(client, provider, initialBalance) {
+    const wallet = ethers.Wallet.createRandom(provider);
+    const key = PrivateKey.fromStringECDSA(wallet.privateKey);
+    const receipt = await (
+        await (
+            await new AccountCreateTransaction()
+                .setECDSAKeyWithAlias(key.publicKey)
+                .setInitialBalance(initialBalance)
+                .freezeWith(client)
+                .sign(key)
+        ).execute(client)
+    ).getReceipt(client);
+    expect(receipt.status.toString()).to.equal('SUCCESS');
+    expect(receipt.accountId).to.not.be.null;
+    return wallet;
+}
+
 describe('Atomic Batch: EIP-7702 delegation', function () {
     let client, provider, network, smartWalletAddress, sponsor, zeroBalanceAccount;
 
@@ -36,23 +57,10 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
 
         sponsor = new ethers.Wallet(hre.network.config.accounts[0], provider);
 
-        zeroBalanceAccount = ethers.Wallet.createRandom(provider);
-        const zeroBalanceAccountKey = PrivateKey.fromStringECDSA(zeroBalanceAccount.privateKey);
-        const zeroBalanceAccountReceipt = await (
-            await (
-                await new AccountCreateTransaction()
-                    .setECDSAKeyWithAlias(zeroBalanceAccountKey.publicKey)
-                    .setInitialBalance(new Hbar(0))
-                    .freezeWith(client)
-                    .sign(zeroBalanceAccountKey)
-            ).execute(client)
-        ).getReceipt(client);
-
-        expect(zeroBalanceAccountReceipt.status.toString()).to.equal('SUCCESS');
+        zeroBalanceAccount = await createEcdsaAliasedAccount(client, provider, new Hbar(0));
         const zeroBalanceAccountInfo = await new AccountInfoQuery()
             .setAccountId(AccountId.fromEvmAddress(0, 0, zeroBalanceAccount.address))
             .execute(client);
-
         expect(zeroBalanceAccountInfo.balance.toTinybars().isZero()).to.be.true;
     });
 
@@ -65,19 +73,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
         let accountA;
 
         beforeEach(async function () {
-            accountA = ethers.Wallet.createRandom(provider);
-            const accountAKey = PrivateKey.fromStringECDSA(accountA.privateKey);
-            const createReceipt = await (
-                await (
-                    await new AccountCreateTransaction()
-                        .setECDSAKeyWithAlias(accountAKey.publicKey)
-                        .setInitialBalance(new Hbar(1))
-                        .freezeWith(client)
-                        .sign(accountAKey)
-                ).execute(client)
-            ).getReceipt(client);
-            expect(createReceipt.status.toString()).to.equal('SUCCESS');
-            expect(createReceipt.accountId).to.not.be.null;
+            accountA = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
         });
 
         it('should commit delegation for pre-existing account', async function () {
@@ -147,10 +143,11 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                     .addInnerTransaction(delegationInnerTx)
                     .addInnerTransaction(transferInnerTx)
                     .execute(client)
-            ).getReceipt(client).catch(err => {
-                expect(err).to.be.instanceOf(ReceiptStatusError);
-                expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
-            });
+            ).getReceipt(client)
+                .catch(err => {
+                    expect(err).to.be.instanceOf(ReceiptStatusError);
+                    expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
+                });
 
             // Expected: delegation on A is committed
             const accountInfo = await new AccountInfoQuery()
@@ -230,19 +227,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
         let accountA;
 
         beforeEach(async function () {
-            accountA = ethers.Wallet.createRandom(provider);
-            const accountAKey = PrivateKey.fromStringECDSA(accountA.privateKey);
-            const createReceipt = await (
-                await (
-                    await new AccountCreateTransaction()
-                        .setECDSAKeyWithAlias(accountAKey.publicKey)
-                        .setInitialBalance(new Hbar(1))
-                        .freezeWith(client)
-                        .sign(accountAKey)
-                ).execute(client)
-            ).getReceipt(client);
-            expect(createReceipt.status.toString()).to.equal('SUCCESS');
-            expect(createReceipt.accountId).to.not.be.null;
+            accountA = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
         });
 
         it('should commit delegation for pre-existing account on batch failure', async function () {
@@ -275,10 +260,11 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                     .addInnerTransaction(delegationInnerTx)
                     .addInnerTransaction(transferInnerTx)
                     .execute(client)
-            ).getReceipt(client).catch(err => {
-                expect(err).to.be.instanceOf(ReceiptStatusError);
-                expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
-            });
+            ).getReceipt(client)
+                .catch(err => {
+                    expect(err).to.be.instanceOf(ReceiptStatusError);
+                    expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
+                });
 
             // Expected: delegation on A is committed
             const accountInfo = await new AccountInfoQuery()
