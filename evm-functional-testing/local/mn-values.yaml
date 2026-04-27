@@ -1,0 +1,11 @@
+web3:
+  config:
+    hiero:
+      mirror:
+        web3:
+          evm:
+            properties:
+              contracts.systemContract.hts.addresses: "359,364"
+rest:
+  env:
+    HIERO_MIRROR_REST_RESPONSE_ENABLEDELEGATIONADDRESS: "true"

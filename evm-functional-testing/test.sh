@@ -17,21 +17,18 @@ APP_PROPERTIES_PATH="local/application.properties"
 LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
 MIRROR_NODE_VERSION=0.152.0
+MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 # if images are set, we will load this images to kind cluster instead of official MN images
-MIRROR_NODE_WEB3_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
-# TODO "rest" image seems broken. It fails the tests, mb because of --pinger
-# Q to MN team:
-#  where pinger service is running?
-#  where eth_estimateGas is executed? at rest service?
-# TODO ---------------------------------------------------------------------
+#MIRROR_NODE_WEB3_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
+# with rest image override on startup, pinger is not working somehow
 #MIRROR_NODE_REST_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-rest:pectra"
-MIRROR_NODE_IMPORTER_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-importer:pectra"
+#MIRROR_NODE_IMPORTER_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-importer:pectra"
 
 ######################### Relay configs #########################
-LOCAL_RELAY_BUILD=true
-RELAY_RELEASE=0.76.0
+LOCAL_RELAY_BUILD=false
+RELAY_RELEASE=0.76.2
 RELAY_DIR="../../hiero-json-rpc-relay"
-RELAY_YAML_PATH="local/values.yaml"
+RELAY_YAML_PATH="local/relay-values.yaml"
 
 ######################### Solo configs #########################
 export SOLO_BASE_NAME=hedera
@@ -118,9 +115,9 @@ solo_start() {
     cd charts/hedera-mirror
     helm dependency build
     cd "${WORK_DIR}"
-    solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+    solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
   else
-    solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+    solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
   fi
 
   # Relay deploy
