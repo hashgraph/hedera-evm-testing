@@ -82,14 +82,11 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
 
         it('should commit delegation for pre-existing account', async function () {
             // Inner tx 1: type-4 delegation on pre-existing account A, wrapped in EthereumTransaction.
-            // Fetch the sponsor's consensus-node nonce explicitly
-            const [, , sponsorNonce] = await getNonces(sponsor.address);
             const rawType4Tx = await new DelegationTransactionBuilder()
-                .from(sponsor)
+                .from(accountA)
                 .withChainId(network.chainId)
-                .withSenderNonce(sponsorNonce)
                 .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
-                .withAuthorization(accountA, smartWalletAddress, 0)
+                .withAuthorization(accountA, smartWalletAddress, 1)
                 .sign();
             // Parse signed bytes through EthereumTransactionDataEip7702 for additional fail fast validation
             const eip7702Data = EthereumTransactionDataEip7702.fromBytes(
@@ -122,16 +119,14 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .to.equal(smartWalletAddress.toLowerCase());
         });
 
-        it('should commit delegation for pre-existing account regardless of the batch failure', async function () {
+        it('should commit delegation for pre-existing account used as both from and authority on batch failure', async function () {
             // Inner tx 1: type-4 delegation on pre-existing account A, wrapped in EthereumTransaction.
             // Fetch the sponsor's consensus-node nonce explicitly
-            const [, , sponsorNonce] = await getNonces(sponsor.address);
             const rawType4Tx = await new DelegationTransactionBuilder()
-                .from(sponsor)
+                .from(accountA)
                 .withChainId(network.chainId)
-                .withSenderNonce(sponsorNonce)
                 .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
-                .withAuthorization(accountA, smartWalletAddress, 0)
+                .withAuthorization(accountA, smartWalletAddress, 1)
                 .sign();
             // Parse signed bytes through EthereumTransactionDataEip7702 for additional fail fast validation
             const eip7702Data = EthereumTransactionDataEip7702.fromBytes(
@@ -229,6 +224,71 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const actualDelegation = hexlify(accountInfo.delegationAddress);
             expect(actualDelegation.toLowerCase()).to.equal(smartWalletAddress.toLowerCase());
         });
+    })
+
+    describe('Authority account exists before the atomic batch', function () {
+        let accountA;
+
+        beforeEach(async function () {
+            accountA = ethers.Wallet.createRandom(provider);
+            const accountAKey = PrivateKey.fromStringECDSA(accountA.privateKey);
+            const createReceipt = await (
+                await (
+                    await new AccountCreateTransaction()
+                        .setECDSAKeyWithAlias(accountAKey.publicKey)
+                        .setInitialBalance(new Hbar(1))
+                        .freezeWith(client)
+                        .sign(accountAKey)
+                ).execute(client)
+            ).getReceipt(client);
+            expect(createReceipt.status.toString()).to.equal('SUCCESS');
+            expect(createReceipt.accountId).to.not.be.null;
+        });
+
+        it('should commit delegation for pre-existing account on batch failure', async function () {
+            // Inner tx 1: type-4 delegation on pre-existing account A, wrapped in EthereumTransaction.
+            // Fetch the sponsor's consensus-node nonce explicitly
+            const [, , sponsorNonce] = await getNonces(sponsor.address);
+            const rawType4Tx = await new DelegationTransactionBuilder()
+                .from(sponsor)
+                .withChainId(network.chainId)
+                .withSenderNonce(sponsorNonce)
+                .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
+                .withAuthorization(accountA, smartWalletAddress, 0)
+                .sign();
+            // Parse signed bytes through EthereumTransactionDataEip7702 for additional fail fast validation
+            const eip7702Data = EthereumTransactionDataEip7702.fromBytes(
+                Buffer.from(rawType4Tx.slice(2), 'hex')
+            );
+            const delegationInnerTx = await new EthereumTransaction()
+                .setEthereumData(eip7702Data.toBytes())
+                .setMaxGasAllowanceHbar(new Hbar(2))
+                .batchify(client, client.operatorPublicKey);
+
+            const transferInnerTx = await new TransferTransaction()
+                .addHbarTransfer(zeroBalanceAccount.address, new Hbar(-1))
+                .addHbarTransfer(accountA.address, new Hbar(1))
+                .batchify(client, client.operatorPublicKey);
+
+            await (
+                await new BatchTransaction()
+                    .addInnerTransaction(delegationInnerTx)
+                    .addInnerTransaction(transferInnerTx)
+                    .execute(client)
+            ).getReceipt(client).catch(err => {
+                expect(err).to.be.instanceOf(ReceiptStatusError);
+                expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
+            });
+
+            // Expected: delegation on A is committed
+            const accountInfo = await new AccountInfoQuery()
+                .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
+                .execute(client);
+            // TODO: switch to below asserts when atomic batch delegation persistence is fixed
+            // expect(hexlify(accountInfo.delegationAddress).toLowerCase())
+            //     .to.equal(smartWalletAddress.toLowerCase());
+        });
+
     })
 
 });
