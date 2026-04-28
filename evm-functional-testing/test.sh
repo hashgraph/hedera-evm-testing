@@ -16,7 +16,7 @@ APP_PROPERTIES_PATH="local/application.properties"
 ######################### MN configs #########################
 LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
-MIRROR_NODE_VERSION=0.152.0
+MIRROR_NODE_VERSION=0.153.0
 MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 # if images are set, we will load this images to kind cluster instead of official MN images
 #MIRROR_NODE_WEB3_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
