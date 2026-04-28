@@ -15,7 +15,7 @@ const {
     TransferTransaction,
 } = require('@hiero-ledger/sdk');
 const {gas, deploy, getNonces, DelegationTransactionBuilder} = require('./utils/web3');
-const {createEcdsaAliasedAccount, wrapType4ForBatch, expectDelegation} = require('./utils/sdk');
+const {createEcdsaAliasedAccount, wrapType4ForBatch} = require('./utils/sdk');
 const sdk = require("@hiero-ledger/sdk");
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
@@ -193,8 +193,12 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                     expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
                 });
 
-            // TODO: assert delegation persistence with expectDelegation(client, accountA.address, smartWalletAddress)
-            // when atomic batch delegation persistence is fixed
+            // TODO: add this check atomic batch delegation persistence is fixed
+            const accountInfo = await new sdk.AccountInfoQuery()
+                .setAccountId(sdk.AccountId.fromEvmAddress(0, 0, accountA.address))
+                .execute(client);
+            expect(hexlify(accountInfo.delegationAddress).toLowerCase())
+                .to.equal(smartWalletAddress.toLowerCase());
         });
 
     })
