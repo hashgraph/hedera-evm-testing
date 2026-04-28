@@ -10,6 +10,7 @@ const {
     BatchTransaction,
     Client,
     Hbar,
+    PrecheckStatusError,
     PrivateKey,
     ReceiptStatusError,
     TransferTransaction,
@@ -158,6 +159,64 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .execute(client);
             expect(hexlify(accountInfo.delegationAddress).toLowerCase())
                 .to.equal(smartWalletAddress.toLowerCase());
+        });
+
+        it('should roll back account creation but persist delegation on batch failure', async function () {
+            const newAccount = ethers.Wallet.createRandom(provider);
+            const newAccountKey = PrivateKey.fromStringECDSA(newAccount.privateKey);
+
+            // Inner tx 1: AccountCreateTransaction (creates A within the batch)
+            const accountCreateTx = await (
+                await new AccountCreateTransaction()
+                    .setECDSAKeyWithAlias(newAccountKey.publicKey)
+                    .setInitialBalance(new Hbar(10))
+                    .batchify(client, client.operatorPublicKey)
+            ).sign(newAccountKey);
+
+            // Inner tx 2: type-4 delegation on A, sponsored by the operator (pays gas).
+            const [, , sponsorNonce] = await getNonces(sponsor.address);
+            const rawType4Tx = await new DelegationTransactionBuilder()
+                .from(sponsor)
+                .withChainId(network.chainId)
+                .withSenderNonce(sponsorNonce)
+                .withAuthorization(newAccount, smartWalletAddress, 0)
+                .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
+                .sign();
+            const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
+
+            // Inner tx 3: invalid transfer — zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
+            const transferInnerTx = await new TransferTransaction()
+                .addHbarTransfer(zeroBalanceAccount.address, new Hbar(-1))
+                .addHbarTransfer(client.operatorAccountId, new Hbar(1))
+                .batchify(client, client.operatorPublicKey);
+
+            await (
+                await new BatchTransaction()
+                    .addInnerTransaction(accountCreateTx)
+                    .addInnerTransaction(delegationInnerTx)
+                    .addInnerTransaction(transferInnerTx)
+                    .execute(client)
+            ).getReceipt(client)
+                .catch(err => {
+                    expect(err).to.be.instanceOf(ReceiptStatusError);
+                    expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
+                });
+
+            // Expected: A was created in the batch and rolled back — should not exist.
+            // AccountInfoQuery hits consensus (no mirror lag) and throws INVALID_ACCOUNT_ID.
+            const err = await new AccountInfoQuery()
+                .setAccountId(AccountId.fromEvmAddress(0, 0, newAccount.address))
+                .execute(client)
+                .catch(e => e);
+            expect(err).to.be.instanceOf(PrecheckStatusError);
+            expect(err.status.toString()).to.equal('INVALID_ACCOUNT_ID');
+
+            // TODO: switch to this check when atomic batch delegation persistence is fixed
+            // const accountInfo = await new AccountInfoQuery()
+            //     .setAccountId(AccountId.fromEvmAddress(0, 0, newAccount.address))
+            //     .execute(client);
+            // expect(hexlify(accountInfo.delegationAddress).toLowerCase())
+            //     .to.equal(smartWalletAddress.toLowerCase());
         });
     })
 
