@@ -16,7 +16,6 @@ const {
 } = require('@hiero-ledger/sdk');
 const {gas, deploy, getNonces, DelegationTransactionBuilder} = require('./utils/web3');
 const {createEcdsaAliasedAccount, wrapType4ForBatch} = require('./utils/sdk');
-const sdk = require("@hiero-ledger/sdk");
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
 
@@ -78,8 +77,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             ).getReceipt(client);
 
             expect(batchReceipt.status.toString()).to.equal('SUCCESS');
-            const accountInfo = await new sdk.AccountInfoQuery()
-                .setAccountId(sdk.AccountId.fromEvmAddress(0, 0, accountA.address))
+            const accountInfo = await new AccountInfoQuery()
+                .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
                 .execute(client);
             expect(hexlify(accountInfo.delegationAddress).toLowerCase())
                 .to.equal(smartWalletAddress.toLowerCase());
@@ -111,9 +110,9 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                     expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
                 });
 
-            // TODO: add this check atomic batch delegation persistence is fixed
-            // const accountInfo = await new sdk.AccountInfoQuery()
-            //     .setAccountId(sdk.AccountId.fromEvmAddress(0, 0, accountA.address))
+            // TODO: add this check when atomic batch delegation persistence is fixed
+            // const accountInfo = await new AccountInfoQuery()
+            //     .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
             //     .execute(client);
             // expect(hexlify(accountInfo.delegationAddress).toLowerCase())
             //     .to.equal(smartWalletAddress.toLowerCase());
@@ -154,8 +153,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             ).getReceipt(client);
 
             expect(batchReceipt.status.toString()).to.equal('SUCCESS');
-            const accountInfo = await new sdk.AccountInfoQuery()
-                .setAccountId(sdk.AccountId.fromEvmAddress(0, 0, newAccount.address))
+            const accountInfo = await new AccountInfoQuery()
+                .setAccountId(AccountId.fromEvmAddress(0, 0, newAccount.address))
                 .execute(client);
             expect(hexlify(accountInfo.delegationAddress).toLowerCase())
                 .to.equal(smartWalletAddress.toLowerCase());
@@ -197,9 +196,9 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                     expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
                 });
 
-            // TODO: add this check atomic batch delegation persistence is fixed
-            // const accountInfo = await new sdk.AccountInfoQuery()
-            //     .setAccountId(sdk.AccountId.fromEvmAddress(0, 0, accountA.address))
+            // TODO: add this check when atomic batch delegation persistence is fixed
+            // const accountInfo = await new AccountInfoQuery()
+            //     .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
             //     .execute(client);
             // expect(hexlify(accountInfo.delegationAddress).toLowerCase())
             //     .to.equal(smartWalletAddress.toLowerCase());
