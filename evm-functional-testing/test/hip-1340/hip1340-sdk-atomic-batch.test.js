@@ -8,7 +8,6 @@ const {
     AccountId,
     AccountCreateTransaction,
     BatchTransaction,
-    Client,
     Hbar,
     PrecheckStatusError,
     PrivateKey,
@@ -16,7 +15,7 @@ const {
     TransferTransaction,
 } = require('@hiero-ledger/sdk');
 const {gas, deploy, getNonces, DelegationTransactionBuilder} = require('./utils/web3');
-const {createEcdsaAliasedAccount, wrapType4ForBatch} = require('./utils/sdk');
+const {createEcdsaAliasedAccount, wrapType4ForBatch, createSdkClient} = require('./utils/sdk');
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
 
@@ -27,9 +26,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
         provider = ethers.provider;
         network = await provider.getNetwork();
 
-        const {sdkClient} = hre.network.config;
-        client = Client.forNetwork(sdkClient.networkNode)
-            .setOperator(sdkClient.operatorId, sdkClient.operatorKey);
+        client = createSdkClient();
 
         // Deploy the smart wallet contract once
         ({address: smartWalletAddress} = await deploy(SIMPLE_7702_ACCOUNT));
