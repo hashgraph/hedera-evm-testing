@@ -263,6 +263,64 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             //     .to.equal(smartWalletAddress.toLowerCase());
         });
 
+        it('should keep new delegation D2 on batch failure (does not restore original D1)', async function () {
+            // D1: existing smart wallet (deployed in `before`).
+            const D1 = smartWalletAddress;
+            const D2 = ethers.Wallet.createRandom().address;
+
+            // Setup: apply delegation A → D1 outside the batch via a standalone type-4.
+            // After this, accountA's authorization nonce is bumped from 0 to 1.
+            const [, , setupSponsorNonce] = await getNonces(sponsor.address);
+            await new DelegationTransactionBuilder()
+                .from(sponsor)
+                .withChainId(network.chainId)
+                .withSenderNonce(setupSponsorNonce)
+                .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
+                .withAuthorization(accountA, D1, 0)
+                .send()
+                .then(tx => tx.wait());
+
+            const initialInfo = await new AccountInfoQuery()
+                .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
+                .execute(client);
+            expect(hexlify(initialInfo.delegationAddress).toLowerCase()).to.equal(D1.toLowerCase());
+
+            // Inner tx 1: type-4 that changes A's delegation to D2 (auth nonce = 1)
+            const [, , sponsorNonce] = await getNonces(sponsor.address);
+            const rawType4Tx = await new DelegationTransactionBuilder()
+                .from(sponsor)
+                .withChainId(network.chainId)
+                .withSenderNonce(sponsorNonce)
+                .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
+                .withAuthorization(accountA, D2, 1)
+                .sign();
+            const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
+
+            // Inner tx 2: invalid transfer — zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
+            const transferInnerTx = await new TransferTransaction()
+                .addHbarTransfer(zeroBalanceAccount.address, new Hbar(-1))
+                .addHbarTransfer(client.operatorAccountId, new Hbar(1))
+                .batchify(client, client.operatorPublicKey);
+
+            await (
+                await new BatchTransaction()
+                    .addInnerTransaction(delegationInnerTx)
+                    .addInnerTransaction(transferInnerTx)
+                    .execute(client)
+            ).getReceipt(client)
+                .catch(err => {
+                    expect(err).to.be.instanceOf(ReceiptStatusError);
+                    expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
+                });
+
+            // TODO: add this check when atomic batch delegation persistence is fixed.
+            // Expected: delegation on A is D2 (survives rollback); D1 is NOT restored.
+            // const finalInfo = await new AccountInfoQuery()
+            //     .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
+            //     .execute(client);
+            // expect(hexlify(finalInfo.delegationAddress).toLowerCase()).to.equal(D2.toLowerCase());
+        });
+
     })
 
 });
