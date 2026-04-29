@@ -15,7 +15,7 @@ const {
 } = require('@hiero-ledger/sdk');
 const {gas, deploy, getNonces, DelegationTransactionBuilder} = require('./utils/web3');
 const {createEcdsaAliasedAccount, wrapType4ForBatch, createSdkClient, executeBatchTransaction, verifyDelegationWithSDK,
-    createAccount
+    createAccountWithBalance, createBatchifiedTransfer
 } = require('./utils/sdk');
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
@@ -34,10 +34,11 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
 
         sponsor = new ethers.Wallet(hre.network.config.accounts[0], provider);
 
-        zeroBalanceAccount = await createEcdsaAliasedAccount(client, provider, new Hbar(0));
+        const zeroBalanceAccountPrivateKey = PrivateKey.generateECDSA();
+        zeroBalanceAccount = await createAccountWithBalance(zeroBalanceAccountPrivateKey, client, new Hbar(0));
 
         const zeroBalanceAccountInfo = await new AccountInfoQuery()
-            .setAccountId(AccountId.fromEvmAddress(0, 0, zeroBalanceAccount.address))
+            .setAccountId(zeroBalanceAccount.accountId)
             .execute(client);
         expect(zeroBalanceAccountInfo.balance.toTinybars().isZero()).to.be.true;
     });
@@ -92,7 +93,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
 
             // Transfer is invalid: zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
             const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(zeroBalanceAccount.address, new Hbar(-1))
+                .addHbarTransfer(zeroBalanceAccount.accountId, new Hbar(-1))
                 .addHbarTransfer(accountA.address, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 
@@ -172,7 +173,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
 
             // Inner tx 3: invalid transfer — zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
             const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(zeroBalanceAccount.address, new Hbar(-1))
+                .addHbarTransfer(zeroBalanceAccount.accountId, new Hbar(-1))
                 .addHbarTransfer(client.operatorAccountId, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 
@@ -220,7 +221,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
 
             // Transfer is invalid: zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
             const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(zeroBalanceAccount.address, new Hbar(-1))
+                .addHbarTransfer(zeroBalanceAccount.accountId, new Hbar(-1))
                 .addHbarTransfer(accountA.address, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 
@@ -272,7 +273,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
 
             // Inner tx 2: invalid transfer — zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
             const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(zeroBalanceAccount.address, new Hbar(-1))
+                .addHbarTransfer(zeroBalanceAccount.accountId, new Hbar(-1))
                 .addHbarTransfer(client.operatorAccountId, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 
@@ -330,7 +331,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
 
             // Inner tx 2: invalid transfer — zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
             const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(zeroBalanceAccount.address, new Hbar(-1))
+                .addHbarTransfer(zeroBalanceAccount.accountId, new Hbar(-1))
                 .addHbarTransfer(client.operatorAccountId, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 

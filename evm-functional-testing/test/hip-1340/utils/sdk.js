@@ -19,7 +19,7 @@ const {
     Transaction,
     TransactionRecordQuery,
     TransactionResponse,
-    EthereumTransactionDataEip7702,
+    EthereumTransactionDataEip7702, TransferTransaction,
 } = require('@hiero-ledger/sdk');
 
 const hre = require('hardhat');
@@ -116,9 +116,21 @@ async function createAccountWithDelegation(privateKey, delegationAddress, client
 async function createAccount(privateKey, client) {
     log('Creating account without delegation');
 
+    return createAccountWithBalance(privateKey, client, new Hbar(10));
+}
+
+/**
+ * Creates a new account without delegation via AccountCreateTransaction
+ *
+ * @param {PrivateKey} privateKey - The private key for the new account
+ * @param {Client} client - SDK client
+ * @param {Hbar} initialBalance - Initial balance in Hbar
+ * @returns {Promise<{accountId: AccountId, privateKey: PrivateKey}>}
+ */
+async function createAccountWithBalance(privateKey, client, initialBalance) {
     const tx = new AccountCreateTransaction()
         .setKeyWithoutAlias(privateKey.publicKey)
-        .setInitialBalance(new Hbar(10));
+        .setInitialBalance(initialBalance);
 
     const response = await tx.execute(client);
     const receipt = await response.getReceipt(client);
@@ -356,6 +368,20 @@ async function wrapType4ForBatch(rawType4Tx, client) {
         .batchify(client, client.operatorPublicKey);
 }
 
+/**
+ * Helper to create a simple transfer transaction between two accounts, already batchified under the operator key.
+ * @param {} client
+ * @param fromAccountId
+ * @param toAccountId
+ * @returns {Promise<TransferTransaction>}
+ */
+async function createBatchifiedTransfer(client, fromAccountId, toAccountId) {
+    return await new TransferTransaction()
+        .addHbarTransfer(fromAccountId, new Hbar(-1))
+        .addHbarTransfer(toAccountId, new Hbar(1))
+        .batchify(client, client.operatorPublicKey);
+}
+
 module.exports = {
     // Existing exports
     getAccountInfo,
@@ -365,7 +391,9 @@ module.exports = {
     // Delegation exports
     createSdkClient,
     createAccount,
+    createAccountWithBalance,
     createAccountWithDelegation,
+    createBatchifiedTransfer,
     createEcdsaAliasedAccount,
     updateAccountDelegation,
     updateAccountWithoutDelegation,
