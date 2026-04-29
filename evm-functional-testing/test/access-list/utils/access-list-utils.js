@@ -38,9 +38,8 @@ async function callWithAccessList(
   const storageKeys = [];
   if (numericStorageKeys) {
     for (numericKey of numericStorageKeys) {
-      storageKeys.push(
-        SLOT_MASK.slice(0, -numericKey.toString().length) + numericKey,
-      );
+      const hexKey = numericKey.toString(16);
+      storageKeys.push(SLOT_MASK.slice(0, -hexKey.length) + hexKey);
     }
     accessList.push({
       address: targetContractAddress,
