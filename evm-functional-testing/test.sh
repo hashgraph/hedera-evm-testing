@@ -16,7 +16,7 @@ APP_PROPERTIES_PATH="local/application.properties"
 ######################### MN configs #########################
 LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
-MIRROR_NODE_VERSION=0.149.0
+MIRROR_NODE_VERSION=0.153.0
 MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 # if images are set, we will load this images to kind cluster instead of official MN images
 #MIRROR_NODE_WEB3_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
@@ -131,7 +131,7 @@ solo_start() {
     # helm dependency build
     # --relay-chart-dir "${RELAY_DIR}/charts"
     cd "${WORK_DIR}"
-    solo relay node add --relay-release "${RELAY_RELEASE}-local"  --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+    solo relay node add --relay-release "${RELAY_RELEASE}-local" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   else
     solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   fi
