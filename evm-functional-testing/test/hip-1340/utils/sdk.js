@@ -1,15 +1,34 @@
 const log = require('node:util').debuglog('hip-1340:sdk');
 
-const sdk = require('@hiero-ledger/sdk');
+const {
+    AccountCreateTransaction,
+    AccountId,
+    AccountInfo,
+    AccountInfoQuery,
+    AccountRecordsQuery,
+    AccountUpdateTransaction,
+    BatchTransaction,
+    Client,
+    ContractByteCodeQuery,
+    ContractExecuteTransaction,
+    ContractId,
+    EvmAddress,
+    Hbar,
+    PrivateKey,
+    Transaction,
+    TransactionRecordQuery,
+    TransactionResponse,
+} = require('@hiero-ledger/sdk');
 
 const hre = require('hardhat');
+const { hexlify } = require('ethers');
 
 /**
  * @param {string} accountId
  */
 async function getAccountInfo(accountId) {
     log('Fetching account info for account id `%s`', accountId);
-    return runQuery(new sdk.AccountInfoQuery({ accountId }));
+    return runQuery(new AccountInfoQuery({ accountId }));
 }
 
 /**
@@ -17,7 +36,7 @@ async function getAccountInfo(accountId) {
  */
 async function getContractByteCode(contractId) {
     log('Fetching contract bytecode for contract id `%s`', contractId);
-    return runQuery(new sdk.ContractByteCodeQuery({ contractId }));
+    return runQuery(new ContractByteCodeQuery({ contractId }));
 }
 
 /**
@@ -25,7 +44,7 @@ async function getContractByteCode(contractId) {
  * @returns
  */
 function getTransactionRecord(transactionId) {
-    return runQuery(new sdk.TransactionRecordQuery({ transactionId, includeChildren: true }));
+    return runQuery(new TransactionRecordQuery({ transactionId, includeChildren: true }));
 }
 
 /**
@@ -33,12 +52,12 @@ function getTransactionRecord(transactionId) {
  * @returns
  */
 function getAccountRecords(accountId) {
-    return runQuery(new sdk.AccountRecordsQuery({ accountId }));
+    return runQuery(new AccountRecordsQuery({ accountId }));
 }
 
 async function runQuery(query) {
     const { networkNode, operatorId, operatorKey } = hre.network.config.sdkClient;
-    const client = sdk.Client.forNetwork(networkNode)
+    const client = Client.forNetwork(networkNode)
         .setOperator(operatorId, operatorKey);
     const result = await query.execute(client);
     client.close();
@@ -51,31 +70,31 @@ async function runQuery(query) {
 
 /**
  * Creates an SDK client with optional custom operator
- * @param {sdk.AccountId} [operatorId]
- * @param {sdk.PrivateKey} [operatorKey]
- * @returns {sdk.Client}
+ * @param {AccountId} [operatorId]
+ * @param {PrivateKey} [operatorKey]
+ * @returns {Client}
  */
 function createSdkClient(operatorId, operatorKey) {
     const { networkNode, operatorId: defaultId, operatorKey: defaultKey } = hre.network.config.sdkClient;
-    return sdk.Client.forNetwork(networkNode)
+    return Client.forNetwork(networkNode)
         .setOperator(operatorId || defaultId, operatorKey || defaultKey);
 }
 
 /**
  * Creates a new account with delegation set via AccountCreateTransaction
  *
- * @param {sdk.PrivateKey} privateKey - The private key for the new account
+ * @param {PrivateKey} privateKey - The private key for the new account
  * @param {string} delegationAddress - EVM address to delegate to (e.g., "0x...")
- * @param {sdk.Client} client - SDK client
- * @returns {Promise<{accountId: sdk.AccountId, privateKey: sdk.PrivateKey}>}
+ * @param {Client} client - SDK client
+ * @returns {Promise<{accountId: AccountId, privateKey: PrivateKey}>}
  */
 async function createAccountWithDelegation(privateKey, delegationAddress, client) {
     log('Creating account with delegation to `%s`', delegationAddress);
 
-    const tx = new sdk.AccountCreateTransaction()
+    const tx = new AccountCreateTransaction()
         .setKeyWithoutAlias(privateKey.publicKey)
-        .setInitialBalance(sdk.Hbar.fromTinybars(10_000_000_000n))
-        .setDelegationAddress(sdk.EvmAddress.fromString(delegationAddress));
+        .setInitialBalance(new Hbar(10))
+        .setDelegationAddress(EvmAddress.fromString(delegationAddress));
 
     const response = await tx.execute(client);
     const receipt = await response.getReceipt(client);
@@ -87,16 +106,16 @@ async function createAccountWithDelegation(privateKey, delegationAddress, client
 /**
  * Creates a new account without delegation via AccountCreateTransaction
  *
- * @param {sdk.PrivateKey} privateKey - The private key for the new account
- * @param {sdk.Client} client - SDK client
- * @returns {Promise<{accountId: sdk.AccountId, privateKey: sdk.PrivateKey}>}
+ * @param {PrivateKey} privateKey - The private key for the new account
+ * @param {Client} client - SDK client
+ * @returns {Promise<{accountId: AccountId, privateKey: PrivateKey}>}
  */
 async function createAccount(privateKey, client) {
     log('Creating account without delegation');
 
-    const tx = new sdk.AccountCreateTransaction()
+    const tx = new AccountCreateTransaction()
         .setKeyWithoutAlias(privateKey.publicKey)
-        .setInitialBalance(sdk.Hbar.fromTinybars(10_000_000_000n));
+        .setInitialBalance(new Hbar(10));
 
     const response = await tx.execute(client);
     const receipt = await response.getReceipt(client);
@@ -108,17 +127,17 @@ async function createAccount(privateKey, client) {
 /**
  * Updates an existing account to set delegation via AccountUpdateTransaction
  *
- * @param {sdk.AccountId} accountId - The account to update
- * @param {sdk.PrivateKey} privateKey - The account's private key
+ * @param {AccountId} accountId - The account to update
+ * @param {PrivateKey} privateKey - The account's private key
  * @param {string} delegationAddress - EVM address to delegate to
- * @param {sdk.Client} client - SDK client
+ * @param {Client} client - SDK client
  */
 async function updateAccountDelegation(accountId, privateKey, delegationAddress, client) {
     log('Updating account `%s` delegation to `%s`', accountId.toString(), delegationAddress);
 
-    const tx = new sdk.AccountUpdateTransaction()
+    const tx = new AccountUpdateTransaction()
         .setAccountId(accountId)
-        .setDelegationAddress(sdk.EvmAddress.fromString(delegationAddress))
+        .setDelegationAddress(EvmAddress.fromString(delegationAddress))
         .freezeWith(client);
 
     const signedTx = await tx.sign(privateKey);
@@ -131,15 +150,15 @@ async function updateAccountDelegation(accountId, privateKey, delegationAddress,
 /**
  * Updates an existing account without modifying delegation (e.g., update memo)
  *
- * @param {sdk.AccountId} accountId - The account to update
- * @param {sdk.PrivateKey} privateKey - The account's private key
+ * @param {AccountId} accountId - The account to update
+ * @param {PrivateKey} privateKey - The account's private key
  * @param {string} memo - New memo for the account
- * @param {sdk.Client} client - SDK client
+ * @param {Client} client - SDK client
  */
 async function updateAccountWithoutDelegation(accountId, privateKey, memo, client) {
     log('Updating account `%s` memo without touching delegation', accountId.toString());
 
-    const tx = new sdk.AccountUpdateTransaction()
+    const tx = new AccountUpdateTransaction()
         .setAccountId(accountId)
         .setAccountMemo(memo)
         .freezeWith(client);
@@ -154,17 +173,17 @@ async function updateAccountWithoutDelegation(accountId, privateKey, memo, clien
 /**
  * Clears delegation by setting it to zero address via AccountUpdateTransaction
  *
- * @param {sdk.AccountId} accountId - The account to update
- * @param {sdk.PrivateKey} privateKey - The account's private key
- * @param {sdk.Client} client - SDK client
+ * @param {AccountId} accountId - The account to update
+ * @param {PrivateKey} privateKey - The account's private key
+ * @param {Client} client - SDK client
  */
 async function clearAccountDelegation(accountId, privateKey, client) {
     const zeroAddress = '0x0000000000000000000000000000000000000000';
     log('Clearing account `%s` delegation (setting to zero address)', accountId.toString());
 
-    const tx = new sdk.AccountUpdateTransaction()
+    const tx = new AccountUpdateTransaction()
         .setAccountId(accountId)
-        .setDelegationAddress(sdk.EvmAddress.fromString(zeroAddress))
+        .setDelegationAddress(EvmAddress.fromString(zeroAddress))
         .freezeWith(client);
 
     const signedTx = await tx.sign(privateKey);
@@ -177,18 +196,16 @@ async function clearAccountDelegation(accountId, privateKey, client) {
 /**
  * Gets delegation address from account info
  *
- * @param {sdk.AccountId} accountId - The account to query
- * @param {sdk.Client} client - SDK client
+ * @param {AccountId} accountId - The account to query
+ * @param {Client} client - SDK client
  * @returns {Promise<string|null>} - Delegation address or null if none
  */
 async function getDelegationAddress(accountId, client) {
-    const accountInfo = await new sdk.AccountInfoQuery()
+    const accountInfo = await new AccountInfoQuery()
         .setAccountId(accountId)
         .execute(client);
 
-    const delegationAddressHex = accountInfo.delegationAddress && accountInfo.delegationAddress.length > 0
-        ? '0x' + Buffer.from(accountInfo.delegationAddress).toString('hex')
-        : null;
+    const delegationAddressHex = hexlify(accountInfo.delegationAddress);
 
     log('Account `%s` has delegation address: %s', accountId.toString(), delegationAddressHex);
     return delegationAddressHex;
@@ -200,15 +217,15 @@ async function getDelegationAddress(accountId, client) {
  * @param {string} eoaEvmAddress - The EVM address of the delegated EOA
  * @param {Uint8Array} functionParameters - The encoded function call data
  * @param {number} gas - Gas limit for the call
- * @param {sdk.Client} client - SDK client
- * @returns {Promise<sdk.TransactionResponse>}
+ * @param {Client} client - SDK client
+ * @returns {Promise<TransactionResponse>}
  */
 async function contractCallToDelegatedEOA(eoaEvmAddress, functionParameters, gas, client) {
     log('ContractCall to delegated EOA `%s` with gas %d', eoaEvmAddress, gas);
 
-    const contractId = sdk.ContractId.fromEvmAddress(0, 0, eoaEvmAddress);
+    const contractId = ContractId.fromEvmAddress(0, 0, eoaEvmAddress);
 
-    const tx = new sdk.ContractExecuteTransaction()
+    const tx = new ContractExecuteTransaction()
         .setContractId(contractId)
         .setGas(gas)
         .setFunctionParameters(functionParameters);
@@ -222,28 +239,26 @@ async function contractCallToDelegatedEOA(eoaEvmAddress, functionParameters, gas
 /**
  * Verifies delegation setup using AccountInfoQuery and ContractByteCodeQuery
  *
- * @param {sdk.AccountId} accountId - The account to verify
+ * @param {AccountId} accountId - The account to verify
  * @param {string} expectedDelegationAddress - Expected delegation EVM address
- * @param {sdk.Client} client - SDK client
- * @returns {Promise<{accountInfo: sdk.AccountInfo, bytecode: Uint8Array, delegationAddress: string|null, isValid: boolean}>}
+ * @param {Client} client - SDK client
+ * @returns {Promise<{accountInfo: AccountInfo, bytecode: Uint8Array, delegationAddress: string|null, isValid: boolean}>}
  */
 async function verifyDelegationWithSDK(accountId, expectedDelegationAddress, client) {
     log('Verifying delegation for account `%s`, expecting `%s`', accountId.toString(), expectedDelegationAddress);
 
-    const accountInfo = await new sdk.AccountInfoQuery()
+    const accountInfo = await new AccountInfoQuery()
         .setAccountId(accountId)
         .execute(client);
 
-    const bytecode = await new sdk.ContractByteCodeQuery()
-        .setContractId(sdk.ContractId.fromString(accountId.toString()))
+    const bytecode = await new ContractByteCodeQuery()
+        .setContractId(ContractId.fromString(accountId.toString()))
         .execute(client);
 
     const expectedIndicator = `ef0100${expectedDelegationAddress.slice(2).toLowerCase()}`;
     const actualBytecode = Buffer.from(bytecode).toString('hex');
 
-    const delegationAddressHex = accountInfo.delegationAddress
-        ? '0x' + Buffer.from(accountInfo.delegationAddress).toString('hex')
-        : null;
+    const delegationAddressHex = hexlify(accountInfo.delegationAddress);
 
     const isValid =
         delegationAddressHex?.toLowerCase() === expectedDelegationAddress.toLowerCase() &&
@@ -266,15 +281,15 @@ async function verifyDelegationWithSDK(accountId, expectedDelegationAddress, cli
 /**
  * Executes a BatchTransaction with multiple inner transactions
  *
- * @param {sdk.Transaction[]} transactions - Array of frozen transactions with batchKey set
- * @param {sdk.PrivateKey} batchKey - The batch key to sign with
- * @param {sdk.Client} client - SDK client
- * @returns {Promise<sdk.TransactionResponse>}
+ * @param {Transaction[]} transactions - Array of frozen transactions with batchKey set
+ * @param {PrivateKey} batchKey - The batch key to sign with
+ * @param {Client} client - SDK client
+ * @returns {Promise<TransactionResponse>}
  */
 async function executeBatchTransaction(transactions, batchKey, client) {
     log('Executing batch transaction with %d inner transactions', transactions.length);
 
-    const batchTx = new sdk.BatchTransaction();
+    const batchTx = new BatchTransaction();
 
     for (const tx of transactions) {
         batchTx.addInnerTransaction(tx);

@@ -287,7 +287,7 @@ describe('HIP-1340 - SDK Native Flow', function () {
                         delegatedAccount.accountId,
                         sdkClient
                     );
-                    expect(delegationAddress).to.be.null;
+                    expect(delegationAddress).to.be.eq("0x");
                 });
             }
         });
@@ -304,7 +304,7 @@ describe('HIP-1340 - SDK Native Flow', function () {
             const { accountId } = await createAccount(privateKey, sdkClient);
 
             const delegationAddress = await getDelegationAddress(accountId, sdkClient);
-            expect(delegationAddress).to.be.null;
+            expect(delegationAddress).to.be.eq("0x");
         });
 
         it('should create account without delegation when delegation is zero address', async function () {
@@ -321,7 +321,7 @@ describe('HIP-1340 - SDK Native Flow', function () {
             const accountId = receipt.accountId;
 
             const delegationAddress = await getDelegationAddress(accountId, sdkClient);
-            expect(delegationAddress).to.be.null;
+            expect(delegationAddress).to.be.eq("0x");
         });
     });
 
@@ -373,6 +373,8 @@ describe('HIP-1340 - SDK Native Flow', function () {
                 );
             } catch (err) {
                 // Expected: batch may fail due to reverting call
+                expect(err).to.exist;
+                expect(err.code).to.equal('INNER_TRANSACTION_FAILED');
             }
 
             const verification = await verifyDelegationWithSDK(
