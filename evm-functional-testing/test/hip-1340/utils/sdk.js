@@ -294,6 +294,22 @@ async function verifyDelegationWithSDK(accountId, expectedDelegationAddress, cli
 }
 
 /**
+ * Verifies delegation setup using AccountInfoQuery and ContractByteCodeQuery
+ *
+ * @param {string} address - The account to verify
+ * @param {string} expectedDelegationAddress - Expected delegation EVM address
+ * @param {Client} client - SDK client
+ * @returns {Promise<{accountInfo: AccountInfo, bytecode: Uint8Array, delegationAddress: string|null, isValid: boolean}>}
+ */
+async function verifyDelegationWithSdkByAddress(address, expectedDelegationAddress, client) {
+    return verifyDelegationWithSDK(
+        AccountId.fromEvmAddress(0, 0, address),
+        expectedDelegationAddress,
+        client
+    );
+}
+
+/**
  * Executes a BatchTransaction with multiple inner transactions.
  *
  * If `batchKey` is omitted, relies on `.execute(client)` auto-signing with the
@@ -401,6 +417,7 @@ module.exports = {
     getDelegationAddress,
     contractCallToDelegatedEOA,
     verifyDelegationWithSDK,
+    verifyDelegationWithSdkByAddress,
     executeBatchTransaction,
     wrapType4ForBatch
 };

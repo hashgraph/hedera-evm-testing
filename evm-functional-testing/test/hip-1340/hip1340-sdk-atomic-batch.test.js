@@ -11,11 +11,16 @@ const {
     PrecheckStatusError,
     PrivateKey,
     ReceiptStatusError,
-    TransferTransaction,
 } = require('@hiero-ledger/sdk');
 const {gas, deploy, getNonces, DelegationTransactionBuilder} = require('./utils/web3');
-const {createEcdsaAliasedAccount, wrapType4ForBatch, createSdkClient, executeBatchTransaction, verifyDelegationWithSDK,
-    createAccountWithBalance, createBatchifiedTransfer
+const {
+    createEcdsaAliasedAccount,
+    createSdkClient,
+    executeBatchTransaction,
+    createAccountWithBalance,
+    createBatchifiedTransfer,
+    verifyDelegationWithSdkByAddress,
+    wrapType4ForBatch,
 } = require('./utils/sdk');
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
@@ -62,24 +67,19 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
                 .withAuthorization(accountA, smartWalletAddress, 1)
                 .sign();
+
             const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
+            const transferInnerTx = await createBatchifiedTransfer(client, client.operatorAccountId, accountA.address);
 
-            const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(client.operatorAccountId, new Hbar(-1))
-                .addHbarTransfer(accountA.address, new Hbar(1))
-                .batchify(client, client.operatorPublicKey);
-
-            const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
+            const response = await executeBatchTransaction(
+                [delegationInnerTx, transferInnerTx],
+                client);
             const receipt = await response.getReceipt(client);
 
             expect(receipt.status.toString()).to.equal('SUCCESS');
-            // const verification = await verifyDelegationWithSDK(accountA.accountId, smartWalletAddress, client);
-            // expect(verification.isValid).to.be.true;
-            const accountInfo = await new AccountInfoQuery()
-                .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
-                .execute(client);
-            expect(hexlify(accountInfo.delegationAddress).toLowerCase())
-                .to.equal(smartWalletAddress.toLowerCase());
+
+            const verification = await verifyDelegationWithSdkByAddress(accountA.address, smartWalletAddress, client);
+            expect(verification.isValid).to.be.true;
         });
 
         it('should commit delegation for pre-existing account used as both from and authority on batch failure', async function () {
@@ -92,10 +92,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
             // Transfer is invalid: zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
-            const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(zeroBalanceAccount.accountId, new Hbar(-1))
-                .addHbarTransfer(accountA.address, new Hbar(1))
-                .batchify(client, client.operatorPublicKey);
+            const transferInnerTx = await createBatchifiedTransfer(client, zeroBalanceAccount.accountId, accountA.address);
 
             const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
             const err = await response.getReceipt(client).catch(e => e);
@@ -172,10 +169,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
             // Inner tx 3: invalid transfer — zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
-            const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(zeroBalanceAccount.accountId, new Hbar(-1))
-                .addHbarTransfer(client.operatorAccountId, new Hbar(1))
-                .batchify(client, client.operatorPublicKey);
+            const transferInnerTx = await createBatchifiedTransfer(client, zeroBalanceAccount.accountId, client.operatorAccountId);
 
             const response = await executeBatchTransaction(
                 [accountCreateTx, delegationInnerTx, transferInnerTx], client);
@@ -220,10 +214,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
             // Transfer is invalid: zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
-            const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(zeroBalanceAccount.accountId, new Hbar(-1))
-                .addHbarTransfer(accountA.address, new Hbar(1))
-                .batchify(client, client.operatorPublicKey);
+            const transferInnerTx = await createBatchifiedTransfer(client, zeroBalanceAccount.accountId, accountA.address);
 
             const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
             const err = await response.getReceipt(client).catch(e => e);
@@ -272,10 +263,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
             // Inner tx 2: invalid transfer — zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
-            const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(zeroBalanceAccount.accountId, new Hbar(-1))
-                .addHbarTransfer(client.operatorAccountId, new Hbar(1))
-                .batchify(client, client.operatorPublicKey);
+            const transferInnerTx = await createBatchifiedTransfer(client, zeroBalanceAccount.accountId, client.operatorAccountId);
 
             const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
             const err = await response.getReceipt(client).catch(e => e);
@@ -330,10 +318,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
             // Inner tx 2: invalid transfer — zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
-            const transferInnerTx = await new TransferTransaction()
-                .addHbarTransfer(zeroBalanceAccount.accountId, new Hbar(-1))
-                .addHbarTransfer(client.operatorAccountId, new Hbar(1))
-                .batchify(client, client.operatorPublicKey);
+            const transferInnerTx = await createBatchifiedTransfer(client, zeroBalanceAccount.accountId, client.operatorAccountId);
 
             const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
             const err = await response.getReceipt(client).catch(e => e);
