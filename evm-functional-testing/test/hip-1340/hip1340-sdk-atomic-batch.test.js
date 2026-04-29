@@ -7,7 +7,6 @@ const {
     AccountInfoQuery,
     AccountId,
     AccountCreateTransaction,
-    BatchTransaction,
     Hbar,
     PrecheckStatusError,
     PrivateKey,
@@ -15,7 +14,9 @@ const {
     TransferTransaction,
 } = require('@hiero-ledger/sdk');
 const {gas, deploy, getNonces, DelegationTransactionBuilder} = require('./utils/web3');
-const {createEcdsaAliasedAccount, wrapType4ForBatch, createSdkClient} = require('./utils/sdk');
+const {createEcdsaAliasedAccount, wrapType4ForBatch, createSdkClient, executeBatchTransaction, verifyDelegationWithSDK,
+    createAccount
+} = require('./utils/sdk');
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
 
@@ -67,14 +68,12 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .addHbarTransfer(accountA.address, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 
-            const batchReceipt = await (
-                await new BatchTransaction()
-                    .addInnerTransaction(delegationInnerTx)
-                    .addInnerTransaction(transferInnerTx)
-                    .execute(client)
-            ).getReceipt(client);
+            const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
+            const receipt = await response.getReceipt(client);
 
-            expect(batchReceipt.status.toString()).to.equal('SUCCESS');
+            expect(receipt.status.toString()).to.equal('SUCCESS');
+            // const verification = await verifyDelegationWithSDK(accountA.accountId, smartWalletAddress, client);
+            // expect(verification.isValid).to.be.true;
             const accountInfo = await new AccountInfoQuery()
                 .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
                 .execute(client);
@@ -97,16 +96,10 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .addHbarTransfer(accountA.address, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 
-            await (
-                await new BatchTransaction()
-                    .addInnerTransaction(delegationInnerTx)
-                    .addInnerTransaction(transferInnerTx)
-                    .execute(client)
-            ).getReceipt(client)
-                .catch(err => {
-                    expect(err).to.be.instanceOf(ReceiptStatusError);
-                    expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
-                });
+            const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
+            const err = await response.getReceipt(client).catch(e => e);
+            expect(err).to.be.instanceOf(ReceiptStatusError);
+            expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
 
             // TODO: add this check when atomic batch delegation persistence is fixed
             // const accountInfo = await new AccountInfoQuery()
@@ -143,14 +136,10 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .sign();
             const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
-            const batchReceipt = await (
-                await new BatchTransaction()
-                    .addInnerTransaction(accountCreateTx)
-                    .addInnerTransaction(delegationInnerTx)
-                    .execute(client)
-            ).getReceipt(client);
+            const response = await executeBatchTransaction([accountCreateTx, delegationInnerTx], client);
+            const receipt = await response.getReceipt(client);
 
-            expect(batchReceipt.status.toString()).to.equal('SUCCESS');
+            expect(receipt.status.toString()).to.equal('SUCCESS');
             const accountInfo = await new AccountInfoQuery()
                 .setAccountId(AccountId.fromEvmAddress(0, 0, newAccount.address))
                 .execute(client);
@@ -187,17 +176,11 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .addHbarTransfer(client.operatorAccountId, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 
-            await (
-                await new BatchTransaction()
-                    .addInnerTransaction(accountCreateTx)
-                    .addInnerTransaction(delegationInnerTx)
-                    .addInnerTransaction(transferInnerTx)
-                    .execute(client)
-            ).getReceipt(client)
-                .catch(err => {
-                    expect(err).to.be.instanceOf(ReceiptStatusError);
-                    expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
-                });
+            const response = await executeBatchTransaction(
+                [accountCreateTx, delegationInnerTx, transferInnerTx], client);
+            const batchErr = await response.getReceipt(client).catch(e => e);
+            expect(batchErr).to.be.instanceOf(ReceiptStatusError);
+            expect(batchErr.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
 
             // Expected: A was created in the batch and rolled back — should not exist.
             // AccountInfoQuery hits consensus (no mirror lag) and throws INVALID_ACCOUNT_ID.
@@ -241,16 +224,10 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .addHbarTransfer(accountA.address, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 
-            await (
-                await new BatchTransaction()
-                    .addInnerTransaction(delegationInnerTx)
-                    .addInnerTransaction(transferInnerTx)
-                    .execute(client)
-            ).getReceipt(client)
-                .catch(err => {
-                    expect(err).to.be.instanceOf(ReceiptStatusError);
-                    expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
-                });
+            const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
+            const err = await response.getReceipt(client).catch(e => e);
+            expect(err).to.be.instanceOf(ReceiptStatusError);
+            expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
 
             // TODO: add this check when atomic batch delegation persistence is fixed
             // const accountInfo = await new AccountInfoQuery()
@@ -299,16 +276,10 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .addHbarTransfer(client.operatorAccountId, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 
-            await (
-                await new BatchTransaction()
-                    .addInnerTransaction(delegationInnerTx)
-                    .addInnerTransaction(transferInnerTx)
-                    .execute(client)
-            ).getReceipt(client)
-                .catch(err => {
-                    expect(err).to.be.instanceOf(ReceiptStatusError);
-                    expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
-                });
+            const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
+            const err = await response.getReceipt(client).catch(e => e);
+            expect(err).to.be.instanceOf(ReceiptStatusError);
+            expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
 
             // TODO: add this check when atomic batch delegation persistence is fixed.
             // Expected: delegation on A is D2 (survives rollback); D1 is NOT restored.
@@ -363,16 +334,10 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .addHbarTransfer(client.operatorAccountId, new Hbar(1))
                 .batchify(client, client.operatorPublicKey);
 
-            await (
-                await new BatchTransaction()
-                    .addInnerTransaction(delegationInnerTx)
-                    .addInnerTransaction(transferInnerTx)
-                    .execute(client)
-            ).getReceipt(client)
-                .catch(err => {
-                    expect(err).to.be.instanceOf(ReceiptStatusError);
-                    expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
-                });
+            const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
+            const err = await response.getReceipt(client).catch(e => e);
+            expect(err).to.be.instanceOf(ReceiptStatusError);
+            expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
 
             // TODO: add this check when atomic batch delegation persistence is fixed.
             // Expected: delegation cleared (clearing survives rollback).

@@ -264,26 +264,32 @@ async function verifyDelegationWithSDK(accountId, expectedDelegationAddress, cli
 }
 
 /**
- * Executes a BatchTransaction with multiple inner transactions
+ * Executes a BatchTransaction with multiple inner transactions.
  *
- * @param {sdk.Transaction[]} transactions - Array of frozen transactions with batchKey set
- * @param {sdk.PrivateKey} batchKey - The batch key to sign with
- * @param {sdk.Client} client - SDK client
+ * If `batchKey` is omitted, relies on `.execute(client)` auto-signing with the
+ * client's operator key — which is the correct path when inner transactions
+ * were batchified with `client.operatorPublicKey`.
+ *
+ * @param {sdk.Transaction[]} transactions - Array of inner transactions (already frozen via batchify).
+ * @param {sdk.Client} client - SDK client used to execute the batch.
+ * @param {sdk.PrivateKey} [batchKey] - Optional explicit batch key to sign with.
  * @returns {Promise<sdk.TransactionResponse>}
  */
-async function executeBatchTransaction(transactions, batchKey, client) {
+async function executeBatchTransaction(transactions, client, batchKey) {
     log('Executing batch transaction with %d inner transactions', transactions.length);
 
     const batchTx = new sdk.BatchTransaction();
-
     for (const tx of transactions) {
         batchTx.addInnerTransaction(tx);
     }
 
-    batchTx.freezeWith(client);
-    const signedBatch = await batchTx.sign(batchKey);
+    let toExecute = batchTx;
+    if (batchKey) {
+        batchTx.freezeWith(client);
+        toExecute = await batchTx.sign(batchKey);
+    }
 
-    const response = await signedBatch.execute(client);
+    const response = await toExecute.execute(client);
     log('Batch transaction executed: tx %s', response.transactionId.toString());
 
     return response;
@@ -301,7 +307,7 @@ async function executeBatchTransaction(transactions, batchKey, client) {
 async function createEcdsaAliasedAccount(client, provider, initialBalance) {
     const wallet = ethers.Wallet.createRandom(provider);
     const key = sdk.PrivateKey.fromStringECDSA(wallet.privateKey);
-    const receipt = await (
+    await (
         await (
             await new sdk.AccountCreateTransaction()
                 .setECDSAKeyWithAlias(key.publicKey)
