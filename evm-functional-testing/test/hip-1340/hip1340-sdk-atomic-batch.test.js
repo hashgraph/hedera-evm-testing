@@ -1,6 +1,5 @@
 'use strict';
 const {ethers} = require('hardhat');
-const {hexlify} = require('ethers');
 const hre = require('hardhat');
 const {expect} = require('chai');
 const {
@@ -100,11 +99,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
 
             // TODO: add this check when atomic batch delegation persistence is fixed
-            // const accountInfo = await new AccountInfoQuery()
-            //     .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
-            //     .execute(client);
-            // expect(hexlify(accountInfo.delegationAddress).toLowerCase())
-            //     .to.equal(smartWalletAddress.toLowerCase());
+            // const verification = await verifyDelegationWithSdkByAddress(accountA.address, smartWalletAddress, client);
+            // expect(verification.isValid).to.be.true;
         });
     })
 
@@ -138,11 +134,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const receipt = await response.getReceipt(client);
 
             expect(receipt.status.toString()).to.equal('SUCCESS');
-            const accountInfo = await new AccountInfoQuery()
-                .setAccountId(AccountId.fromEvmAddress(0, 0, newAccount.address))
-                .execute(client);
-            expect(hexlify(accountInfo.delegationAddress).toLowerCase())
-                .to.equal(smartWalletAddress.toLowerCase());
+            const verification = await verifyDelegationWithSdkByAddress(newAccount.address, smartWalletAddress, client);
+            expect(verification.isValid).to.be.true;
         });
 
         it('should roll back account creation but persist delegation on batch failure', async function () {
@@ -187,11 +180,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             expect(err.status.toString()).to.equal('INVALID_ACCOUNT_ID');
 
             // TODO: switch to this check when atomic batch delegation persistence is fixed
-            // const accountInfo = await new AccountInfoQuery()
-            //     .setAccountId(AccountId.fromEvmAddress(0, 0, newAccount.address))
-            //     .execute(client);
-            // expect(hexlify(accountInfo.delegationAddress).toLowerCase())
-            //     .to.equal(smartWalletAddress.toLowerCase());
+            // const verification = await verifyDelegationWithSdkByAddress(newAccount.address, smartWalletAddress, client);
+            // expect(verification.isValid).to.be.true;
         });
     })
 
@@ -222,11 +212,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
 
             // TODO: add this check when atomic batch delegation persistence is fixed
-            // const accountInfo = await new AccountInfoQuery()
-            //     .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
-            //     .execute(client);
-            // expect(hexlify(accountInfo.delegationAddress).toLowerCase())
-            //     .to.equal(smartWalletAddress.toLowerCase());
+            // const verification = await verifyDelegationWithSdkByAddress(accountA.address, smartWalletAddress, client);
+            // expect(verification.isValid).to.be.true;
         });
 
         it('should keep new delegation D2 on batch failure (does not restore original D1)', async function () {
@@ -246,10 +233,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .send()
                 .then(tx => tx.wait());
 
-            const initialInfo = await new AccountInfoQuery()
-                .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
-                .execute(client);
-            expect(hexlify(initialInfo.delegationAddress).toLowerCase()).to.equal(D1.toLowerCase());
+            const initialVerification = await verifyDelegationWithSdkByAddress(accountA.address, D1, client);
+            expect(initialVerification.isValid).to.be.true;
 
             // Inner tx 1: type-4 that changes A's delegation to D2 (auth nonce = 1)
             const [, , sponsorNonce] = await getNonces(sponsor.address);
@@ -272,10 +257,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
 
             // TODO: add this check when atomic batch delegation persistence is fixed.
             // Expected: delegation on A is D2 (survives rollback); D1 is NOT restored.
-            // const finalInfo = await new AccountInfoQuery()
-            //     .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
-            //     .execute(client);
-            // expect(hexlify(finalInfo.delegationAddress).toLowerCase()).to.equal(D2.toLowerCase());
+            // const finalVerification = await verifyDelegationWithSdkByAddress(accountA.address, D2, client);
+            // expect(finalVerification.isValid).to.be.true;
         });
 
     })
@@ -300,11 +283,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
                 .send()
                 .then(tx => tx.wait());
 
-            const initialInfo = await new AccountInfoQuery()
-                .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
-                .execute(client);
-            expect(hexlify(initialInfo.delegationAddress).toLowerCase())
-                .to.equal(smartWalletAddress.toLowerCase());
+            const initialVerification = await verifyDelegationWithSdkByAddress(accountA.address, smartWalletAddress, client);
+            expect(initialVerification.isValid).to.be.true;
 
             // Inner tx 1: type-4 that clears A's delegation (target = zero address, auth nonce = 1)
             const [, , sponsorNonce] = await getNonces(sponsor.address);
@@ -327,11 +307,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
 
             // TODO: add this check when atomic batch delegation persistence is fixed.
             // Expected: delegation cleared (clearing survives rollback).
-            // const finalInfo = await new AccountInfoQuery()
-            //     .setAccountId(AccountId.fromEvmAddress(0, 0, accountA.address))
-            //     .execute(client);
-            // expect(hexlify(finalInfo.delegationAddress).toLowerCase())
-            //     .to.equal(ethers.ZeroAddress.toLowerCase());
+            // const finalVerification = await verifyDelegationWithSdkByAddress(accountA.address, ethers.ZeroAddress, client);
+            // expect(finalVerification.isValid).to.be.true;
         });
     })
 
