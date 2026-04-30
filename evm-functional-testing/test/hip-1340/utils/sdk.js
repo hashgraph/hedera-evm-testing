@@ -390,9 +390,9 @@ async function wrapType4ForBatch(rawType4Tx, client) {
 
 /**
  * Helper to create a simple transfer transaction between two accounts, already batchified under the operator key.
- * @param {} client
- * @param fromAccountId
- * @param toAccountId
+ * @param {Client} client
+ * @param {AccountId} fromAccountId
+ * @param {AccountId} toAccountId
  * @returns {Promise<TransferTransaction>}
  */
 async function createBatchifiedTransfer(client, fromAccountId, toAccountId) {
