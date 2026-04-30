@@ -62,10 +62,13 @@ const Contract = {
   HTSSystemContractTransfersExecutorContract:
     "HTSSystemContractTransfersExecutorContract",
   AirDropClaimAndReceiverContract: "AirDropClaimAndReceiverContract",
+  // --- access list
+  AccessListCallerContract: "AccessListCallerContract",
+  AccessListTargetContract: "AccessListTargetContract",
 };
 
 const Cost = {
-  CREATE_TOKEN_COST: "10000000000000000000",
+  CREATE_TOKEN_COST: "20000000000000000000",
 };
 
 const TINYBAR_TO_WEIBAR_COEF = 10_000_000_000n;

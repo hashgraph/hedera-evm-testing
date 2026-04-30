@@ -4,7 +4,6 @@ const { PrivateKey, AccountId, ScheduleId } = require("@hiero-ledger/sdk");
 const Utils = require("../../../utils/utils");
 const { Events } = require("../../../utils/constants");
 const { getMirrorNodeUrl } = require("../../../utils/native/utils");
-const hre = require("hardhat");
 const Async = require("../../../utils/async");
 const { ResponseCodeEnum, SignatureMap } = require("@hiero-ledger/proto").proto;
 
