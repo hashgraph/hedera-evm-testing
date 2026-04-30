@@ -23,8 +23,9 @@ The folder contains:
 - [HIP-1340 (Pectra support)](https://hips.hedera.com/hip/hip-1340)
 
 ### Tests Docs
-- [HIP-1340](docs/hip-1340.md)
+- [HIP-1340 Code Delegation](docs/hip-1340/hip-1340.md)
 - [HTS Transfer events](docs/hts/transfer-events.md)
+- [EIP-2930 Access List](docs/hts/transfer-events.md)
 
 ## Run tests
 
@@ -42,36 +43,36 @@ npx hardhat test --network solo
 
 ### Requirements
 
-- Software <https://solo.hiero.org/v0.54.0/docs/step-by-step-guide/#required-software>
-- Solo <https://solo.hiero.org/v0.54.0/docs/step-by-step-guide/#1-installing-solo>
+- Prerequisites <https://solo.hiero.org/docs/simple-solo-setup/quickstart/#prerequisites>
+- Solo <https://solo.hiero.org/docs/simple-solo-setup/quickstart/#install-solo-cli>
 
 ### Documentation
 
-- Doc: <https://solo.hiero.org/v0.54.0/docs/step-by-step-guide/>
-- Doc with local consensus node build: <https://solo.hiero.org/v0.54.0/docs/platform-developer/>
+- Doc: <https://solo.hiero.org/docs/>
 
 ### Specific Solo version install
 
 ```sh
-npm install -g @hashgraph/solo@0.60.0
+npm install -g @hashgraph/solo@0.65.0
 ```
 
 ### Deploy manual
 
-With 'local build' consensus node from <https://solo.hiero.org/v0.54.0/docs/platform-developer/>
-
 ```sh
+# Deploy with local CN
 ./test.sh solo start
 ```
 
-### Deploy quick (!!! do not use)
+- To deploy with locally build MN, at `./test.sh` set `LOCAL_MN_BUILD=true`
+  - it will build MN at your `MIRROR_NODE_DIR`
+  - this will work because `solo relay node add` will use `--relay-release` image tag event with updated chart
+- To deploy with locally build Relay, at `./test.sh` set `LOCAL_RELAY_BUILD=true`, 
+  - you will need to override `appVersion` for your locally build image tag (e.g `appVersion: 0.152.0-local`) at:
+    - `${MIRROR_NODE_DIR}/charts/hedera-mirror-rest` 
+    - `${MIRROR_NODE_DIR}/charts/hedera-mirror-web3` 
+  - it will build Relay at your `RELAY_DIR`
 
-With 'release' version. !!! This should not be used. Added as an example !!!
-
-```bash
-solo quick-start single deploy --cluster-ref="kind-${SOLO_CLUSTER_NAME}" --cluster-setup-namespace="${SOLO_CLUSTER_SETUP_NAMESPACE}" --deployment="${SOLO_DEPLOYMENT}" --namespace="${SOLO_NAMESPACE}"
-```
-
+It will deploy:
 - Consensus Node gRPC port forward enabled on `localhost:50211`
 - Mirror Node port forward enabled on `localhost:8081`
 - Explorer port forward enabled on `http://localhost:8080`
@@ -102,7 +103,7 @@ kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata
 #### Relay WS Logs
 
 ```sh
-kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/relay-node1-ws
+kubectl logs -f -n $(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name') --all-containers svc/relay-1-ws
 ```
 ### Destroy
 
