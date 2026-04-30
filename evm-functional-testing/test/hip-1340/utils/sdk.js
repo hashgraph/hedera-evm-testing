@@ -50,6 +50,10 @@ function getTransactionRecord(transactionId) {
     return runQuery(new TransactionRecordQuery({ transactionId, includeChildren: true }));
 }
 
+function getTransactionRecordUnchecked(transactionId) {
+    return runQuery(new TransactionRecordQuery({ transactionId, includeChildren: true, validateReceiptStatus: false }));
+}
+
 /**
  * @param {string} accountId
  * @returns
@@ -403,6 +407,7 @@ module.exports = {
     getAccountInfo,
     getContractByteCode,
     getTransactionRecord,
+    getTransactionRecordUnchecked,
     getAccountRecords,
     // Delegation exports
     createSdkClient,
