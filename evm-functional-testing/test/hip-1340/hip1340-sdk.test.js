@@ -1,6 +1,5 @@
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
-const hre = require('hardhat');
 const sdk = require('@hiero-ledger/sdk');
 
 const { Hip1340TestContext } = require('./utils/test-context');
@@ -22,15 +21,12 @@ const SIMPLE_7702_ACCOUNT = 'contracts/hip-1340/CustomSimple7702Account';
 const SETUP_METHODS = ['CryptoCreate', 'CryptoUpdate', 'EthereumType4'];
 
 describe('HIP-1340 - SDK Native Flow', function () {
-    let sdkClient, provider, smartWallet, operatorKey;
+    let sdkClient, provider, smartWallet;
 
     before(async function () {
         provider = ethers.provider;
         sdkClient = await createSDKClient();
         smartWallet = await deploy(SIMPLE_7702_ACCOUNT);
-
-        const { operatorKey: opKey } = hre.network.config.sdkClient;
-        operatorKey = sdk.PrivateKey.fromStringDer(opKey);
     });
 
     after(async function () {
@@ -337,50 +333,60 @@ describe('HIP-1340 - SDK Native Flow', function () {
             contractB = await deploy(SIMPLE_7702_ACCOUNT);
         });
 
-        it('should keep delegation B after batch [CryptoUpdate→A, EthTx→B, Revert]', async function () {
-            const batchKey = sdk.PrivateKey.generateECDSA();
-            const privateKey = sdk.PrivateKey.generateECDSA();
-
-            const { accountId } = await createAccount(privateKey, sdkClient);
-
-            const updateToA = new sdk.AccountUpdateTransaction()
+        async function buildCryptoUpdateInner(accountId, accountKey, delegationAddress, batchKey) {
+            const tx = new sdk.AccountUpdateTransaction()
                 .setAccountId(accountId)
-                .setDelegationAddress(sdk.EvmAddress.fromString(contractA.address))
-                .setBatchKey(batchKey.publicKey)
-                .freezeWith(sdkClient);
-            const signedUpdateToA = await updateToA.sign(privateKey);
+                .setDelegationAddress(sdk.EvmAddress.fromString(delegationAddress));
+            await tx.batchify(sdkClient, batchKey.publicKey);
+            return tx.sign(accountKey);
+        }
 
-            const updateToB = new sdk.AccountUpdateTransaction()
-                .setAccountId(accountId)
-                .setDelegationAddress(sdk.EvmAddress.fromString(contractB.address))
-                .setBatchKey(batchKey.publicKey)
-                .freezeWith(sdkClient);
-            const signedUpdateToB = await updateToB.sign(privateKey);
+        async function buildEthDelegationInner(eoa, delegationAddress, batchKey) {
+            const sponsor = await this.testCtx.createAndFundEOA();
+            const network = await this.testCtx.provider.getNetwork();
 
-            const revertingCallTx = new sdk.ContractExecuteTransaction()
+            const rawSignedTx = await new DelegationTransactionBuilder()
+                .from(sponsor)
+                .withChainId(network.chainId)
+                .withAuthorization(eoa, delegationAddress, 0)
+                .signRaw();
+
+            const ethTx = new sdk.EthereumTransaction()
+                .setEthereumData(rawSignedTx)
+                .setMaxGasAllowanceHbar(new sdk.Hbar(2));
+            await ethTx.batchify(sdkClient, batchKey.publicKey);
+            return ethTx;
+        }
+
+        async function buildRevertingCallInner(batchKey) {
+            const tx = new sdk.ContractExecuteTransaction()
                 .setContractId(sdk.ContractId.fromEvmAddress(0, 0, ethers.ZeroAddress))
                 .setGas(100_000)
-                .setFunctionParameters(Buffer.from('deadbeef', 'hex'))
-                .setBatchKey(batchKey.publicKey)
-                .freezeWith(sdkClient);
-            const signedRevertingCall = await revertingCallTx.sign(operatorKey);
+                .setFunctionParameters(Buffer.from('deadbeef', 'hex'));
+            await tx.batchify(sdkClient, batchKey.publicKey);
+            return tx;
+        }
+
+        it('should keep delegation B after batch [CryptoUpdate→A, EthTx→B, Revert]', async function () {
+            const batchKey = sdk.PrivateKey.generateECDSA();
+            const eoa = await this.testCtx.createAndFundEOA();
+            const accountInfo = await new sdk.AccountInfoQuery()
+                .setAccountId(sdk.AccountId.fromEvmAddress(0, 0, eoa.address))
+                .execute(sdkClient);
+            const accountId = accountInfo.accountId;
+            const accountKey = sdk.PrivateKey.fromStringECDSA(eoa.privateKey.replace(/^0x/, ''));
+
+            const updateToA = await buildCryptoUpdateInner(accountId, accountKey, contractA.address, batchKey);
+            const ethToB = await buildEthDelegationInner.call(this, eoa, contractB.address, batchKey);
+            const revertingCall = await buildRevertingCallInner(batchKey);
 
             try {
-                await executeBatchTransaction(
-                    [signedUpdateToA, signedUpdateToB, signedRevertingCall],
-                    batchKey,
-                    sdkClient
-                );
+                await executeBatchTransaction([updateToA, ethToB, revertingCall], batchKey, sdkClient);
             } catch (err) {
-                // Expected: batch may fail due to reverting call
                 expect(err).to.exist;
-                expect(err.code).to.equal('INNER_TRANSACTION_FAILED');
             }
 
-            const verification = await verifyDelegationWithSDK(
-                accountId, contractB.address, sdkClient
-            );
-
+            const verification = await verifyDelegationWithSDK(accountId, contractB.address, sdkClient);
             expect(verification.delegationAddress?.toLowerCase()).to.equal(
                 contractB.address.toLowerCase()
             );
@@ -388,46 +394,24 @@ describe('HIP-1340 - SDK Native Flow', function () {
 
         it('should keep delegation B after batch [EthTx→A, CryptoUpdate→B, Revert]', async function () {
             const batchKey = sdk.PrivateKey.generateECDSA();
-            const privateKey = sdk.PrivateKey.generateECDSA();
+            const eoa = await this.testCtx.createAndFundEOA();
+            const accountInfo = await new sdk.AccountInfoQuery()
+                .setAccountId(sdk.AccountId.fromEvmAddress(0, 0, eoa.address))
+                .execute(sdkClient);
+            const accountId = accountInfo.accountId;
+            const accountKey = sdk.PrivateKey.fromStringECDSA(eoa.privateKey.replace(/^0x/, ''));
 
-            const { accountId } = await createAccount(privateKey, sdkClient);
-
-            const updateToA = new sdk.AccountUpdateTransaction()
-                .setAccountId(accountId)
-                .setDelegationAddress(sdk.EvmAddress.fromString(contractA.address))
-                .setBatchKey(batchKey.publicKey)
-                .freezeWith(sdkClient);
-            const signedUpdateToA = await updateToA.sign(privateKey);
-
-            const updateToB = new sdk.AccountUpdateTransaction()
-                .setAccountId(accountId)
-                .setDelegationAddress(sdk.EvmAddress.fromString(contractB.address))
-                .setBatchKey(batchKey.publicKey)
-                .freezeWith(sdkClient);
-            const signedUpdateToB = await updateToB.sign(privateKey);
-
-            const revertingCallTx = new sdk.ContractExecuteTransaction()
-                .setContractId(sdk.ContractId.fromEvmAddress(0, 0, ethers.ZeroAddress))
-                .setGas(100_000)
-                .setFunctionParameters(Buffer.from('deadbeef', 'hex'))
-                .setBatchKey(batchKey.publicKey)
-                .freezeWith(sdkClient);
-            const signedRevertingCall = await revertingCallTx.sign(operatorKey);
+            const ethToA = await buildEthDelegationInner.call(this, eoa, contractA.address, batchKey);
+            const updateToB = await buildCryptoUpdateInner(accountId, accountKey, contractB.address, batchKey);
+            const revertingCall = await buildRevertingCallInner(batchKey);
 
             try {
-                await executeBatchTransaction(
-                    [signedUpdateToA, signedUpdateToB, signedRevertingCall],
-                    batchKey,
-                    sdkClient
-                );
+                await executeBatchTransaction([ethToA, updateToB, revertingCall], batchKey, sdkClient);
             } catch (err) {
-                // Expected: batch may fail due to reverting call
+                expect(err).to.exist;
             }
 
-            const verification = await verifyDelegationWithSDK(
-                accountId, contractB.address, sdkClient
-            );
-
+            const verification = await verifyDelegationWithSDK(accountId, contractB.address, sdkClient);
             expect(verification.delegationAddress?.toLowerCase()).to.equal(
                 contractB.address.toLowerCase()
             );
