@@ -19,7 +19,8 @@ const {
     Transaction,
     TransactionRecordQuery,
     TransactionResponse,
-    EthereumTransactionDataEip7702, TransferTransaction,
+    TransferTransaction,
+    EthereumTransactionDataEip7702,
 } = require('@hiero-ledger/sdk');
 
 const hre = require('hardhat');
