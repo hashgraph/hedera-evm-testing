@@ -15,13 +15,14 @@ const {gas, deploy, getNonces, DelegationTransactionBuilder} = require('./utils/
 const {
     createEcdsaAliasedAccount,
     createSdkClient,
-    executeBatchTransaction,
     createAccountWithBalance,
     createBatchifiedTransfer,
+    executeBatchTransaction,
+    getAccountInfo,
+    getTransactionRecord,
+    getTransactionRecordUnchecked,
     verifyDelegationWithSdkByAddress,
     wrapType4ForBatch,
-    getTransactionRecord,
-    getTransactionRecordUnchecked, getAccountInfo,
 } = require('./utils/sdk');
 
 const SIMPLE_7702_ACCOUNT = '@account-abstraction/contracts/accounts/Simple7702Account';
@@ -43,9 +44,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
         const zeroBalanceAccountPrivateKey = PrivateKey.generateECDSA();
         zeroBalanceAccount = await createAccountWithBalance(zeroBalanceAccountPrivateKey, client, new Hbar(0));
 
-        const zeroBalanceAccountInfo = await new AccountInfoQuery()
-            .setAccountId(zeroBalanceAccount.accountId)
-            .execute(client);
+        const zeroBalanceAccountInfo = await getAccountInfo(zeroBalanceAccount.accountId);
         expect(zeroBalanceAccountInfo.balance.toTinybars().isZero()).to.be.true;
     });
 
@@ -114,12 +113,10 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const newAccountKey = PrivateKey.fromStringECDSA(newAccount.privateKey);
 
             // Inner tx 1: AccountCreateTransaction
-            const accountCreateTx = await (
-                await new AccountCreateTransaction()
-                    .setECDSAKeyWithAlias(newAccountKey.publicKey)
-                    .setInitialBalance(new Hbar(10))
-                    .batchify(client, client.operatorPublicKey)
-            ).sign(newAccountKey);
+            const accountCreateTx = await new AccountCreateTransaction()
+                .setECDSAKeyWithAlias(newAccountKey.publicKey)
+                .setInitialBalance(new Hbar(10))
+                .batchify(client, client.operatorPublicKey);
 
             // Inner tx 2: type-4 delegation, sponsored by the operator (pays gas).
             const [, , sponsorNonce] = await getNonces(sponsor.address);
@@ -145,12 +142,10 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const newAccountKey = PrivateKey.fromStringECDSA(newAccount.privateKey);
 
             // Inner tx 1: AccountCreateTransaction (creates A within the batch)
-            const accountCreateTx = await (
-                await new AccountCreateTransaction()
-                    .setECDSAKeyWithAlias(newAccountKey.publicKey)
-                    .setInitialBalance(new Hbar(10))
-                    .batchify(client, client.operatorPublicKey)
-            ).sign(newAccountKey);
+            const accountCreateTx = await new AccountCreateTransaction()
+                .setECDSAKeyWithAlias(newAccountKey.publicKey)
+                .setInitialBalance(new Hbar(10))
+                .batchify(client, client.operatorPublicKey);
 
             // Inner tx 2: type-4 delegation on A, sponsored by the operator (pays gas).
             const [, , sponsorNonce] = await getNonces(sponsor.address);
@@ -164,10 +159,12 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
             // Inner tx 3: invalid transfer — zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
-            const transferInnerTx = await createBatchifiedTransfer(client, zeroBalanceAccount.accountId, client.operatorAccountId);
+            const transferInnerTx =
+                await createBatchifiedTransfer(client, zeroBalanceAccount.accountId, client.operatorAccountId);
 
             const response = await executeBatchTransaction(
-                [accountCreateTx, delegationInnerTx, transferInnerTx], client);
+                [accountCreateTx, delegationInnerTx, transferInnerTx],
+                client);
             const batchErr = await response.getReceipt(client).catch(e => e);
             expect(batchErr).to.be.instanceOf(ReceiptStatusError);
             expect(batchErr.status.toString()).to.equal('INNER_TRANSACTION_FAILED');
@@ -206,9 +203,12 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const delegationInnerTx = await wrapType4ForBatch(rawType4Tx, client);
 
             // Transfer is invalid: zeroBalanceAccount has no funds → INNER_TRANSACTION_FAILED
-            const transferInnerTx = await createBatchifiedTransfer(client, zeroBalanceAccount.accountId, accountA.address);
+            const transferInnerTx =
+                await createBatchifiedTransfer(client, zeroBalanceAccount.accountId, accountA.address);
 
-            const response = await executeBatchTransaction([delegationInnerTx, transferInnerTx], client);
+            const response = await executeBatchTransaction(
+                [delegationInnerTx, transferInnerTx],
+                client);
             const err = await response.getReceipt(client).catch(e => e);
             expect(err).to.be.instanceOf(ReceiptStatusError);
             expect(err.status.toString()).to.equal('INNER_TRANSACTION_FAILED');

@@ -100,7 +100,7 @@ jobs:
       - name: Install Solo
         run: npm install --global @hashgraph/solo@${SOLO_VERSION}
         env:
-          SOLO_VERSION: 0.61.0
+          SOLO_VERSION: 0.65.0
 
       - name: Setup Kind
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
@@ -133,7 +133,7 @@ jobs:
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
         env:
           MIRROR_NODE_VERSION: '0.149.0'
-          RELAY_RELEASE: '0.75.0'
+          RELAY_RELEASE: '0.75.2'
           SOLO_NAMESPACE: solo-evm-e2e
           SOLO_DEPLOYMENT: solo-evm-deployment
           SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup
