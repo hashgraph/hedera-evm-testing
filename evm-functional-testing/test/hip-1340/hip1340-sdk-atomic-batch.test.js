@@ -21,6 +21,7 @@ const {
     getAccountInfo,
     getTransactionRecord,
     getTransactionRecordUnchecked,
+    updateAccountDelegation,
     verifyDelegationWithSdkByAddress,
     wrapType4ForBatch,
 } = require('./utils/sdk');
@@ -57,7 +58,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
         let accountA;
 
         beforeEach(async function () {
-            accountA = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
+            [accountA] = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
         });
 
         it('should commit delegation for pre-existing account', async function () {
@@ -185,10 +186,10 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
     })
 
     describe('Authority account exists before the atomic batch', function () {
-        let accountA;
+        let accountA, accountAPk;
 
         beforeEach(async function () {
-            accountA = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
+            [accountA, accountAPk] = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
         });
 
         it('should commit delegation for pre-existing account on batch failure', async function () {
@@ -223,17 +224,8 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
             const D1 = smartWalletAddress;
             const D2 = ethers.Wallet.createRandom().address;
 
-            // Setup: apply delegation A → D1 outside the batch via a standalone type-4.
-            // After this, accountA's authorization nonce is bumped from 0 to 1.
-            const [, , setupSponsorNonce] = await getNonces(sponsor.address);
-            await new DelegationTransactionBuilder()
-                .from(sponsor)
-                .withChainId(network.chainId)
-                .withSenderNonce(setupSponsorNonce)
-                .withGasLimit(gas.base + gas.codeAuthorization(1) + gas.accountCreationCost())
-                .withAuthorization(accountA, D1, 0)
-                .send()
-                .then(tx => tx.wait());
+            // Setup: apply delegation A → D1 outside the batch via a standalone tx.
+            await updateAccountDelegation(accountA.accountId, accountAPk, D1, client);
 
             const initialVerification = await verifyDelegationWithSdkByAddress(accountA.address, D1, client);
             expect(initialVerification.isValid).to.be.true;
@@ -269,7 +261,7 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
         let accountA;
 
         beforeEach(async function () {
-            accountA = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
+            [accountA] = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
         });
 
         it('should keep delegation cleared when clearing batch fails', async function () {
@@ -319,10 +311,10 @@ describe('Atomic Batch: EIP-7702 delegation', function () {
         it('should commit 2 valid delegations and skip 2 invalid ones when batch fails', async function () {
             // accountA and accountB: valid auth entries (nonce=0, matches fresh account state).
             // accountC and accountD: invalid auth entries (stale nonce=999 → skipped by EVM).
-            const accountA = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
-            const accountB = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
-            const accountC = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
-            const accountD = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
+            const [accountA] = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
+            const [accountB] = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
+            const [accountC] = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
+            const [accountD] = await createEcdsaAliasedAccount(client, provider, new Hbar(1));
 
             const [, , sponsorNonce] = await getNonces(sponsor.address);
             const rawType4Tx = await new DelegationTransactionBuilder()

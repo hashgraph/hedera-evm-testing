@@ -353,12 +353,12 @@ async function executeBatchTransaction(transactions, client, batchKey) {
  * @param {Client} client - SDK client used to submit and pay for the AccountCreateTransaction.
  * @param {import('ethers').Provider} provider - ethers provider attached to the returned wallet.
  * @param {Hbar} initialBalance - Starting balance for the new account.
- * @returns {Promise<import('ethers').BaseWallet>} ethers wallet backed by the same ECDSA key as the new Hedera account.
+ * @returns {Promise<[import('ethers').BaseWallet, PrivateKey]>} ethers wallet and the matching SDK PrivateKey.
  */
 async function createEcdsaAliasedAccount(client, provider, initialBalance) {
     const wallet = ethers.Wallet.createRandom(provider);
     const key = PrivateKey.fromStringECDSA(wallet.privateKey);
-    await (
+    const receipt = await (
         await (
             await new AccountCreateTransaction()
                 .setECDSAKeyWithAlias(key.publicKey)
@@ -367,7 +367,8 @@ async function createEcdsaAliasedAccount(client, provider, initialBalance) {
                 .sign(key)
         ).execute(client)
     ).getReceipt(client);
-    return wallet;
+    wallet.accountId = receipt.accountId;
+    return [wallet, key];
 }
 
 /**
