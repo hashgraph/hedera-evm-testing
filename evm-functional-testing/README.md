@@ -78,6 +78,30 @@ It will deploy:
 - Explorer port forward enabled on `http://localhost:8080`
 - JSON RPC Relay forward enabled on `localhost:7546`
 
+#### Port forward
+Check available port-forward
+```sh
+ps aux | grep port-forward
+```
+
+If you need to re-forward the ports
+- Consensus Node
+```sh
+ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("haproxy-node1-*")) | .metadata.name') 50211:50211
+```
+- Mirror Node
+```sh
+ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("mirror-ingress-controller-*")) | .metadata.name') 8081:80
+```
+- Relay
+```sh
+ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("relay-\\d+-(?!ws)")) | .metadata.name') 7546:7546
+```
+- Explorer
+```sh
+ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("hiero-explorer-*")) | .metadata.name') 8080:8080
+```
+
 ### Logs
 
 If you need to stream the logs directly from the pods you can use the following:

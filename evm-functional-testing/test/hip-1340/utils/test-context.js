@@ -58,7 +58,7 @@ class Hip1340TestContext {
             to: this.seedEOA.address,
         });
         await resp.wait();
-        log('Seed EOA `%s` created at transanction %s', this.seedEOA.address, resp.hash);
+        log('Seed EOA `%s` created at transaction %s', this.seedEOA.address, resp.hash);
 
         return this.seedEOA;
     }
