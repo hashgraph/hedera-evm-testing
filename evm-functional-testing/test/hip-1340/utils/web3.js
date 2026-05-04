@@ -246,7 +246,7 @@ class DelegationTransactionBuilder {
         return this;
     }
 
-    async send() {
+    async _buildRequest() {
         assert(this.sender && this.chainId && this.authorizations.length > 0);
         const authList = await Promise.all(
             this.authorizations.map(({authorityWallet, delegationAddress, nonce}) =>
@@ -258,7 +258,7 @@ class DelegationTransactionBuilder {
             )
         );
 
-        return this.sender.sendTransaction({
+        return {
             type: 4,
             chainId: this.chainId,
             nonce: this.senderNonce,
@@ -266,7 +266,26 @@ class DelegationTransactionBuilder {
             to: this.toAddress,
             value: this.value,
             authorizationList: authList,
-        });
+        };
+    }
+
+    async send() {
+        const tx = await this._buildRequest();
+        return this.sender.sendTransaction(tx);
+    }
+
+    /**
+     * Builds and signs the EIP-7702 transaction without sending it.
+     * Returns the raw signed transaction bytes suitable for wrapping in
+     * a Hedera `EthereumTransaction` (e.g., as an inner batch transaction).
+     *
+     * @returns {Promise<Uint8Array>} Raw RLP-encoded signed Ethereum transaction.
+     */
+    async signRaw() {
+        const tx = await this._buildRequest();
+        const populated = await this.sender.populateTransaction(tx);
+        const signedHex = await this.sender.signTransaction(populated);
+        return Buffer.from(signedHex.slice(2), 'hex');
     }
 }
 
