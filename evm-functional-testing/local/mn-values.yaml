@@ -5,7 +5,9 @@ web3:
         web3:
           evm:
             properties:
+              # Needed for transfer events tests gas estimations for 0x16c contract
               contracts.systemContract.hts.addresses: "359,364"
 rest:
   env:
+    # Needed for EIP-7702 (Pectra) response fields
     HIERO_MIRROR_REST_RESPONSE_ENABLEDELEGATIONADDRESS: "true"
