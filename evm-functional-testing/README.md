@@ -62,21 +62,20 @@ npm install -g @hashgraph/solo@0.65.0
 # Deploy with local CN
 ./test.sh solo start
 ```
-
-- To deploy with locally build MN, at `./test.sh` set `LOCAL_MN_BUILD=true`
-  - it will build MN at your `MIRROR_NODE_DIR`
-  - this will work because `solo relay node add` will use `--relay-release` image tag event with updated chart
-- To deploy with locally build Relay, at `./test.sh` set `LOCAL_RELAY_BUILD=true`, 
-  - you will need to override `appVersion` for your locally build image tag (e.g `appVersion: 0.152.0-local`) at:
-    - `${MIRROR_NODE_DIR}/charts/hedera-mirror-rest` 
-    - `${MIRROR_NODE_DIR}/charts/hedera-mirror-web3` 
-  - it will build Relay at your `RELAY_DIR`
-
 It will deploy:
 - Consensus Node gRPC port forward enabled on `localhost:50211`
 - Mirror Node port forward enabled on `localhost:8081`
 - Explorer port forward enabled on `http://localhost:8080`
 - JSON RPC Relay forward enabled on `localhost:7546`
+
+#### Local build
+- CN build locally by default, to disable it set `LOCAL_CN_BUILD=false`
+- To deploy with locally build MN, at `./test.sh` set `LOCAL_MN_BUILD=true`
+  - it will build MN at your `MIRROR_NODE_DIR`
+  - it will override k8s image with `kind load docker-image`
+- To deploy with locally build Relay, at `./test.sh` set `LOCAL_RELAY_BUILD=true`,
+  - it will build Relay at your `RELAY_DIR`
+  - it will override k8s image with `kind load docker-image`
 
 #### Port forward
 Check available port-forward

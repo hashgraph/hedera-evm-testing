@@ -66,6 +66,8 @@ describe('HIP-1340 - Hiero specific tests', function () {
             const anotherAddressBalance = await tokenContract.balanceOf(anotherAddress.address);
             expect(anotherAddressBalance).to.be.equal(1000);
 
+            await verifyDelegation(tokenAddress, tokenAddress);
+
             const {token_id: tokenId} = await new MirrorNode().getToken(tokenAddress);
             const bytecode = await getContractByteCode(tokenId);
             const contractBytecode = '0x' + Buffer.from(bytecode).toString('hex');
