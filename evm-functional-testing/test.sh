@@ -19,13 +19,13 @@ MIRROR_NODE_DIR="../../hiero-mirror-node"
 MIRROR_NODE_VERSION=0.153.0
 MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 # if images are set, we will load this images to kind cluster instead of official MN images
-#MIRROR_NODE_WEB3_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
+MIRROR_NODE_WEB3_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
 # with rest image override on startup, pinger is not working somehow
 #MIRROR_NODE_REST_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-rest:pectra"
-#MIRROR_NODE_IMPORTER_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-importer:pectra"
+MIRROR_NODE_IMPORTER_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-importer:pectra"
 
 ######################### Relay configs #########################
-LOCAL_RELAY_BUILD=false
+LOCAL_RELAY_BUILD=true
 RELAY_RELEASE=0.76.2
 RELAY_DIR="../../hiero-json-rpc-relay"
 RELAY_YAML_PATH="local/relay-values.yaml"
@@ -124,14 +124,14 @@ solo_start() {
   if [ "${LOCAL_RELAY_BUILD}" = true ] ; then
     # local Relay build
     cd "${RELAY_DIR}"
-    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}-local" .
-    kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}-local" --name "${SOLO_CLUSTER_NAME}"
+    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:0.0.1-local" .
+    kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:0.0.1-local" --name "${SOLO_CLUSTER_NAME}"
     # no need to change helm chart because image version is taken from --relay-release instead of chart configs
     # cd charts/hedera-json-rpc
     # helm dependency build
     # --relay-chart-dir "${RELAY_DIR}/charts"
     cd "${WORK_DIR}"
-    solo relay node add --relay-release "${RELAY_RELEASE}-local" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+    solo relay node add --relay-release "0.0.1-local" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   else
     solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   fi
