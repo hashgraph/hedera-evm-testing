@@ -27,7 +27,7 @@ MIRROR_NODE_IMPORTER_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-importer:pectra
 ######################### Relay configs #########################
 LOCAL_RELAY_BUILD=true
 RELAY_RELEASE=0.76.2
-RELAY_DIR="../../hiero-json-rpc-relay"
+RELAY_DIR="../../BartoszSolkaBD-hiero-json-rpc-relay"
 RELAY_YAML_PATH="local/relay-values.yaml"
 
 ######################### Solo configs #########################

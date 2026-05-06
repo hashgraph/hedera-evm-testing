@@ -298,8 +298,7 @@ class DelegationTransactionBuilder {
  */
 async function verifyDelegation(eoaAddress, delegateToAddress) {
     const [_code, contractBytecode, delegationAddress] = await getCodes(eoaAddress);
-    // TODO Glib: pectra support
-    // assertEq(_code, delegationIndicatorFor(delegateToAddress.toLowerCase()));
+    assertEq(_code, delegationIndicatorFor(delegateToAddress.toLowerCase()));
     assertEq(contractBytecode, delegationIndicatorFor(delegateToAddress.toLowerCase()));
     assertEq(delegationAddress, delegateToAddress.toLowerCase());
 }

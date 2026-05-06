@@ -47,34 +47,52 @@ describe('HIP-1340 - Hiero specific tests', function () {
 
     describe('HTS token delegation designator', function () {
         it('should return delegation designation to 0x167 when an HTS token is created', async function () {
-            const tokenCreateContract = await Utils.deployTokenCreateContract();
-            const tokenAddress = await Utils.createFungibleToken(tokenCreateContract, tokenCreateContract.target);
+          const tokenCreateContract = await Utils.deployTokenCreateContract();
+          const tokenAddress = await Utils.createFungibleToken(
+            tokenCreateContract,
+            tokenCreateContract.target,
+          );
 
-            const tokenContract = new ethers.Contract(tokenAddress, ERC_20_ABI, this.provider);
-            const name = await tokenContract.name();
-            const symbol = await tokenContract.symbol();
-            const totalSupply = await tokenContract.totalSupply();
+          const tokenContract = new ethers.Contract(
+            tokenAddress,
+            ERC_20_ABI,
+            this.provider,
+          );
+          const name = await tokenContract.name();
+          const symbol = await tokenContract.symbol();
+          const totalSupply = await tokenContract.totalSupply();
 
-            expect(name).to.be.equal(TEST_TOKEN_NAME);
-            expect(symbol).to.be.equal(TEST_TOKEN_SYMBOL);
-            expect(totalSupply).to.be.equal(10000000000);
+          expect(name).to.be.equal(TEST_TOKEN_NAME);
+          expect(symbol).to.be.equal(TEST_TOKEN_SYMBOL);
+          expect(totalSupply).to.be.equal(10000000000);
 
-            const anotherAddress = await this.testCtx.createAndFundEOA();
-            await associateHtsToken(anotherAddress, tokenAddress);
-            await grantKyc(tokenCreateContract, tokenAddress, [anotherAddress.address]);
-            await fundAccountsWithHtsToken(tokenCreateContract, tokenAddress, [{address: anotherAddress.address, amount: 1000n}]);
-            const anotherAddressBalance = await tokenContract.balanceOf(anotherAddress.address);
-            expect(anotherAddressBalance).to.be.equal(1000);
+          const anotherAddress = await this.testCtx.createAndFundEOA();
+          await associateHtsToken(anotherAddress, tokenAddress);
+          await grantKyc(tokenCreateContract, tokenAddress, [
+            anotherAddress.address,
+          ]);
+          await fundAccountsWithHtsToken(tokenCreateContract, tokenAddress, [
+            { address: anotherAddress.address, amount: 1000n },
+          ]);
+          const anotherAddressBalance = await tokenContract.balanceOf(
+            anotherAddress.address,
+          );
+          expect(anotherAddressBalance).to.be.equal(1000);
 
-            await verifyDelegation(tokenAddress, tokenAddress);
+          await verifyDelegation(tokenAddress, tokenAddress);
 
-            const {token_id: tokenId} = await new MirrorNode().getToken(tokenAddress);
-            const bytecode = await getContractByteCode(tokenId);
-            const contractBytecode = '0x' + Buffer.from(bytecode).toString('hex');
-            // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
-            // const code = await this.provider.getCode(tokenAddress);
-            // expect(code).to.be.equal(delegationIndicatorFor(HTS_ADDRESS));
-            expect(contractBytecode).to.be.equal(delegationIndicatorFor(HTS_ADDRESS));
+          const { token_id: tokenId } = await new MirrorNode().getToken(
+            tokenAddress,
+          );
+          const bytecode = await getContractByteCode(tokenId);
+          const contractBytecode = "0x" + Buffer.from(bytecode).toString("hex");
+          // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
+          // TODO blocked by https://github.com/hiero-ledger/hiero-json-rpc-relay/issues/5359
+          // const code = await this.provider.getCode(tokenAddress);
+          // expect(code).to.be.equal(delegationIndicatorFor(HTS_ADDRESS));
+          expect(contractBytecode).to.be.equal(
+            delegationIndicatorFor(HTS_ADDRESS),
+          );
         });
     });
 
