@@ -159,8 +159,8 @@ jobs:
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
         env:
           MIRROR_NODE_VERSION: '0.153.0'
-          MIRROR_NODE_WEB3_IMAGE: "docker:io/ikavaldzhiev/hedera-mirror-web3:pectra"
-          MIRROR_NODE_IMPORTER_IMAGE: "docker:io/ikavaldzhiev/hedera-mirror-importer:pectra"
+          MIRROR_NODE_WEB3_IMAGE: "docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
+          MIRROR_NODE_IMPORTER_IMAGE: "docker.io/ikavaldzhiev/hedera-mirror-importer:pectra"
           SOLO_NAMESPACE: solo-evm-e2e
           SOLO_DEPLOYMENT: solo-evm-deployment
           SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup
