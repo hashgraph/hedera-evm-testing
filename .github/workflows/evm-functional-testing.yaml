@@ -161,9 +161,9 @@ jobs:
           MIRROR_NODE_VERSION: '0.153.0'
           MIRROR_NODE_WEB3_IMAGE: "docker:io/ikavaldzhiev/hedera-mirror-web3:pectra"
           MIRROR_NODE_IMPORTER_IMAGE: "docker:io/ikavaldzhiev/hedera-mirror-importer:pectra"
-          SOLO_NAMESPACE: "solo-evm-e2e"
-          SOLO_DEPLOYMENT: "solo-evm-deployment"
-          SOLO_CLUSTER_SETUP_NAMESPACE: "solo-setup"
+          SOLO_NAMESPACE: solo-evm-e2e
+          SOLO_DEPLOYMENT: solo-evm-deployment
+          SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup
           MIRROR_NODE_VALUES_PATH: "evm-functional-testing/local/mn-values.yaml"
           APP_PROPERTIES_PATH: "evm-functional-testing/local/application.properties"
           # alias f70febf7420398c3892ce79fdc393c1a5487ad27
