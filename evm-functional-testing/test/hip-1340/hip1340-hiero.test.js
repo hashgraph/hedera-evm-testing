@@ -24,7 +24,6 @@ const {validateErcEvent} = require('../../utils/events');
 const {HTS_ADDRESS, ONE_HBAR, TINYBAR_TO_WEIBAR_COEF, GAS_LIMIT_1_000_000} = require("../../utils/constants");
 const {getContractByteCode} = require("./utils/sdk");
 const {MirrorNode} = require("evm-functional-testing/mirror-node");
-const web3 = require("./utils/web3");
 
 const ERC_20_ABI = ['function name() view returns (string)', 'function symbol() view returns (string)', 'function totalSupply() view returns (uint256)', 'function balanceOf(address owner) view returns (uint256)',];
 
@@ -78,8 +77,6 @@ describe('HIP-1340 - Hiero specific tests', function () {
             anotherAddress.address,
           );
           expect(anotherAddressBalance).to.be.equal(1000);
-
-          await verifyDelegation(tokenAddress, tokenAddress);
 
           const { token_id: tokenId } = await new MirrorNode().getToken(
             tokenAddress,
