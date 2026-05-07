@@ -107,13 +107,13 @@ solo_start() {
     # if we update the chart with `--mirror-node-chart-dir` it will use image version from chart `appVersion`
     # so the best way is to locally prebuild and override some images and because of `image.pullPolicy: IfNotPresent` k8s will use locally built images
     cd "${MIRROR_NODE_DIR}"
-    ./gradlew :web3:clean :web3:build -x test && ./gradlew :rest:clean :rest:build -x test
-    docker build -t "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" web3
+    ./gradlew :web3:clean :web3:build -x test && ./gradlew :rest:clean :rest:build -x test && ./gradlew :importer:clean :importer:build -x test
+    docker build -t "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" web3/
     kind load docker-image "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-    docker build -t "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" rest
+    docker build -t "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" rest/
     kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-    cd charts/hedera-mirror
-    helm dependency build
+    docker build -t "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" importer/
+    kind load docker-image "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
     cd "${WORK_DIR}"
     solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
   else
