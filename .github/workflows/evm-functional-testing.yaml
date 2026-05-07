@@ -101,7 +101,7 @@ jobs:
           repository: hiero-ledger/hiero-consensus-node
           # TODO(pectra): Restore main branch, once Pectra feature branch has been merged
           # ref: main
-          ref: feature/hedera-evm-pectra-support-v1
+          ref: feature/hedera-evm-pectra-support-v2
           fetch-depth: 0
 
       - name: Build hiero-consensus-node
