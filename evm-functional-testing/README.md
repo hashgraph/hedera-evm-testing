@@ -53,7 +53,7 @@ npx hardhat test --network solo
 ### Specific Solo version install
 
 ```sh
-npm install -g @hashgraph/solo@0.72.0
+npm install -g @hashgraph/solo@0.65.0
 ```
 
 ### Deploy manual

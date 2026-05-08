@@ -64,25 +64,24 @@ solo_start() {
 
   # Solo deploy
   check_k8s_context
-  solo init --dev
   solo cluster-ref config connect --cluster-ref kind-${SOLO_CLUSTER_NAME} --context kind-${SOLO_CLUSTER_NAME} --dev
   solo deployment config create -n "${SOLO_NAMESPACE}" --deployment "${SOLO_DEPLOYMENT}" --dev
   solo deployment cluster attach --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --num-consensus-nodes 1 --dev
-  solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
 
   # CN deploy
   solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
-  solo consensus network deploy --pvcs true --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
+  solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
+  solo consensus network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
   if [ "${LOCAL_CN_BUILD}" = true ] ; then
     # local CN build
     cd "${CONSENSUS_NODE_DIR}"
     ./gradlew assemble
     cd "${WORK_DIR}"
-    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
+    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
   else
-    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --dev
   fi
-  solo consensus node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+  solo consensus node start --deployment "${SOLO_DEPLOYMENT}" --dev
 
   # MN deploy
   # Load configured images
@@ -131,9 +130,9 @@ solo_start() {
     # helm dependency build
     # --relay-chart-dir "${RELAY_DIR}/charts"
     cd "${WORK_DIR}"
-    solo relay node add --relay-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:0.0.1-local" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+    solo relay node add --relay-release "0.0.1-local" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" --dev
   else
-    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" --dev
   fi
 
   # Explorer deploy
@@ -147,9 +146,9 @@ solo_start() {
 
 solo_stop() {
   solo explorer node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
-  solo relay node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
+  solo relay node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --dev || true
   solo mirror-node node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
-  solo consensus node stop --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
+  solo consensus node stop --deployment="${SOLO_DEPLOYMENT}" --dev || true
   solo consensus network destroy --deployment="${SOLO_DEPLOYMENT}" --force --delete-pvcs --delete-secrets --dev || true
   # next step is hanging and not ending by itself. Do we need it?
   # solo cluster-ref reset --cluster-ref kind-${SOLO_CLUSTER_NAME} -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --force || true
