@@ -56,7 +56,7 @@ jobs:
           egress-policy: audit
 
       - name: Setup Java
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00  # v4.7.1
         with:
           distribution: temurin
           java-version: 25
@@ -67,17 +67,19 @@ jobs:
           cache-read-only: false
 
       - name: Setup NodeJS Environment
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 
       - name: Checkout Code
         id: checkout-code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: evm-testing
 
       - name: Install npm testing dependencies
         run: npm ci
-        working-directory: evm-functional-testing
+        working-directory: evm-testing/evm-functional-testing
 
       - name: Install Solo
         run: npm install --global @hashgraph/solo@${SOLO_VERSION}
@@ -163,8 +165,8 @@ jobs:
           SOLO_NAMESPACE: solo-evm-e2e
           SOLO_DEPLOYMENT: solo-evm-deployment
           SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup
-          MIRROR_NODE_VALUES_PATH: "evm-functional-testing/local/mn-values.yaml"
-          APP_PROPERTIES_PATH: "evm-functional-testing/local/application.properties"
+          MIRROR_NODE_VALUES_PATH: "evm-testing/evm-functional-testing/local/mn-values.yaml"
+          APP_PROPERTIES_PATH: "evm-testing/evm-functional-testing/local/application.properties"
           # alias f70febf7420398c3892ce79fdc393c1a5487ad27
           TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1: 3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68
           # alias dbe82db504ca6701fbe59e638ceaddbdb691067b
@@ -176,7 +178,7 @@ jobs:
       - name: Run the tests
         if: ${{ steps.run_solo.outcome == 'success' }}
         run: npx hardhat test ${{ matrix.test_args }} --network solo
-        working-directory: evm-functional-testing
+        working-directory: evm-testing/evm-functional-testing
 
       - name: Stop solo
         if: always()
