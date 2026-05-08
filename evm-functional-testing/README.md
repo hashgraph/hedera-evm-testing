@@ -43,7 +43,7 @@ npx hardhat test --network solo
 
 ### Requirements
 
-- Prerequisites <https://solo.hiero.org/docs/simple-solo-setup/quickstart/#prerequisites>
+- Prerequisites <https://solo.hiero.org/docs/simple-solo-setup/system-readiness/#pre-installation-requirements>
 - Solo <https://solo.hiero.org/docs/simple-solo-setup/quickstart/#install-solo-cli>
 
 ### Documentation
@@ -53,7 +53,7 @@ npx hardhat test --network solo
 ### Specific Solo version install
 
 ```sh
-npm install -g @hashgraph/solo@0.65.0
+npm install -g @hashgraph/solo@0.72.0
 ```
 
 ### Deploy manual

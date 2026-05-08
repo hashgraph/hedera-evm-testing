@@ -22,7 +22,7 @@ MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 #MIRROR_NODE_WEB3_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
 #MIRROR_NODE_IMPORTER_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-importer:pectra"
 MIRROR_NODE_WEB3_IMAGE="docker.io/carlie45/hedera-mirror-web3:0.73.0-pectra-preview-alpha.4"
-MIRROR_NODE_IMPORTER_IMAGE="docker.io/carlie45/hedera-mirror-importer:0.73.0-pectra-preview-alpha.4a"
+MIRROR_NODE_IMPORTER_IMAGE="docker.io/carlie45/hedera-mirror-importer:0.73.0-pectra-preview-alpha.4"
 
 ######################### Relay configs #########################
 LOCAL_RELAY_BUILD=true
@@ -72,7 +72,7 @@ solo_start() {
 
   # CN deploy
   solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
-  solo consensus network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
+  solo consensus network deploy --pvcs true --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
   if [ "${LOCAL_CN_BUILD}" = true ] ; then
     # local CN build
     cd "${CONSENSUS_NODE_DIR}"
@@ -131,7 +131,7 @@ solo_start() {
     # helm dependency build
     # --relay-chart-dir "${RELAY_DIR}/charts"
     cd "${WORK_DIR}"
-    solo relay node add --relay-release "0.0.1-local" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+    solo relay node add --relay-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:0.0.1-local" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   else
     solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
   fi
