@@ -114,9 +114,9 @@ solo_start() {
     docker build -t "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" importer/
     kind load docker-image "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
     cd "${WORK_DIR}"
-    solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
   else
-    solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
   fi
 
   # Relay deploy
