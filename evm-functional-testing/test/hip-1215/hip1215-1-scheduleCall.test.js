@@ -28,6 +28,7 @@ const Utils = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
 const { beforeTests, afterTests } = require("./utils/hip1215-setup");
 const { expect } = require("chai");
+const {delegationIndicatorFor} = require("../hip-1340/utils/web3");
 const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 
 describe("HIP-1215 System Contract testing. scheduleCall()", () => {
@@ -52,7 +53,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     to,
     value = 0n,
     callDataFunction = (testId) => addTestCallData(testId),
-    executionExpectedResult = SUCCESS
+    executionExpectedResult = SUCCESS,
   ) {
     const expirySecond = getExpirySecond();
     const scheduleTx = await hip1215.scheduleCall(
@@ -61,12 +62,12 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
       GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
       value,
-      callDataFunction(testId, expirySecond)
+      callDataFunction(testId, expirySecond),
     );
 
     const scheduleAddress = await expectScheduleCallEvent(
       scheduleTx,
-      ResponseCodeEnum.SUCCESS.valueOf()
+      ResponseCodeEnum.SUCCESS.valueOf(),
     );
     // sign schedule
     const signTx = await hip1215.authorizeSchedule(scheduleAddress);
@@ -92,11 +93,30 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     await afterTests(scheduleCheck, balanceCheck, scheduleTxCheck);
   });
 
+  describe("HSS schedule delegation designator", function () {
+    it("should return delegation designation to schedule address when an HSS schedule is created", async function () {
+      const scheduleTx = await hip1215.scheduleCall(
+        await hip1215.getAddress(),
+        getExpirySecond(),
+        // gasIncrement added to prevent 'IDENTICAL_SCHEDULE_ALREADY_CREATED' with other call test
+        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
+        0,
+        addTestCallData("schedule delegation designator"),
+      );
+      const scheduleAddress = await expectScheduleCallEvent(
+        scheduleTx,
+        ResponseCodeEnum.SUCCESS.valueOf(),
+      );
+      const code = await ethers.provider.getCode(scheduleAddress);
+      expect(code).to.be.equal(delegationIndicatorFor(HSS_ADDRESS));
+    });
+  });
+
   describe("positive cases", async () => {
     it("should schedule a call", async () => {
       const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
         "scheduleCall",
-        await hip1215.getAddress()
+        await hip1215.getAddress(),
       );
       // execution check in 'after'
       scheduleCheck.push({
@@ -113,7 +133,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
     it("should succeed with address(this) for to", async () => {
       const [testId, expirySecond, scheduleTx] = await testScheduleCallAndSign(
         "scheduleCall address(this)",
-        await hip1215.getAddress()
+        await hip1215.getAddress(),
       );
       // execution check in 'after'
       scheduleCheck.push({
@@ -131,8 +151,8 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         (testId, expirySecond) =>
           hasScheduleCapacityCallData(
             expirySecond + 10,
-            GAS_LIMIT_1_000_000.gasLimit
-          )
+            GAS_LIMIT_1_000_000.gasLimit,
+          ),
       );
     });
 
@@ -142,7 +162,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         await hip1215.getAddress(),
         100_000_000n, // 1 HBAR in TINYBARS
         () => payableCallData(),
-        SUCCESS
+        SUCCESS,
       );
     });
 
@@ -151,7 +171,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         "scheduleCall empty callData",
         await hip1215.getAddress(),
         0n,
-        () => "0x"
+        () => "0x",
       );
     });
 
@@ -161,7 +181,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         await hip1215.getAddress(),
         0n,
         () => "0xabc123",
-        CONTRACT_REVERT_EXECUTED
+        CONTRACT_REVERT_EXECUTED,
       );
     });
 
@@ -170,7 +190,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         "scheduleCall state",
         await hip1215.getAddress(),
         0n,
-        (testId) => addTestCallData(testId)
+        (testId) => addTestCallData(testId),
       );
       // execution check in 'after'
       scheduleCheck.push({
@@ -187,7 +207,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         "scheduleCall balance",
         address,
         value,
-        () => "0x"
+        () => "0x",
       );
       // balance check in 'after'
       balanceCheck.push({
@@ -207,7 +227,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         address,
         value,
         () => "0x",
-        INSUFFICIENT_PAYER_BALANCE
+        INSUFFICIENT_PAYER_BALANCE,
       );
     });
   });
@@ -219,11 +239,11 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         getExpirySecond(),
         0,
         0,
-        addTestCallData("scheduleCall fail gasLimit 0")
+        addTestCallData("scheduleCall fail gasLimit 0"),
       );
       await expectScheduleCallEvent(
         receipt,
-        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
+        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf(),
       );
     });
 
@@ -233,11 +253,11 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         getExpirySecond(),
         GAS_LIMIT_1_000.gasLimit,
         0,
-        addTestCallData("scheduleCall fail gasLimit 1000")
+        addTestCallData("scheduleCall fail gasLimit 1000"),
       );
       await expectScheduleCallEvent(
         receipt,
-        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf()
+        ResponseCodeEnum.INSUFFICIENT_GAS.valueOf(),
       );
     });
 
@@ -247,11 +267,11 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         getExpirySecond(),
         ethers.MaxUint256,
         0,
-        addTestCallData("scheduleCall fail uint.maxvalue")
+        addTestCallData("scheduleCall fail uint.maxvalue"),
       );
       await expectScheduleCallEvent(
         receipt,
-        ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf()
+        ResponseCodeEnum.SCHEDULE_EXPIRY_IS_BUSY.valueOf(),
       );
     });
 
@@ -261,11 +281,11 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         0,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCall fail expiry 0")
+        addTestCallData("scheduleCall fail expiry 0"),
       );
       await expectScheduleCallEvent(
         receipt,
-        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
+        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf(),
       );
     });
 
@@ -275,11 +295,11 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         new Date().getUTCSeconds(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCall fail expiry current")
+        addTestCallData("scheduleCall fail expiry current"),
       );
       await expectScheduleCallEvent(
         receipt,
-        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf()
+        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_MUST_BE_HIGHER_THAN_CONSENSUS_TIME.valueOf(),
       );
     });
 
@@ -290,11 +310,11 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         Math.floor(Date.now() / 1000) + MAX_EXPIRY + 100 + 1,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCall fail expiry + 1")
+        addTestCallData("scheduleCall fail expiry + 1"),
       );
       await expectScheduleCallEvent(
         receipt,
-        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_TOO_FAR_IN_FUTURE.valueOf()
+        ResponseCodeEnum.SCHEDULE_EXPIRATION_TIME_TOO_FAR_IN_FUTURE.valueOf(),
       );
     });
 
@@ -304,28 +324,28 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        "0xabc123"
+        "0xabc123",
       );
       await expectScheduleCallEvent(
         receipt,
-        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
+        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf(),
       );
     });
 
     it("should fail with zero 'to' address and valid contract deploy", async () => {
       const deployContract = await ethers.getContractFactory(
-        "HIP1215DeployContract"
+        "HIP1215DeployContract",
       );
       const receipt = await hip1215.scheduleCall(
         ethers.ZeroAddress,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        deployContract.bytecode
+        deployContract.bytecode,
       );
       await expectScheduleCallEvent(
         receipt,
-        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf()
+        ResponseCodeEnum.INVALID_CONTRACT_ID.valueOf(),
       );
     });
 
@@ -338,10 +358,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         addTestCallData("scheduleCall fail gasLimit 0"),
       );
       console.log("scheduleCallDelegateCall tx.hash:", tx.hash);
-      await expectScheduleCallEvent(
-        tx,
-        ResponseCodeEnum.UNKNOWN.valueOf(),
-      );
+      await expectScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });
   });
 
@@ -356,7 +373,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         contractAddress,
         expirySecond,
         GAS_LIMIT_2_000_000.gasLimit,
-        0
+        0,
       );
       console.debug("Estimated gas for call: " + expectedGasUsed);
       // 1_438_769n; // ~ gas usage for used schedule create operation
@@ -368,12 +385,12 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         contractAddress,
         expirySecond,
         GAS_LIMIT_2_000_000.gasLimit,
-        0
+        0,
       );
 
       const scheduleAddress = await expectScheduleCallEvent(
         receipt,
-        ResponseCodeEnum.SUCCESS.valueOf()
+        ResponseCodeEnum.SUCCESS.valueOf(),
       );
       // Validate execution and recursive behaviour
       const { finalResponse, recursiveCounter } =
@@ -390,7 +407,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
       const transferContract = await contractDeployAndFund(
         "HIP1215TransferContract",
-        55
+        55,
       );
       console.log("Contract deployed. Trying to schedule.");
       const receipt = await transferContract.scheduleCallForTransfer(
@@ -398,12 +415,12 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         GAS_LIMIT_5_000_000.gasLimit,
         3_500_000_000n, // 35 HBAR in TINYBARS
         tokenContract,
-        signers[2]
+        signers[2],
       );
       console.log("Schedule created. Trying to get schedule logs");
       const schedule = await expectScheduleCallEvent(
         receipt,
-        ResponseCodeEnum.SUCCESS.valueOf()
+        ResponseCodeEnum.SUCCESS.valueOf(),
       );
       console.log("Prepare signature map for signing");
       const sigMap = getSignatureMap(2, schedule);
@@ -414,7 +431,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       console.log("Try to get the child records.");
       const childrenCount = await getChildTransactionsByScheduleId(
         mnClient,
-        schedule
+        schedule,
       );
       console.log("Now assert all is as expected...");
       expect(childrenCount).not.to.be.null;

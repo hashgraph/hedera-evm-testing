@@ -83,10 +83,8 @@ describe('HIP-1340 - Hiero specific tests', function () {
           );
           const bytecode = await getContractByteCode(tokenId);
           const contractBytecode = "0x" + Buffer.from(bytecode).toString("hex");
-          // TODO(pectra): Reenable check once MN and Relay include support for EIP-7702
-          // TODO blocked by https://github.com/hiero-ledger/hiero-json-rpc-relay/issues/5359
-          // const code = await this.provider.getCode(tokenAddress);
-          // expect(code).to.be.equal(delegationIndicatorFor(HTS_ADDRESS));
+          const code = await this.provider.getCode(tokenAddress);
+          expect(code).to.be.equal(delegationIndicatorFor(HTS_ADDRESS));
           expect(contractBytecode).to.be.equal(
             delegationIndicatorFor(HTS_ADDRESS),
           );
