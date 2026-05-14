@@ -13,14 +13,18 @@ const {
     ContractExecuteTransaction,
     ContractId,
     EvmAddress,
+    EthereumTransaction,
+    EthereumTransactionDataEip7702,
     Hbar,
     PrivateKey,
     Transaction,
     TransactionRecordQuery,
     TransactionResponse,
+    TransferTransaction,
 } = require('@hiero-ledger/sdk');
 
 const hre = require('hardhat');
+const { ethers } = require('hardhat');
 const { hexlify } = require('ethers');
 
 /**
@@ -45,6 +49,10 @@ async function getContractByteCode(contractId) {
  */
 function getTransactionRecord(transactionId) {
     return runQuery(new TransactionRecordQuery({ transactionId, includeChildren: true }));
+}
+
+function getTransactionRecordUnchecked(transactionId) {
+    return runQuery(new TransactionRecordQuery({ transactionId, includeChildren: true, validateReceiptStatus: false }));
 }
 
 /**
@@ -113,9 +121,21 @@ async function createAccountWithDelegation(privateKey, delegationAddress, client
 async function createAccount(privateKey, client) {
     log('Creating account without delegation');
 
+    return createAccountWithBalance(privateKey, client, new Hbar(10));
+}
+
+/**
+ * Creates a new account without delegation via AccountCreateTransaction
+ *
+ * @param {PrivateKey} privateKey - The private key for the new account
+ * @param {Client} client - SDK client
+ * @param {Hbar} initialBalance - Initial balance in Hbar
+ * @returns {Promise<{accountId: AccountId, privateKey: PrivateKey}>}
+ */
+async function createAccountWithBalance(privateKey, client, initialBalance) {
     const tx = new AccountCreateTransaction()
         .setKeyWithoutAlias(privateKey.publicKey)
-        .setInitialBalance(new Hbar(10));
+        .setInitialBalance(initialBalance);
 
     const response = await tx.execute(client);
     const receipt = await response.getReceipt(client);
@@ -279,29 +299,109 @@ async function verifyDelegationWithSDK(accountId, expectedDelegationAddress, cli
 }
 
 /**
- * Executes a BatchTransaction with multiple inner transactions
+ * Verifies delegation setup using AccountInfoQuery and ContractByteCodeQuery
  *
- * @param {Transaction[]} transactions - Array of frozen transactions with batchKey set
- * @param {PrivateKey} batchKey - The batch key to sign with
+ * @param {string} address - The account to verify
+ * @param {string} expectedDelegationAddress - Expected delegation EVM address
  * @param {Client} client - SDK client
+ * @returns {Promise<{accountInfo: AccountInfo, bytecode: Uint8Array, delegationAddress: string|null, isValid: boolean}>}
+ */
+async function verifyDelegationWithSdkByAddress(address, expectedDelegationAddress, client) {
+    return verifyDelegationWithSDK(
+        AccountId.fromEvmAddress(0, 0, address),
+        expectedDelegationAddress,
+        client
+    );
+}
+
+/**
+ * Executes a BatchTransaction with multiple inner transactions.
+ *
+ * If `batchKey` is omitted, relies on `.execute(client)` auto-signing with the
+ * client's operator key — which is the correct path when inner transactions
+ * were batchified with `client.operatorPublicKey`.
+ *
+ * @param {Transaction[]} transactions - Array of inner transactions (already frozen via batchify).
+ * @param {Client} client - SDK client used to execute the batch.
+ * @param {PrivateKey} [batchKey] - Optional explicit batch key to sign with.
  * @returns {Promise<TransactionResponse>}
  */
-async function executeBatchTransaction(transactions, batchKey, client) {
+async function executeBatchTransaction(transactions, client, batchKey) {
     log('Executing batch transaction with %d inner transactions', transactions.length);
 
     const batchTx = new BatchTransaction();
-
     for (const tx of transactions) {
         batchTx.addInnerTransaction(tx);
     }
 
-    batchTx.freezeWith(client);
-    const signedBatch = await batchTx.sign(batchKey);
+    let toExecute = batchTx;
+    if (batchKey) {
+        batchTx.freezeWith(client);
+        toExecute = await batchTx.sign(batchKey);
+    }
 
-    const response = await signedBatch.execute(client);
+    const response = await toExecute.execute(client);
     log('Batch transaction executed: tx %s', response.transactionId.toString());
 
     return response;
+}
+
+/**
+ * Creates a new ECDSA-aliased Hedera account via the SDK and returns the
+ * matching ethers wallet (so callers can sign EVM txs with the same key).
+ *
+ * @param {Client} client - SDK client used to submit and pay for the AccountCreateTransaction.
+ * @param {import('ethers').Provider} provider - ethers provider attached to the returned wallet.
+ * @param {Hbar} initialBalance - Starting balance for the new account.
+ * @returns {Promise<[import('ethers').BaseWallet, PrivateKey]>} ethers wallet and the matching SDK PrivateKey.
+ */
+async function createEcdsaAliasedAccount(client, provider, initialBalance) {
+    const wallet = ethers.Wallet.createRandom(provider);
+    const key = PrivateKey.fromStringECDSA(wallet.privateKey);
+    const receipt = await (
+        await (
+            await new AccountCreateTransaction()
+                .setECDSAKeyWithAlias(key.publicKey)
+                .setInitialBalance(initialBalance)
+                .freezeWith(client)
+                .sign(key)
+        ).execute(client)
+    ).getReceipt(client);
+    wallet.accountId = receipt.accountId;
+    return [wallet, key];
+}
+
+/**
+ * Wraps signed type-4 bytes in an EthereumTransaction batchified under the
+ * operator key. fromBytes(...).toBytes() is a byte-equivalent round-trip that
+ * acts as a fail-fast validator for the RLP/authorizationList shape.
+ *
+ * @param {string} rawType4Tx - 0x-prefixed hex of a signed EIP-7702 (type-4) transaction.
+ * @param {Client} client - SDK client whose operator key is used as the batch key.
+ * @returns {Promise<EthereumTransaction>} An EthereumTransaction frozen and signed by the operator, ready to be added to a BatchTransaction.
+ */
+async function wrapType4ForBatch(rawType4Tx, client) {
+    const eip7702Data = EthereumTransactionDataEip7702.fromBytes(
+        Buffer.from(rawType4Tx.slice(2), 'hex')
+    );
+    return new EthereumTransaction()
+        .setEthereumData(eip7702Data.toBytes())
+        .setMaxGasAllowanceHbar(new Hbar(2))
+        .batchify(client, client.operatorPublicKey);
+}
+
+/**
+ * Helper to create a simple transfer transaction between two accounts, already batchified under the operator key.
+ * @param {Client} client
+ * @param {AccountId} fromAccountId
+ * @param {AccountId} toAccountId
+ * @returns {Promise<TransferTransaction>}
+ */
+async function createBatchifiedTransfer(client, fromAccountId, toAccountId) {
+    return await new TransferTransaction()
+        .addHbarTransfer(fromAccountId, new Hbar(-1))
+        .addHbarTransfer(toAccountId, new Hbar(1))
+        .batchify(client, client.operatorPublicKey);
 }
 
 module.exports = {
@@ -309,16 +409,22 @@ module.exports = {
     getAccountInfo,
     getContractByteCode,
     getTransactionRecord,
+    getTransactionRecordUnchecked,
     getAccountRecords,
     // Delegation exports
     createSdkClient,
     createAccount,
+    createAccountWithBalance,
     createAccountWithDelegation,
+    createBatchifiedTransfer,
+    createEcdsaAliasedAccount,
     updateAccountDelegation,
     updateAccountWithoutDelegation,
     clearAccountDelegation,
     getDelegationAddress,
     contractCallToDelegatedEOA,
     verifyDelegationWithSDK,
-    executeBatchTransaction
+    verifyDelegationWithSdkByAddress,
+    executeBatchTransaction,
+    wrapType4ForBatch
 };
