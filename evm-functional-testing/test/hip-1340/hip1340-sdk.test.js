@@ -207,8 +207,8 @@ describe('HIP-1340 - SDK Native Flow', function () {
 
                 const response = await executeBatchTransaction(
                     [signedUpdate, contractCallTx],
-                    batchKey,
-                    sdkClient
+                    sdkClient,
+                    batchKey
                 );
                 const receipt = await response.getReceipt(sdkClient);
                 expect(receipt.status.toString()).to.equal('SUCCESS');
@@ -381,7 +381,7 @@ describe('HIP-1340 - SDK Native Flow', function () {
             const revertingCall = await buildRevertingCallInner(batchKey);
 
             try {
-                await executeBatchTransaction([updateToA, ethToB, revertingCall], batchKey, sdkClient);
+                await executeBatchTransaction([updateToA, ethToB, revertingCall], sdkClient, batchKey);
             } catch (err) {
                 expect(err).to.exist;
             }
@@ -406,7 +406,7 @@ describe('HIP-1340 - SDK Native Flow', function () {
             const revertingCall = await buildRevertingCallInner(batchKey);
 
             try {
-                await executeBatchTransaction([ethToA, updateToB, revertingCall], batchKey, sdkClient);
+                await executeBatchTransaction([ethToA, updateToB, revertingCall], sdkClient, batchKey);
             } catch (err) {
                 expect(err).to.exist;
             }

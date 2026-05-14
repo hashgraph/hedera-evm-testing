@@ -48,6 +48,8 @@ jobs:
             test_args: "test/hip-1340/hip1340-hiero.test.js"
           - shard: HIP-1340 SDK tests
             test_args: "test/hip-1340/hip1340-sdk.test.js"
+          - shard: HIP-1340 Atomic Batch
+            test_args: "test/hip-1340/hip1340-sdk-atomic-batch.test.js"
     steps:
 
       - name: Harden Runner

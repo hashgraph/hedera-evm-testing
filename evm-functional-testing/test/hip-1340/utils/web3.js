@@ -209,7 +209,7 @@ class DelegationTransactionBuilder {
     constructor() {
         this.sender = null;
         this.chainId = null;
-        this.senderNonce = 0;
+        this.senderNonce = null;
         this.authorizations = [];
         this.toAddress = ethers.ZeroAddress;
         this.value = 0n;
@@ -246,7 +246,12 @@ class DelegationTransactionBuilder {
         return this;
     }
 
-    async _buildRequest() {
+    withSenderNonce(nonce) {
+        this.senderNonce = nonce;
+        return this;
+    }
+
+    async buildTx() {
         assert(this.sender && this.chainId && this.authorizations.length > 0);
         const authList = await Promise.all(
             this.authorizations.map(({authorityWallet, delegationAddress, nonce}) =>
@@ -257,11 +262,10 @@ class DelegationTransactionBuilder {
                 })
             )
         );
-
         return {
             type: 4,
             chainId: this.chainId,
-            nonce: this.senderNonce,
+            nonce: this.senderNonce ?? await this.sender.getNonce(),
             gasLimit: this.gasLimit,
             to: this.toAddress,
             value: this.value,
@@ -270,22 +274,11 @@ class DelegationTransactionBuilder {
     }
 
     async send() {
-        const tx = await this._buildRequest();
-        return this.sender.sendTransaction(tx);
+        return this.sender.sendTransaction(await this.buildTx());
     }
 
-    /**
-     * Builds and signs the EIP-7702 transaction without sending it.
-     * Returns the raw signed transaction bytes suitable for wrapping in
-     * a Hedera `EthereumTransaction` (e.g., as an inner batch transaction).
-     *
-     * @returns {Promise<Uint8Array>} Raw RLP-encoded signed Ethereum transaction.
-     */
-    async signRaw() {
-        const tx = await this._buildRequest();
-        const populated = await this.sender.populateTransaction(tx);
-        const signedHex = await this.sender.signTransaction(populated);
-        return Buffer.from(signedHex.slice(2), 'hex');
+    async sign() {
+        return this.sender.signTransaction(await this.buildTx());
     }
 }
 
