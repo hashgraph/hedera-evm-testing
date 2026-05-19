@@ -109,8 +109,7 @@ describe("HIP-1340 - EIP-7702 Ethereum Specific tests - delegated execution", fu
     });
   });
 
-  //TODO blocked by https://github.com/hiero-ledger/hiero-mirror-node/issues/13488
-  xit(`should getStorage with EOA address when delegated contract changes EOA storage`, async function () {
+  it(`should getStorage with EOA address when delegated contract changes EOA storage`, async function () {
     const storeAndEmit = await deploy("contracts/hip-1340/StoreAndEmit");
     const eoa = await this.testCtx.createAndFundEOA();
     const eoaNonce = new Nonce();

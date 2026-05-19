@@ -84,7 +84,7 @@ jobs:
       - name: Install Solo
         run: npm install --global @hashgraph/solo@${SOLO_VERSION}
         env:
-          SOLO_VERSION: 0.65.0
+          SOLO_VERSION: 0.72.0
 
       - name: Setup Kind
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
@@ -144,10 +144,15 @@ jobs:
             docker image tag "${MIRROR_NODE_WEB3_IMAGE}" "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}"
             kind load docker-image "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
           fi
+          if [ -n "${MIRROR_NODE_REST_IMAGE}" ]; then
+            docker pull ${MIRROR_NODE_REST_IMAGE}
+            docker image tag "${MIRROR_NODE_REST_IMAGE}" "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}"
+            kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
+          fi
           if [ -n "${MIRROR_NODE_IMPORTER_IMAGE}" ]; then
             docker pull ${MIRROR_NODE_IMPORTER_IMAGE}
-            docker image tag "${MIRROR_NODE_IMPORTER_IMAGE}" "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}"
-            kind load docker-image "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
+            docker image tag "${MIRROR_NODE_IMPORTER_IMAGE}" "ghcr.io/hiero-ledger/hiero-mirror-node/importer:${MIRROR_NODE_VERSION}"
+            kind load docker-image "ghcr.io/hiero-ledger/hiero-mirror-node/importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
           fi
           solo mirror node add --enable-ingress --pinger --mirror-node-version ${MIRROR_NODE_VERSION} --values-file "${MIRROR_NODE_VALUES_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} 
           # relay
@@ -159,8 +164,9 @@ jobs:
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
         env:
           MIRROR_NODE_VERSION: '0.153.0'
-          MIRROR_NODE_WEB3_IMAGE: "docker.io/carlie45/hedera-mirror-web3:0.73.0-pectra-preview-alpha.4"
-          MIRROR_NODE_IMPORTER_IMAGE: "docker.io/carlie45/hedera-mirror-importer:0.73.0-pectra-preview-alpha.4"
+          MIRROR_NODE_WEB3_IMAGE: "gcr.io/mirrornode/hedera-mirror-web3:0.156.0-SNAPSHOT"
+          MIRROR_NODE_IMPORTER_IMAGE: "gcr.io/mirrornode/hedera-mirror-importer:0.156.0-SNAPSHOT"
+          MIRROR_NODE_REST_IMAGE: "gcr.io/mirrornode/hedera-mirror-rest:0.156.0-SNAPSHOT"
           SOLO_NAMESPACE: solo-evm-e2e
           SOLO_DEPLOYMENT: solo-evm-deployment
           SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup

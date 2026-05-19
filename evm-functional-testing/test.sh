@@ -19,11 +19,12 @@ MIRROR_NODE_DIR="../../hiero-mirror-node"
 MIRROR_NODE_VERSION=0.153.0
 MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 # if images are set, we will load this images to kind cluster instead of official MN images
-#MIRROR_NODE_WEB3_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
-#MIRROR_NODE_IMPORTER_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-importer:pectra"
-MIRROR_NODE_WEB3_IMAGE="docker.io/carlie45/hedera-mirror-web3:0.73.0-pectra-preview-alpha.4"
-MIRROR_NODE_IMPORTER_IMAGE="docker.io/carlie45/hedera-mirror-importer:0.73.0-pectra-preview-alpha.4"
-MIRROR_NODE_REST_IMAGE="docker.io/carlie45/hedera-mirror-rest:0.73.0-pectra-preview-alpha.4"
+#MIRROR_NODE_WEB3_IMAGE="docker.io/carlie45/hedera-mirror-web3:0.73.0-pectra-preview-alpha.4"
+#MIRROR_NODE_IMPORTER_IMAGE="docker.io/carlie45/hedera-mirror-importer:0.73.0-pectra-preview-alpha.4"
+#MIRROR_NODE_REST_IMAGE="docker.io/carlie45/hedera-mirror-rest:0.73.0-pectra-preview-alpha.4"
+MIRROR_NODE_WEB3_IMAGE="gcr.io/mirrornode/hedera-mirror-web3:0.156.0-SNAPSHOT"
+MIRROR_NODE_IMPORTER_IMAGE="gcr.io/mirrornode/hedera-mirror-importer:0.156.0-SNAPSHOT"
+MIRROR_NODE_REST_IMAGE="gcr.io/mirrornode/hedera-mirror-rest:0.156.0-SNAPSHOT"
 
 ######################### Relay configs #########################
 LOCAL_RELAY_BUILD=true
@@ -72,7 +73,7 @@ solo_start() {
   # CN deploy
   solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
   solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
-  solo consensus network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
+  solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
   if [ "${LOCAL_CN_BUILD}" = true ] ; then
     # local CN build
     cd "${CONSENSUS_NODE_DIR}"
@@ -98,8 +99,8 @@ solo_start() {
   fi
   if [ -n "${MIRROR_NODE_IMPORTER_IMAGE}" ]; then
     docker pull ${MIRROR_NODE_IMPORTER_IMAGE}
-    docker image tag "${MIRROR_NODE_IMPORTER_IMAGE}" "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}"
-    kind load docker-image "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
+    docker image tag "${MIRROR_NODE_IMPORTER_IMAGE}" "ghcr.io/hiero-ledger/hiero-mirror-node/importer:${MIRROR_NODE_VERSION}"
+    kind load docker-image "ghcr.io/hiero-ledger/hiero-mirror-node/importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
   fi
   if [ "${LOCAL_MN_BUILD}" = true ] ; then
     # local MN build
@@ -124,14 +125,10 @@ solo_start() {
   if [ "${LOCAL_RELAY_BUILD}" = true ] ; then
     # local Relay build
     cd "${RELAY_DIR}"
-    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:0.0.1-local" .
-    kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:0.0.1-local" --name "${SOLO_CLUSTER_NAME}"
-    # no need to change helm chart because image version is taken from --relay-release instead of chart configs
-    # cd charts/hedera-json-rpc
-    # helm dependency build
-    # --relay-chart-dir "${RELAY_DIR}/charts"
+    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" .
+    kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" --name "${SOLO_CLUSTER_NAME}"
     cd "${WORK_DIR}"
-    solo relay node add --relay-release "0.0.1-local" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" --dev
+    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" --dev
   else
     solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" --dev
   fi

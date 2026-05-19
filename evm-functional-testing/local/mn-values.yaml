@@ -11,3 +11,7 @@ rest:
   env:
     # Needed for EIP-7702 (Pectra) response fields
     HIERO_MIRROR_REST_RESPONSE_ENABLEDELEGATIONADDRESS: "true"
+importer:
+  resources:
+    limits:
+      memory: 500Mi
