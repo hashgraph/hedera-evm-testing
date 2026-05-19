@@ -87,21 +87,21 @@ solo_start() {
 
   # MN deploy
   # Load configured images
-  if [ -n "${MIRROR_NODE_WEB3_IMAGE}" ]; then
-    docker pull "${MIRROR_NODE_WEB3_IMAGE}"
-    docker image tag "${MIRROR_NODE_WEB3_IMAGE}" "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}"
-    kind load docker-image "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-  fi
-  if [ -n "${MIRROR_NODE_REST_IMAGE}" ]; then
-    docker pull ${MIRROR_NODE_REST_IMAGE}
-    docker image tag "${MIRROR_NODE_REST_IMAGE}" "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}"
-    kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-  fi
-  if [ -n "${MIRROR_NODE_IMPORTER_IMAGE}" ]; then
-    docker pull ${MIRROR_NODE_IMPORTER_IMAGE}
-    docker image tag "${MIRROR_NODE_IMPORTER_IMAGE}" "ghcr.io/hiero-ledger/hiero-mirror-node/importer:${MIRROR_NODE_VERSION}"
-    kind load docker-image "ghcr.io/hiero-ledger/hiero-mirror-node/importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-  fi
+#  if [ -n "${MIRROR_NODE_WEB3_IMAGE}" ]; then
+#    docker pull "${MIRROR_NODE_WEB3_IMAGE}"
+#    docker image tag "${MIRROR_NODE_WEB3_IMAGE}" "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}"
+#    kind load docker-image "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
+#  fi
+#  if [ -n "${MIRROR_NODE_REST_IMAGE}" ]; then
+#    docker pull ${MIRROR_NODE_REST_IMAGE}
+#    docker image tag "${MIRROR_NODE_REST_IMAGE}" "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}"
+#    kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
+#  fi
+#  if [ -n "${MIRROR_NODE_IMPORTER_IMAGE}" ]; then
+#    docker pull ${MIRROR_NODE_IMPORTER_IMAGE}
+#    docker image tag "${MIRROR_NODE_IMPORTER_IMAGE}" "ghcr.io/hiero-ledger/hiero-mirror-node/importer:${MIRROR_NODE_VERSION}"
+#    kind load docker-image "ghcr.io/hiero-ledger/hiero-mirror-node/importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
+#  fi
   if [ "${LOCAL_MN_BUILD}" = true ] ; then
     # local MN build
     # if we set `$MIRROR_NODE_VERSION=local`, it will not be able to pull helm chart by this version
