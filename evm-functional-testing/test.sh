@@ -23,6 +23,7 @@ MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 #MIRROR_NODE_IMPORTER_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-importer:pectra"
 MIRROR_NODE_WEB3_IMAGE="docker.io/carlie45/hedera-mirror-web3:0.73.0-pectra-preview-alpha.4"
 MIRROR_NODE_IMPORTER_IMAGE="docker.io/carlie45/hedera-mirror-importer:0.73.0-pectra-preview-alpha.4"
+MIRROR_NODE_REST_IMAGE="docker.io/carlie45/hedera-mirror-rest:0.73.0-pectra-preview-alpha.4"
 
 ######################### Relay configs #########################
 LOCAL_RELAY_BUILD=true
