@@ -137,7 +137,7 @@ jobs:
           # consensus node
           solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}"
           solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}"
-          solo consensus network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}"
+          solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}"
           solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --local-build-path ./hiero-consensus-node/hedera-node/data
           solo consensus node start --deployment "${SOLO_DEPLOYMENT}"
           # mirror node
