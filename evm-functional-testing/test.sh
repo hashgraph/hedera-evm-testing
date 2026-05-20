@@ -18,13 +18,6 @@ LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
 MIRROR_NODE_VERSION=0.153.0
 MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
-# if images are set, we will load this images to kind cluster instead of official MN images
-#MIRROR_NODE_WEB3_IMAGE="docker.io/carlie45/hedera-mirror-web3:0.73.0-pectra-preview-alpha.4"
-#MIRROR_NODE_IMPORTER_IMAGE="docker.io/carlie45/hedera-mirror-importer:0.73.0-pectra-preview-alpha.4"
-#MIRROR_NODE_REST_IMAGE="docker.io/carlie45/hedera-mirror-rest:0.73.0-pectra-preview-alpha.4"
-MIRROR_NODE_WEB3_IMAGE="gcr.io/mirrornode/hedera-mirror-web3:0.156.0-SNAPSHOT"
-MIRROR_NODE_IMPORTER_IMAGE="gcr.io/mirrornode/hedera-mirror-importer:0.156.0-SNAPSHOT"
-MIRROR_NODE_REST_IMAGE="gcr.io/mirrornode/hedera-mirror-rest:0.156.0-SNAPSHOT"
 
 ######################### Relay configs #########################
 LOCAL_RELAY_BUILD=true
@@ -86,22 +79,6 @@ solo_start() {
   solo consensus node start --deployment "${SOLO_DEPLOYMENT}" --dev
 
   # MN deploy
-  # Load configured images
-#  if [ -n "${MIRROR_NODE_WEB3_IMAGE}" ]; then
-#    docker pull "${MIRROR_NODE_WEB3_IMAGE}"
-#    docker image tag "${MIRROR_NODE_WEB3_IMAGE}" "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}"
-#    kind load docker-image "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-#  fi
-#  if [ -n "${MIRROR_NODE_REST_IMAGE}" ]; then
-#    docker pull ${MIRROR_NODE_REST_IMAGE}
-#    docker image tag "${MIRROR_NODE_REST_IMAGE}" "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}"
-#    kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-#  fi
-#  if [ -n "${MIRROR_NODE_IMPORTER_IMAGE}" ]; then
-#    docker pull ${MIRROR_NODE_IMPORTER_IMAGE}
-#    docker image tag "${MIRROR_NODE_IMPORTER_IMAGE}" "ghcr.io/hiero-ledger/hiero-mirror-node/importer:${MIRROR_NODE_VERSION}"
-#    kind load docker-image "ghcr.io/hiero-ledger/hiero-mirror-node/importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-#  fi
   if [ "${LOCAL_MN_BUILD}" = true ] ; then
     # local MN build
     # if we set `$MIRROR_NODE_VERSION=local`, it will not be able to pull helm chart by this version
