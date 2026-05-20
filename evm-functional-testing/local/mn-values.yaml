@@ -3,6 +3,9 @@ web3:
     registry: gcr.io
     repository: mirrornode/hedera-mirror-web3
     tag: 0.156.0-SNAPSHOT
+  resources:
+    limits:
+      memory: 300Mi
   config:
     hiero:
       mirror:
