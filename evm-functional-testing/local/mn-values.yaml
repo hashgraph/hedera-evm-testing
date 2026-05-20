@@ -5,7 +5,7 @@ web3:
     tag: 0.156.0-SNAPSHOT
   resources:
     limits:
-      memory: 300Mi
+      memory: 500Mi
   config:
     hiero:
       mirror:
