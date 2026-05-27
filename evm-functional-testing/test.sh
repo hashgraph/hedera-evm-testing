@@ -54,6 +54,10 @@ check_k8s_context() {
 
 # solo -> required solo, kubectl, kind
 solo_start() {
+  # Workaround for besu native libs with solo. See https://github.com/hiero-ledger/solo/issues/4387#issuecomment-4555650036
+  export SOLO_S6_NODE_IMAGE_REPOSITORY=hashgraph/solo-containers/noble-s6-java25
+  export SOLO_S6_NODE_IMAGE_VERSION=0.46.0-alpha.1
+
   # base setup
   kind create cluster -n "${SOLO_CLUSTER_NAME}" || true
 
