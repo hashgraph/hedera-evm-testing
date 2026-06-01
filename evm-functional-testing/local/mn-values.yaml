@@ -1,11 +1,41 @@
 web3:
+  image:
+    registry: gcr.io
+    repository: mirrornode/hedera-mirror-web3
+    tag: 0.156.0-SNAPSHOT
+  resources:
+    requests:
+      memory: 300Mi
+    limits:
+      memory: 600Mi
   config:
     hiero:
       mirror:
         web3:
           evm:
             properties:
+              # Needed for transfer events tests gas estimations for 0x16c contract
               contracts.systemContract.hts.addresses: "359,364"
 rest:
+  image:
+    registry: gcr.io
+    repository: mirrornode/hedera-mirror-rest
+    tag: 0.156.0-SNAPSHOT
+  resources:
+    requests:
+      memory: 300Mi
+    limits:
+      memory: 400Mi
   env:
+    # Needed for EIP-7702 (Pectra) response fields
     HIERO_MIRROR_REST_RESPONSE_ENABLEDELEGATIONADDRESS: "true"
+importer:
+  image:
+    registry: gcr.io
+    repository: mirrornode/hedera-mirror-importer
+    tag: 0.156.0-SNAPSHOT
+  resources:
+    requests:
+      memory: 400Mi
+    limits:
+      memory: 500Mi

@@ -18,14 +18,9 @@ LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
 MIRROR_NODE_VERSION=0.153.0
 MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
-# if images are set, we will load this images to kind cluster instead of official MN images
-#MIRROR_NODE_WEB3_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-web3:pectra"
-# with rest image override on startup, pinger is not working somehow
-#MIRROR_NODE_REST_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-rest:pectra"
-#MIRROR_NODE_IMPORTER_IMAGE="docker.io/ikavaldzhiev/hedera-mirror-importer:pectra"
 
 ######################### Relay configs #########################
-LOCAL_RELAY_BUILD=false
+LOCAL_RELAY_BUILD=true
 RELAY_RELEASE=0.76.2
 RELAY_DIR="../../hiero-json-rpc-relay"
 RELAY_YAML_PATH="local/relay-values.yaml"
@@ -59,81 +54,64 @@ check_k8s_context() {
 
 # solo -> required solo, kubectl, kind
 solo_start() {
+  # Workaround for besu native libs with solo. See https://github.com/hiero-ledger/solo/issues/4387#issuecomment-4555650036
+ export SOLO_S6_NODE_IMAGE_REPOSITORY=hashgraph/solo-containers/debian-s6-java25
+ export SOLO_S6_NODE_IMAGE_VERSION=0.45.3
+
   # base setup
   kind create cluster -n "${SOLO_CLUSTER_NAME}" || true
 
   # Solo deploy
   check_k8s_context
-  solo init --dev
   solo cluster-ref config connect --cluster-ref kind-${SOLO_CLUSTER_NAME} --context kind-${SOLO_CLUSTER_NAME} --dev
   solo deployment config create -n "${SOLO_NAMESPACE}" --deployment "${SOLO_DEPLOYMENT}" --dev
   solo deployment cluster attach --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --num-consensus-nodes 1 --dev
-  solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
 
   # CN deploy
   solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
-  solo consensus network deploy --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
+  solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
+  solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
   if [ "${LOCAL_CN_BUILD}" = true ] ; then
     # local CN build
     cd "${CONSENSUS_NODE_DIR}"
     ./gradlew assemble
     cd "${WORK_DIR}"
-    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
+    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
   else
-    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --dev
   fi
-  solo consensus node start --deployment "${SOLO_DEPLOYMENT}" -i node1 --dev
+  solo consensus node start --deployment "${SOLO_DEPLOYMENT}" --dev
 
   # MN deploy
-  # Load configured images
-  if [ -n "${MIRROR_NODE_WEB3_IMAGE}" ]; then
-    docker pull "${MIRROR_NODE_WEB3_IMAGE}"
-    docker image tag "${MIRROR_NODE_WEB3_IMAGE}" "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}"
-    kind load docker-image "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-  fi
-  if [ -n "${MIRROR_NODE_REST_IMAGE}" ]; then
-    docker pull ${MIRROR_NODE_REST_IMAGE}
-    docker image tag "${MIRROR_NODE_REST_IMAGE}" "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}"
-    kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-  fi
-  if [ -n "${MIRROR_NODE_IMPORTER_IMAGE}" ]; then
-    docker pull ${MIRROR_NODE_IMPORTER_IMAGE}
-    docker image tag "${MIRROR_NODE_IMPORTER_IMAGE}" "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}"
-    kind load docker-image "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-  fi
   if [ "${LOCAL_MN_BUILD}" = true ] ; then
     # local MN build
     # if we set `$MIRROR_NODE_VERSION=local`, it will not be able to pull helm chart by this version
     # if we update the chart with `--mirror-node-chart-dir` it will use image version from chart `appVersion`
     # so the best way is to locally prebuild and override some images and because of `image.pullPolicy: IfNotPresent` k8s will use locally built images
     cd "${MIRROR_NODE_DIR}"
-    ./gradlew :web3:clean :web3:build -x test && ./gradlew :rest:clean :rest:build -x test
-    docker build -t "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" web3
+    ./gradlew :web3:clean :web3:build -x test && ./gradlew :rest:clean :rest:build -x test && ./gradlew :importer:clean :importer:build -x test
+    docker build -t "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" web3/
     kind load docker-image "gcr.io/mirrornode/hedera-mirror-web3:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-    docker build -t "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" rest
+    docker build -t "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" rest/
     kind load docker-image "gcr.io/mirrornode/hedera-mirror-rest:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
-    cd charts/hedera-mirror
-    helm dependency build
+    docker build -t "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" importer/
+    kind load docker-image "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
     cd "${WORK_DIR}"
-    solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
   else
-    solo mirror node add --mirror-node-version "${MIRROR_NODE_VERSION}" --enable-ingress --pinger --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
   fi
 
   # Relay deploy
   if [ "${LOCAL_RELAY_BUILD}" = true ] ; then
     # local Relay build
     cd "${RELAY_DIR}"
-    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}-local" .
-    kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}-local" --name "${SOLO_CLUSTER_NAME}"
-    # no need to change helm chart because image version is taken from --relay-release instead of chart configs
-    # cd charts/hedera-json-rpc
-    # helm dependency build
-    # --relay-chart-dir "${RELAY_DIR}/charts"
+    docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" .
+    kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" --name "${SOLO_CLUSTER_NAME}"
     cd "${WORK_DIR}"
-    solo relay node add --relay-release "${RELAY_RELEASE}-local" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" --dev
   else
-    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" -i node1 --dev
+    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" --dev
   fi
 
   # Explorer deploy
@@ -147,9 +125,9 @@ solo_start() {
 
 solo_stop() {
   solo explorer node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
-  solo relay node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
+  solo relay node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --dev || true
   solo mirror-node node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
-  solo consensus node stop --deployment="${SOLO_DEPLOYMENT}" -i node1 --dev || true
+  solo consensus node stop --deployment="${SOLO_DEPLOYMENT}" --dev || true
   solo consensus network destroy --deployment="${SOLO_DEPLOYMENT}" --force --delete-pvcs --delete-secrets --dev || true
   # next step is hanging and not ending by itself. Do we need it?
   # solo cluster-ref reset --cluster-ref kind-${SOLO_CLUSTER_NAME} -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --force || true

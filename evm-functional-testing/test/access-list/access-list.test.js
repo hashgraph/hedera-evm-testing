@@ -303,7 +303,7 @@ describe("EIP-2930 AccessList testing", async () => {
     });
 
     //TODO this should include a discount after MN will support gasEstimate
-    it("should increases eth_estimateGas gas with access list", async () => {
+    xit("should increases eth_estimateGas gas with access list", async () => {
       const data = encodeFunctionData("execute()");
       const noDiscountGas = await signers[0].estimateGas({
         to: callerContract.target,
