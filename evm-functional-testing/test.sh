@@ -11,7 +11,7 @@ WORK_DIR="$(pwd)"
 ######################### CN configs #########################
 LOCAL_CN_BUILD=true
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
-APP_PROPERTIES_PATH="local/application.properties"
+APP_PROPERTIES_PATH="local/execution-specs-application.properties"
 
 ######################### MN configs #########################
 LOCAL_MN_BUILD=false
@@ -23,7 +23,7 @@ MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 LOCAL_RELAY_BUILD=true
 RELAY_RELEASE=0.76.2
 RELAY_DIR="../../hiero-json-rpc-relay"
-RELAY_YAML_PATH="local/relay-values.yaml"
+RELAY_YAML_PATH="local/execution-specs-relay-values.yaml"
 
 ######################### Solo configs #########################
 export SOLO_BASE_NAME=hedera

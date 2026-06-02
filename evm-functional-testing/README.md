@@ -86,19 +86,19 @@ ps aux | grep port-forward
 If you need to re-forward the ports
 - Consensus Node
 ```sh
-ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("haproxy-node1-*")) | .metadata.name') 50211:50211
+ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("haproxy-node1-*")) | .metadata.name') 35211:35211
 ```
 - Mirror Node
 ```sh
-ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("mirror-ingress-controller-*")) | .metadata.name') 8081:80
+ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("mirror-ingress-controller-*")) | .metadata.name') 38081:38081
 ```
 - Relay
 ```sh
-ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("relay-\\d+-(?!ws)")) | .metadata.name') 7546:7546
+ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("relay-\\d+-(?!ws)")) | .metadata.name') 37546:37546
 ```
 - Explorer
 ```sh
-ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("hiero-explorer-*")) | .metadata.name') 8080:8080
+ns=$(kubectl get ns -o json | jq -r '.items[] | select(.metadata.name | match("solo-ns-[a-z0-9-]+")) | .metadata.name'); kubectl port-forward -n $ns pods/$(kubectl get pods -n $ns -o json | jq -r '.items[] | select(.metadata.name | match("hiero-explorer-*")) | .metadata.name') 38080:38080
 ```
 
 ### Logs

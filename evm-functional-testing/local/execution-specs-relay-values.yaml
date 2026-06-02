@@ -1,0 +1,8 @@
+relay:
+  config:
+    # Using this to 'blocking' eth_sendRawTransaction execution to see the execution error, if there is one.
+    USE_ASYNC_TX_PROCESSING: "false"
+    # new configs for Ethereum execution spec tests
+    MAX_TRANSACTION_FEE_THRESHOLD: 120000000
+    SEND_RAW_TRANSACTION_SIZE_LIMIT: 720000
+    CALL_DATA_SIZE_LIMIT: 720000
