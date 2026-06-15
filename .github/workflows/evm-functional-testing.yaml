@@ -107,7 +107,7 @@ jobs:
           repository: hiero-ledger/hiero-consensus-node
           # TODO(pectra): Restore main branch, once Pectra feature branch has been merged
           # ref: main
-          ref: feature/hedera-evm-pectra-support-v2
+          ref: fix-noop-gas-context
           fetch-depth: 0
 
       - name: Build hiero-consensus-node
@@ -122,7 +122,7 @@ jobs:
         with:
           path: hiero-json-rpc-relay
           repository: hiero-ledger/hiero-json-rpc-relay
-          ref: pectra-upgrade
+          ref: release/0.77
           fetch-depth: 0
 
       - name: Build hiero-json-rpc-relay
