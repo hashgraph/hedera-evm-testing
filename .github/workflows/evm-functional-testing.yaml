@@ -122,7 +122,7 @@ jobs:
         with:
           path: hiero-json-rpc-relay
           repository: hiero-ledger/hiero-json-rpc-relay
-          ref: release/0.76
+          ref: release/0.77
           fetch-depth: 0
 
       - name: Build hiero-json-rpc-relay
