@@ -52,6 +52,8 @@ jobs:
             test_args: "test/hip-1340/hip1340-sdk.test.js"
           - shard: HIP-1340 Atomic Batch
             test_args: "test/hip-1340/hip1340-sdk-atomic-batch.test.js"
+          - shard: ETH validation tests
+            test_args: "test/eth-validation/eth-tx-stale-key.test.js"
     steps:
 
       - name: Harden Runner
