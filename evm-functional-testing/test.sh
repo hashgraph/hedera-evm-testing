@@ -16,7 +16,7 @@ APP_PROPERTIES_PATH="local/application.properties"
 ######################### MN configs #########################
 LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
-MIRROR_NODE_VERSION=0.153.0
+MIRROR_NODE_VERSION=0.157.1
 MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 
 ######################### Relay configs #########################
@@ -26,6 +26,8 @@ RELAY_DIR="../../hiero-json-rpc-relay"
 RELAY_YAML_PATH="local/relay-values.yaml"
 
 ######################### Solo configs #########################
+#Temporary flag due to repository issue
+export ENABLE_IMAGE_CACHE=false
 export SOLO_BASE_NAME=hedera
 export SOLO_CLUSTER_NAME="solo-${SOLO_BASE_NAME}"
 export SOLO_NAMESPACE="solo-ns-${SOLO_BASE_NAME}"
