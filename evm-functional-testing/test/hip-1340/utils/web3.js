@@ -369,6 +369,7 @@ function asHexUint256(value) {
 }
 
 module.exports = {
+    isEthNetwork,
     gas, units, deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256, getArtifact,
     asLongZeroAddress, getNonces, getCodes, cartesianProduct,
     DelegationTransactionBuilder, verifyDelegation, executeBatchViaDelegation,

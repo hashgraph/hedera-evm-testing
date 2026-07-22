@@ -65,6 +65,17 @@ const Contract = {
   // --- access list
   AccessListCallerContract: "AccessListCallerContract",
   AccessListTargetContract: "AccessListTargetContract",
+  // --- eth-validation tests
+  SimpleStorage: "SimpleStorage",
+  ContractWithArgs: "ContractWithArgs",
+  PayableCtor: "PayableCtor",
+  RevertingCtor: "RevertingCtor",
+  EmptyContract: "EmptyContract",
+  EthValidationFactory: "EthValidationFactory",
+  SimpleChild: "SimpleChild",
+  EthValidationCaller: "EthValidationCaller",
+  ReentrancyVictim: "ReentrancyVictim",
+  ReentrancyAttacker: "ReentrancyAttacker",
 };
 
 const Cost = {

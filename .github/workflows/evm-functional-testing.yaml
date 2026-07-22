@@ -52,6 +52,14 @@ jobs:
             test_args: "test/hip-1340/hip1340-sdk.test.js"
           - shard: HIP-1340 Atomic Batch
             test_args: "test/hip-1340/hip1340-sdk-atomic-batch.test.js"
+          - shard: ETH Validation deployment
+            test_args: "test/eth-validation/deployment.test.js"
+          - shard: ETH Validation CREATE/CREATE2
+            test_args: "test/eth-validation/create-create2.test.js"
+          - shard: ETH Validation call semantics
+            test_args: "test/eth-validation/call-semantics.test.js"
+          - shard: ETH Validation call edge cases
+            test_args: "test/eth-validation/call-edge-cases.test.js"
     steps:
 
       - name: Harden Runner
@@ -200,6 +208,10 @@ jobs:
         run: npx hardhat test test/hip-1340/hip1340-*.test.js --grep 'Ethereum Specific tests' --network hardhat
         working-directory: evm-functional-testing
 
+      - name: Run ETH Validation tests against Hardhat local network
+        run: npx hardhat test test/eth-validation/*.test.js --network hardhat
+        working-directory: evm-functional-testing
+
   hip1340-eip7702-ethereum-geth-testing:
     name: HIP-1340 - EIP-7702 Ethereum/Geth Testing
     runs-on: smart-contracts-linux-medium
@@ -227,6 +239,10 @@ jobs:
 
       - name: Run HIP-1340 - EIP-7702 tests against Geth local network
         run: npx hardhat test test/hip-1340/hip1340-*.test.js --grep 'Ethereum Specific tests' --network geth
+        working-directory: evm-functional-testing
+
+      - name: Run ETH Validation tests against Geth local network
+        run: npx hardhat test test/eth-validation/*.test.js --network geth
         working-directory: evm-functional-testing
 
       - name: Stop Geth container
