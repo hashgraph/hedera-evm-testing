@@ -9,6 +9,18 @@ contract SimpleChild {
     }
 }
 
+contract DestructibleChild {
+    uint256 public seed;
+
+    constructor(uint256 _seed) {
+        seed = _seed;
+    }
+
+    function destroy(address payable recipient) external {
+        selfdestruct(recipient);
+    }
+}
+
 contract EthValidationFactory {
     event Deployed(address addr);
 
@@ -52,6 +64,20 @@ contract EthValidationFactory {
         assembly {
             addr := create(0, add(initCode, 0x20), mload(initCode))
         }
+        emit Deployed(addr);
+    }
+
+    function deployCreate2Destructible(uint256 seed, bytes32 salt) external returns (address addr) {
+        addr = address(new DestructibleChild{salt: salt}(seed));
+        emit Deployed(addr);
+    }
+
+    /// CREATE2-deploys and SELFDESTRUCTs the child in the same transaction, which
+    /// removes the account entirely under EIP-6780 (Cancun) and frees its address.
+    function deployCreate2AndDestroy(uint256 seed, bytes32 salt) external returns (address addr) {
+        DestructibleChild child = new DestructibleChild{salt: salt}(seed);
+        child.destroy(payable(msg.sender));
+        addr = address(child);
         emit Deployed(addr);
     }
 }

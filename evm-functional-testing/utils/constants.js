@@ -73,6 +73,7 @@ const Contract = {
   EmptyContract: "EmptyContract",
   EthValidationFactory: "EthValidationFactory",
   SimpleChild: "SimpleChild",
+  DestructibleChild: "DestructibleChild",
   EthValidationCaller: "EthValidationCaller",
   ReentrancyVictim: "ReentrancyVictim",
   ReentrancyAttacker: "ReentrancyAttacker",

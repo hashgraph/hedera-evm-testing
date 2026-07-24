@@ -4,6 +4,7 @@ const { expect } = require("chai");
 const Constants = require("../../utils/constants");
 const {
   tinybarValue,
+  evmScale,
   deployRevertsWithoutCode,
 } = require("./utils/eth-validation-utils");
 
@@ -59,13 +60,16 @@ describe("ETH Validation - Contract deployment", async () => {
 
     it("should store and hold value sent to a payable constructor", async () => {
       const value = tinybarValue(123_456_789);
+      // explicit gasLimit: the relay's eth_estimateGas ignores the attached value,
+      // so the estimate-based limit is too small for a creation with a transfer
       const contract = await ethers.deployContract(
         Constants.Contract.PayableCtor,
-        { value },
+        { value, ...Constants.GAS_LIMIT_1_000_000 },
       );
       await contract.waitForDeployment();
 
-      expect(await contract.initialBalance()).to.equal(value);
+      // msg.value is EVM-denominated: tinybars on Hedera, wei on Ethereum
+      expect(await contract.initialBalance()).to.equal(evmScale(value));
       expect(await contract.deployer()).to.equal(signers[0].address);
       expect(await ethers.provider.getBalance(contract.target)).to.equal(value);
     });

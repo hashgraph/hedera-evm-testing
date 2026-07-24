@@ -28,6 +28,18 @@ function callGasPrice() {
 }
 
 /**
+ * Converts a wei-scale RPC value to the denomination observed inside the EVM
+ * (`msg.value`, `address(this).balance`). Hedera's EVM denominates values in
+ * tinybars (1 tinybar == 1e10 weibar), Ethereum EVMs in wei.
+ *
+ * @param {bigint} wei - wei/weibar amount as sent or read over JSON-RPC
+ * @returns {bigint} the same amount as seen by contract code
+ */
+function evmScale(wei) {
+  return isEthNetwork() ? wei : wei / Constants.TINYBAR_TO_WEIBAR_COEF;
+}
+
+/**
  * CREATE address derived from deployer address and nonce.
  *
  * @param {string} deployer
@@ -123,6 +135,7 @@ function deployedAddress(factory, receipt) {
 module.exports = {
   tinybarValue,
   callGasPrice,
+  evmScale,
   expectedCreateAddress,
   expectedCreate2Address,
   childInitCode,

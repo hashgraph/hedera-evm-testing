@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 const { expect } = require("chai");
 const { contractDeployAndFund } = require("../../utils/contract");
 const Constants = require("../../utils/constants");
-const { tinybarValue } = require("./utils/eth-validation-utils");
+const { tinybarValue, evmScale } = require("./utils/eth-validation-utils");
 
 const abi = ethers.AbiCoder.defaultAbiCoder();
 
@@ -63,7 +63,8 @@ describe("ETH Validation - Call semantics", async () => {
       // setValue executed in the caller's storage context sees the EOA as msg.sender
       expect(await caller.lastSender()).to.equal(signers[0].address);
       expect(await caller.lastOrigin()).to.equal(signers[0].address);
-      expect(await caller.lastValue()).to.equal(value);
+      // msg.value is EVM-denominated: tinybars on Hedera, wei on Ethereum
+      expect(await caller.lastValue()).to.equal(evmScale(value));
     });
 
     it("should return data from STATICCALL into a view function", async () => {
@@ -85,8 +86,9 @@ describe("ETH Validation - Call semantics", async () => {
         .doCall(storage.target, 126, { value, ...Constants.GAS_LIMIT_1_000_000 })
         .then((tx) => tx.wait());
 
-      expect(await storage.lastValue()).to.equal(value);
-      expect(await storage.echoBalance()).to.equal(balanceBefore + value);
+      // msg.value and address(this).balance are EVM-denominated: tinybars on Hedera, wei on Ethereum
+      expect(await storage.lastValue()).to.equal(evmScale(value));
+      expect(await storage.echoBalance()).to.equal(evmScale(balanceBefore + value));
       expect(await ethers.provider.getBalance(storage.target)).to.equal(
         balanceBefore + value,
       );

@@ -4,6 +4,7 @@ const { expect } = require("chai");
 const { contractDeployAndFund } = require("../../utils/contract");
 const Constants = require("../../utils/constants");
 const { randomStorageSlot } = require("../../utils/random");
+const { isEthNetwork } = require("../hip-1340/utils/web3");
 const {
   expectedCreateAddress,
   expectedCreate2Address,
@@ -156,9 +157,44 @@ describe("ETH Validation - CREATE and CREATE2", async () => {
       expect(await ethers.provider.getCode(predicted)).to.equal("0x");
     });
 
-    // Hedera-divergent: SELFDESTRUCT keeps Hedera entities alive (no address reuse) and
-    // post-Cancun EIP-6780 semantics make redeploy-to-same-address unstable on Ethereum too.
-    // Documented as out of scope in docs/eth-validation/eth-validation.md.
-    xit("should redeploy to the same CREATE2 address after SELFDESTRUCT", async () => {});
+    it("should redeploy to the same CREATE2 address after a same-transaction SELFDESTRUCT", async () => {
+      const seed = 41;
+      const salt = randomStorageSlot();
+
+      // EIP-6780 (Cancun): SELFDESTRUCT removes the account only when it runs in
+      // the same transaction as the creation — the one address-reuse path with
+      // stable semantics post-Cancun. Hedera consensus honors this too.
+      const first = await deployChild("deployCreate2AndDestroy", seed, salt);
+
+      // eth_getCode is asserted on Ethereum networks only: Hedera's mirror node
+      // does not reflect the same-transaction destruction and keeps serving the
+      // destroyed contract's bytecode
+      if (isEthNetwork()) {
+        expect(await ethers.provider.getCode(first)).to.equal("0x");
+      }
+
+      // the CREATE2 address is free again, so the same salt + init code land on it
+      // (explicit gasLimit: relay gas estimation simulates against the mirror node's
+      // stale post-SELFDESTRUCT state and reverts on a phantom CREATE2 collision)
+      const second = await deployChild(
+        "deployCreate2Destructible",
+        seed,
+        salt,
+        Constants.GAS_LIMIT_1_000_000,
+      );
+      expect(second).to.equal(first);
+      // like the check above, asserted on Ethereum networks only — the mirror
+      // node's code view of a destroyed-and-reused address is unreliable
+      if (isEthNetwork()) {
+        expect(await ethers.provider.getCode(second)).to.not.equal("0x");
+      }
+
+      // and it is now genuinely occupied again — a third deployment collides
+      await expect(
+        factory
+          .deployCreate2Destructible(seed, salt, Constants.GAS_LIMIT_1_000_000)
+          .then((tx) => tx.wait()),
+      ).to.be.rejected;
+    });
   });
 });
