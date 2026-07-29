@@ -6,13 +6,25 @@ Unlike the feature/HIP-specific suites in this project (HIP-632, HIP-1215, HIP-1
 
 Every test is asserted for **Ethereum parity**: the same network-agnostic test bodies run against Hedera (`solo`), a reference `geth` node, and Hardhat's in-process EVM. A green run with identical passing/pending counts across all three networks is the proof that core EVM lifecycle and call behavior on Hedera matches Ethereum.
 
+### Zero gas price
+
+On Hedera the suite runs **end-to-end at a zero gas price**: setting `EVM_ZERO_GAS_PRICE=true` makes the `solo` network submit every transaction — deployments and calls alike — with `gasPrice: 0` (see `hardhat.config.js`). For those transactions to be accepted and executed, the network must be started in a matching mode:
+
+- **Consensus node** with `local/zero-fees.properties` (`fees.simpleFeesAreFree=true`), so a zero-gas-price transaction incurs no fee and is not rejected for an insufficient fee.
+- **Relay** with `local/relay-zero-gas-values.yaml`, which raises `MAX_GAS_ALLOWANCE_HBAR` as a safety net (its default `"0"` would reject a fully-subsidized transaction).
+
+`test.sh` wires both up: `EVM_ZERO_GAS_PRICE=true ./test.sh solo start` starts the consensus node with `zero-fees.properties` and the relay with `relay-zero-gas-values.yaml`. The CI eth-validation shards do the same. The reference EVMs reject a gas price below the block base fee, so they always run at their normal (base-fee) price; because none of the assertions depend on the gas price, the parity comparison still holds. See the divergence note below.
+
 ## Run Tests
 
 ```sh
-# Hedera solo (default network)
-npx hardhat test test/eth-validation/*.test.js --network solo
+# Hedera solo — start the network in zero-gas-price mode first (consensus node with
+# zero-fees.properties, relay with relay-zero-gas-values.yaml):
+EVM_ZERO_GAS_PRICE=true ./test.sh solo start
+# then run the whole suite at zero gas price:
+EVM_ZERO_GAS_PRICE=true npx hardhat test test/eth-validation/*.test.js --network solo
 
-# Reference Ethereum EVMs
+# Reference Ethereum EVMs (normal fee data; do NOT set EVM_ZERO_GAS_PRICE)
 npx hardhat test test/eth-validation/*.test.js --network hardhat
 npx hardhat test test/eth-validation/*.test.js --network geth
 ```
@@ -25,6 +37,7 @@ All three runs must report the same set of passing tests and the same pending (`
 - **In-EVM creation** (`create-create2.test.js`) — `CREATE` address derivation from deployer nonce, `CREATE2` (EIP-1014) address determinism verified on-chain and off-chain, address collisions, reverting init code
 - **Call semantics** (`call-semantics.test.js`) — storage context, `msg.sender`/`tx.origin`/`msg.value` propagation and preservation across `CALL`/`DELEGATECALL`/`STATICCALL`, value forwarding, multi-hop return data, revert data bubbling, static-context write protection
 - **Call edge cases** (`call-edge-cases.test.js`) — calls into EOAs and non-existent accounts, exact value transfer to EOAs, behavioral gas forwarding (63/64), bounded and guarded reentrancy, deeply nested call chains, gas-starved inner calls
+- **Zero gas price** (`zero-gas-price.test.js`) — value transfer, contract call and contract deployment submitted with `gasPrice: 0`; asserts Hedera accepts and executes them normally, and asserts the divergent rejection on the reference EVMs (see below)
 
 ## Out of Scope — Known Hedera Divergences
 
@@ -37,3 +50,4 @@ The following are intentionally **not** asserted (marked `xit`/pending where a p
 - **EVM-internal value denomination** — inside Hedera's EVM, `msg.value` and `address(this).balance` are denominated in tinybars, while JSON-RPC speaks weibars; assertions on values read back from contract storage convert via the `evmScale()` helper so the same test body asserts wei on Ethereum and tinybars on Hedera
 - **`eth_estimateGas` for value-bearing deployments** — the relay's estimate does not account for the attached value, so a contract creation with value run at the estimated limit fails with `INSUFFICIENT_GAS`; the payable-constructor test passes an explicit `gasLimit` instead of relying on estimation
 - **Reserved system-contract/precompile address ranges** (`0x167`, `0x16b`, low long-zero addresses) — empty-account call cases use random 20-byte addresses well outside these ranges
+- **Zero gas price** — a state-changing transaction whose offered gas price is zero is accepted and executed on Hedera when the network is started in zero-gas-price mode: the consensus node with `local/zero-fees.properties` (`fees.simpleFeesAreFree=true`, so the transaction incurs no fee) and the relay with `local/relay-zero-gas-values.yaml` (a non-zero `MAX_GAS_ALLOWANCE_HBAR` safety net, since its default `"0"` would reject a fully-subsidized transaction). `test.sh` and the CI eth-validation shards wire both up. Ethereum reference EVMs reject any transaction whose gas price is below the current block base fee. `zero-gas-price.test.js` keeps one network-agnostic body green across all three networks by asserting the accepted-and-executed outcome on Hedera and the rejection on Ethereum networks (via `isEthNetwork()`); the `ZERO_GAS_PRICE` helper documents the shared constant

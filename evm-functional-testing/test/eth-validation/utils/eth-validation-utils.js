@@ -18,14 +18,43 @@ function tinybarValue(tinybars) {
 }
 
 /**
- * Legacy gas price for raw transactions: relay-compatible fixed price on Hedera,
- * undefined on Ethereum networks (lets ethers populate fee data).
+ * Whether the suite submits transactions at a zero gas price on Hedera.
+ *
+ * Driven by the EVM_ZERO_GAS_PRICE flag, which is also read by `hardhat.config.js` so
+ * the solo network's default gas price matches. This single switch keeps the whole
+ * suite consistent: both transactions that inherit the network default and those that
+ * set `gasPrice: callGasPrice()` explicitly run at the same price.
+ *
+ * @returns {boolean}
+ */
+function zeroGasPriceEnabled() {
+  return process.env.EVM_ZERO_GAS_PRICE === "true";
+}
+
+/**
+ * Legacy gas price for raw transactions on Hedera, `undefined` on Ethereum networks
+ * (lets ethers populate fee data). On Hedera this is zero when EVM_ZERO_GAS_PRICE is
+ * set, otherwise the relay-compatible fixed price. Kept in lock-step with the solo
+ * network default in `hardhat.config.js` so explicit and inherited gas prices agree.
  *
  * @returns {bigint | undefined}
  */
 function callGasPrice() {
-  return isEthNetwork() ? undefined : ethers.parseUnits("710", "gwei");
+  if (isEthNetwork()) return undefined;
+  return zeroGasPriceEnabled() ? 0n : ethers.parseUnits("710", "gwei");
 }
+
+/**
+ * A legacy gas price of exactly zero.
+ *
+ * On Hedera a zero-gas-price transaction is fully subsidized by the relay operator: the
+ * sender offers 0 and the relay covers the entire fee, provided it is configured with a
+ * sufficient MAX_GAS_ALLOWANCE_HBAR (default "0" rejects such transactions; see
+ * local/relay-zero-gas-values.yaml). Ethereum reference EVMs (geth, Hardhat) reject any
+ * transaction whose gas price is below the current block base fee. The zero-gas-price
+ * suite asserts both sides.
+ */
+const ZERO_GAS_PRICE = 0n;
 
 /**
  * Converts a wei-scale RPC value to the denomination observed inside the EVM
@@ -135,6 +164,7 @@ function deployedAddress(factory, receipt) {
 module.exports = {
   tinybarValue,
   callGasPrice,
+  ZERO_GAS_PRICE,
   evmScale,
   expectedCreateAddress,
   expectedCreate2Address,

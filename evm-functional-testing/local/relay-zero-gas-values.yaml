@@ -1,0 +1,10 @@
+relay:
+  config:
+    # Relay configuration for the zero-gas-price eth-validation runs (EVM_ZERO_GAS_PRICE=true).
+    # The consensus node is started with zero-fees.properties (fees.simpleFeesAreFree=true), so
+    # a zero-gas-price transaction incurs no fee. MAX_GAS_ALLOWANCE_HBAR is kept as a safety net
+    # covering the sender-offered shortfall should any fee still apply; its default of "0" would
+    # otherwise reject a fully-subsidized (zero gas price) transaction.
+    MAX_GAS_ALLOWANCE_HBAR: "1000"
+    # Using this to 'blocking' eth_sendRawTransaction execution to see the execution error, if there is one.
+    USE_ASYNC_TX_PROCESSING: "false"

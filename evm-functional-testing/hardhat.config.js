@@ -60,6 +60,15 @@ module.exports = {
       url: "http://localhost:37546",
       chainId: 298,
       gas: 15_000_000,
+      // When EVM_ZERO_GAS_PRICE is set, every transaction sent to solo (deployments and
+      // calls alike) uses a zero gas price. Such transactions are fully subsidized by the
+      // relay operator (the sender offers 0, the relay covers the fee via
+      // MAX_GAS_ALLOWANCE_HBAR), so the suite runs end-to-end at zero gas price. Used by the
+      // eth-validation suite to verify the full contract lifecycle under a zero gas price;
+      // it requires the relay to be deployed with a sufficient MAX_GAS_ALLOWANCE_HBAR (see
+      // local/relay-zero-gas-values.yaml). Defaults to "auto" (relay eth_gasPrice) otherwise.
+      gasPrice: process.env.EVM_ZERO_GAS_PRICE === "true" ? 0 : "auto",
+      minGasPrice: 0,
       timeout: 60_000,
       accounts: [
         // private keys of Solo local network. Configured at 'test.sh' file of this folder
