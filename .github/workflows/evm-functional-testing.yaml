@@ -19,8 +19,8 @@ permissions:
 
 env:
   SOLO_CLUSTER_NAME: solo-evm-e2e
-  MIRROR_NODE_VERSION: '0.153.0'
-  RELAY_RELEASE: '0.76.2'
+  MIRROR_NODE_VERSION: '0.158.0'
+  RELAY_RELEASE: '0.78.1'
 
 jobs:
   evm-functional-regression:
