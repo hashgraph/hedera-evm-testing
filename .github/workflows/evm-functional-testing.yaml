@@ -38,20 +38,31 @@ jobs:
             test_args: "test/hts/transfer-events/transfer-events.test.js"
           - shard: HIP-1340 baseline
             test_args: "test/hip-1340/hip1340-baseline.test.js"
+          # The HIP-1340 suites (except baseline) submit EIP-7702 type 4 transactions through
+          # the relay, which rejects them unless deployed with TX_TYPE_4_ENABLED=true
+          # (relay_values -> relay-values.yaml). The consensus-node side is covered by
+          # contracts.codeDelegations.enabled=true in the default application.properties.
           - shard: HIP-1340 EIP-7702 (solo)
             test_args: "test/hip-1340/hip1340-hts-delegation-noop-value.test.js"
+            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
           - shard: HIP-1340 EIP-7702 Ethereum Specific (solo) - delegation setup
             test_args: "test/hip-1340/hip1340-delegation-setup.test.js --grep 'Ethereum Specific tests'"
+            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
           - shard: HIP-1340 EIP-7702 Ethereum Specific (solo) - delegated execution
             test_args: "test/hip-1340/hip1340-delegated-execution.test.js --grep 'Ethereum Specific tests'"
+            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
           - shard: HIP-1340 EIP-7702 Ethereum Specific (solo) - token and account creation
             test_args: "test/hip-1340/hip1340-token-and-account-creation.test.js --grep 'Ethereum Specific tests'"
+            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
           - shard: HIP-1340 Hiero
             test_args: "test/hip-1340/hip1340-hiero.test.js"
+            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
           - shard: HIP-1340 SDK tests
             test_args: "test/hip-1340/hip1340-sdk.test.js"
+            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
           - shard: HIP-1340 Atomic Batch
             test_args: "test/hip-1340/hip1340-sdk-atomic-batch.test.js"
+            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
           # The eth-validation suite runs end-to-end at zero gas price on Hedera:
           #   zero_gas_price   -> EVM_ZERO_GAS_PRICE on the run step (read by hardhat.config.js)
           #   app_properties   -> consensus node started with zero-fees.properties
@@ -174,8 +185,9 @@ jobs:
           solo mirror node add --enable-ingress --pinger --mirror-node-version ${MIRROR_NODE_VERSION} --values-file "${MIRROR_NODE_VALUES_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} 
           # relay
           kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" --name "${SOLO_CLUSTER_NAME}"
-          # Shards that set RELAY_VALUES_PATH (eth-validation zero-gas-price) get a relay
-          # configured to fully subsidize zero-gas-price transactions; others use defaults.
+          # Shards that set RELAY_VALUES_PATH get a customized relay: HIP-1340 shards enable
+          # type 4 (EIP-7702) transactions, eth-validation zero-gas-price shards fully
+          # subsidize zero-gas-price transactions; others use defaults.
           RELAY_VALUES_ARG=""
           if [ -n "${RELAY_VALUES_PATH}" ]; then
             RELAY_VALUES_ARG="--values-file ${RELAY_VALUES_PATH}"
@@ -190,7 +202,7 @@ jobs:
           SOLO_DEPLOYMENT: solo-evm-deployment
           SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup
           MIRROR_NODE_VALUES_PATH: "evm-testing/evm-functional-testing/local/mn-values.yaml"
-          # Empty for non-eth-validation shards -> relay deployed with default config.
+          # Empty when the shard sets no relay_values -> relay deployed with default config.
           RELAY_VALUES_PATH: ${{ matrix.relay_values }}
           # eth-validation zero-gas shards override this with zero-fees.properties.
           APP_PROPERTIES_PATH: ${{ matrix.app_properties || 'evm-testing/evm-functional-testing/local/application.properties' }}
