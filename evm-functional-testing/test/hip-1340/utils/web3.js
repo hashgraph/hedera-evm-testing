@@ -36,6 +36,20 @@ const gas = {
     accountCreationCost: () => isEthNetwork() ? 0 : 570_000,
 };
 
+/**
+ * Explicit EIP-1559 fee fields for transactions sent to Hedera networks.
+ *
+ *
+ * @returns {{maxFeePerGas?: bigint, maxPriorityFeePerGas?: bigint}}
+ */
+function txFees() {
+    if (isEthNetwork()) return {};
+    return {
+        maxFeePerGas: ethers.parseUnits('710', 'gwei'),
+        maxPriorityFeePerGas: 0n,
+    };
+}
+
 const units = {
     /**
      * Converts tinybar units to wei-like denomination used in tests.
@@ -267,6 +281,7 @@ class DelegationTransactionBuilder {
             chainId: this.chainId,
             nonce: this.senderNonce ?? await this.sender.getNonce(),
             gasLimit: this.gasLimit,
+            ...txFees(),
             to: this.toAddress,
             value: this.value,
             authorizationList: authList,
@@ -320,6 +335,7 @@ async function executeBatchViaDelegation({
         chainId,
         nonce,
         gasLimit,
+        ...txFees(),
         to: eoa.address,
         data: encodeFunctionData(
             'executeBatch((address target,uint256 value,bytes data)[] calls)',
@@ -369,7 +385,7 @@ function asHexUint256(value) {
 }
 
 module.exports = {
-    isEthNetwork,
+    isEthNetwork, txFees,
     gas, units, deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256, getArtifact,
     asLongZeroAddress, getNonces, getCodes, cartesianProduct,
     DelegationTransactionBuilder, verifyDelegation, executeBatchViaDelegation,

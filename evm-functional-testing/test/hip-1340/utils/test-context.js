@@ -1,7 +1,7 @@
 const log = require('node:util').debuglog('hip-1340:web3');
 const { ethers } = require('hardhat');
 
-const { gas, units, getNonces, EOADefaultBalance } = require('./web3');
+const { gas, units, getNonces, txFees, EOADefaultBalance } = require('./web3');
 
 class Nonce {
     #val = 0;
@@ -54,6 +54,7 @@ class Hip1340TestContext {
             chainId: network.chainId,
             nonce,
             gasLimit: gas.base + gas.accountCreationCost(),
+            ...txFees(),
             value: units.hbar(hbarBalance),
             to: this.seedEOA.address,
         });
@@ -77,6 +78,7 @@ class Hip1340TestContext {
             chainId: network.chainId,
             nonce,
             gasLimit: 21_000 + gas.accountCreationCost(),
+            ...txFees(),
             value: EOADefaultBalance,
             to: eoa.address,
         });
@@ -99,6 +101,7 @@ class Hip1340TestContext {
             chainId: network.chainId,
             nonce: 0,
             gasLimit: gas.base + gas.codeAuthorization(1),
+            ...txFees(),
             to: ethers.ZeroAddress,
             authorizationList: [await eoa.authorize({
                 chainId: 0,
