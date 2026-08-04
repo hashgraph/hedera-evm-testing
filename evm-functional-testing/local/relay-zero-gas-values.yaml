@@ -1,10 +1,23 @@
 relay:
   config:
     # Relay configuration for the zero-gas-price eth-validation runs (EVM_ZERO_GAS_PRICE=true).
-    # The consensus node is started with zero-fees.properties (fees.simpleFeesAreFree=true), so
-    # a zero-gas-price transaction incurs no fee. MAX_GAS_ALLOWANCE_HBAR is kept as a safety net
-    # covering the sender-offered shortfall should any fee still apply; its default of "0" would
-    # otherwise reject a fully-subsidized (zero gas price) transaction.
-    MAX_GAS_ALLOWANCE_HBAR: "1000"
+    # The relay's gasPrice precheck rejects any offered gas price below the network minimum
+    # (GAS_PRICE_TOO_LOW) unless the paymaster matches the transaction, so the wildcard
+    # whitelist is what lets zero-gas-price transactions through. It must be "*": contract
+    # deployments have no `to` address and can never match an address whitelist entry.
+    PAYMASTER_ENABLED: "true"
+    PAYMASTER_WHITELIST: '["*"]'
+    # Keep the gas allowance at 0 so the relay operator never subsidizes anything: the
+    # paymaster match only bypasses the precheck. The transactions still execute because the
+    # consensus node runs with zero-fees.properties (fees.simpleFeesAreFree=true), so no fee
+    # is charged at all. If free fees ever silently stopped working, transactions would fail
+    # with an insufficient-fee error instead of being paid for by the relay.
+    MAX_GAS_ALLOWANCE_HBAR: "0"
     # Using this to 'blocking' eth_sendRawTransaction execution to see the execution error, if there is one.
     USE_ASYNC_TX_PROCESSING: "false"
+    # Relay >= 0.77 tracks pending transactions in its own pool and folds them into
+    # eth_getTransactionCount. Under this suite's rapid single-sender sends, that accounting
+    # drifts from the consensus node's authoritative nonce (WRONG_NONCE / "Nonce too high"
+    # off-by-one rejections). Disabling the pool reverts nonce lookups to plain mirror-node
+    # reads, the pre-0.77 behavior this project ran on with relay 0.76.x.
+    ENABLE_TX_POOL: "false"

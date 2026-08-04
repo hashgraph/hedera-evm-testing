@@ -1,11 +1,12 @@
 // ETH Validation: zero gas price transactions
 //
-// On Hedera a state-changing transaction with an offered gas price of zero is fully
-// subsidized by the relay operator: the sender offers 0 and the relay covers the entire
-// fee, provided it is configured with a sufficient MAX_GAS_ALLOWANCE_HBAR (its default
-// "0" rejects such transactions; see local/relay-zero-gas-values.yaml). The transaction
-// then executes normally. Ethereum reference EVMs (geth, Hardhat) reject any transaction
-// whose gas price is below the current block base fee.
+// On Hedera a state-changing transaction with an offered gas price of zero is accepted
+// and executed when the network runs in zero-gas-price mode: the relay's paymaster
+// wildcard whitelist lets the below-minimum gas price through its precheck (which would
+// otherwise reject it with GAS_PRICE_TOO_LOW), and the consensus node charges no fee at
+// all (fees.simpleFeesAreFree=true) — nothing is relay-subsidized (the gas allowance is
+// kept at 0; see local/relay-zero-gas-values.yaml). Ethereum reference EVMs (geth,
+// Hardhat) reject any transaction whose gas price is below the current block base fee.
 //
 // This is an intentional Hedera divergence (documented in
 // docs/eth-validation/eth-validation.md). To keep a single network-agnostic test body

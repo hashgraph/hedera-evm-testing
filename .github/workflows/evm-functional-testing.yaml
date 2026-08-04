@@ -67,7 +67,9 @@ jobs:
           #   zero_gas_price   -> EVM_ZERO_GAS_PRICE on the run step (read by hardhat.config.js)
           #   app_properties   -> consensus node started with zero-fees.properties
           #                       (fees.simpleFeesAreFree=true) so zero-gas-price txs incur no fee
-          #   relay_values     -> relay deployed with MAX_GAS_ALLOWANCE_HBAR as a safety net
+          #   relay_values     -> relay deployed with the paymaster wildcard whitelist so its
+          #                       precheck accepts a below-minimum gas price (gas allowance
+          #                       kept at 0, so nothing is relay-subsidized)
           - shard: ETH Validation deployment
             test_args: "test/eth-validation/deployment.test.js"
             zero_gas_price: "true"
@@ -186,8 +188,8 @@ jobs:
           # relay
           kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" --name "${SOLO_CLUSTER_NAME}"
           # Shards that set RELAY_VALUES_PATH get a customized relay: HIP-1340 shards enable
-          # type 4 (EIP-7702) transactions, eth-validation zero-gas-price shards fully
-          # subsidize zero-gas-price transactions; others use defaults.
+          # type 4 (EIP-7702) transactions, eth-validation zero-gas-price shards accept
+          # zero-gas-price transactions (paymaster whitelist, zero allowance); others use defaults.
           RELAY_VALUES_ARG=""
           if [ -n "${RELAY_VALUES_PATH}" ]; then
             RELAY_VALUES_ARG="--values-file ${RELAY_VALUES_PATH}"

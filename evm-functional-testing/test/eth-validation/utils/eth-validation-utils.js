@@ -47,12 +47,12 @@ function callGasPrice() {
 /**
  * A legacy gas price of exactly zero.
  *
- * On Hedera a zero-gas-price transaction is fully subsidized by the relay operator: the
- * sender offers 0 and the relay covers the entire fee, provided it is configured with a
- * sufficient MAX_GAS_ALLOWANCE_HBAR (default "0" rejects such transactions; see
- * local/relay-zero-gas-values.yaml). Ethereum reference EVMs (geth, Hardhat) reject any
- * transaction whose gas price is below the current block base fee. The zero-gas-price
- * suite asserts both sides.
+ * On Hedera a zero-gas-price transaction is accepted when the network runs in
+ * zero-gas-price mode: the relay's paymaster wildcard whitelist lets it through the
+ * minimum-gas-price precheck (see local/relay-zero-gas-values.yaml) and the consensus
+ * node charges no fee (fees.simpleFeesAreFree=true) — nothing is relay-subsidized.
+ * Ethereum reference EVMs (geth, Hardhat) reject any transaction whose gas price is
+ * below the current block base fee. The zero-gas-price suite asserts both sides.
  */
 const ZERO_GAS_PRICE = 0n;
 
