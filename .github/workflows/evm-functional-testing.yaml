@@ -148,7 +148,7 @@ jobs:
         with:
           path: hiero-consensus-node
           repository: hiero-ledger/hiero-consensus-node
-          ref: main
+          ref: feature/26684-Besu-native-library-incompatible-with-GLIBC-2.28
           fetch-depth: 0
 
       - name: Build hiero-consensus-node
