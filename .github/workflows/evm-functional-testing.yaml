@@ -96,6 +96,17 @@ jobs:
             zero_gas_price: "true"
             app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
             relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
+          # The one eth-validation shard that must NOT run in zero-gas-price mode: it asserts how
+          # much gas an EthereumTransaction is charged, and with fees.simpleFeesAreFree=true the
+          # consensus node skips gas charging entirely (the suite skips itself if it finds that
+          # mode on). So no zero_gas_price and no app_properties override -> the node gets the
+          # default local/application.properties and charges real fees. The suite drives the
+          # consensus node over the SDK; the relay only serves its contract deployment, and
+          # relay-values.yaml is used for USE_ASYNC_TX_PROCESSING=false so a failed deployment
+          # surfaces its error.
+          - shard: ETH Validation self-relay gas (SDK)
+            test_args: "test/eth-validation/self-relay-gas-sdk.test.js"
+            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
     steps:
 
       - name: Harden Runner
