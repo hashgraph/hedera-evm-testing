@@ -31,6 +31,14 @@ npx hardhat test test/eth-validation/*.test.js --network geth
 
 All three runs must report the same set of passing tests and the same pending (`xit`) tests. For a strict check, diff the `passes`/`pending` titles of `--reporter json` output across the three networks.
 
+`self-relay-gas-sdk.test.js` is the one exception, and it does not disturb that comparison: it asserts *how much* gas an `EthereumTransaction` is charged, so it needs the network to actually charge fees. It skips itself in zero-gas-price mode and on the reference EVMs, i.e. it is pending in all three runs above, and it is run separately against a **normal-fee** network:
+
+```sh
+# Hedera solo — normal fees (default application.properties + relay-values.yaml)
+./test.sh solo start
+npx hardhat test test/eth-validation/self-relay-gas-sdk.test.js --network solo
+```
+
 ## Testing Scope
 
 - **Contract deployment lifecycle** (`deployment.test.js`) — constructor arguments, payable/reverting/non-payable constructors, runtime code presence and `EXTCODESIZE` consistency, no code left behind after failed deployments
@@ -38,6 +46,7 @@ All three runs must report the same set of passing tests and the same pending (`
 - **Call semantics** (`call-semantics.test.js`) — storage context, `msg.sender`/`tx.origin`/`msg.value` propagation and preservation across `CALL`/`DELEGATECALL`/`STATICCALL`, value forwarding, multi-hop return data, revert data bubbling, static-context write protection
 - **Call edge cases** (`call-edge-cases.test.js`) — calls into EOAs and non-existent accounts, exact value transfer to EOAs, behavioral gas forwarding (63/64), bounded and guarded reentrancy, deeply nested call chains, gas-starved inner calls
 - **Zero gas price** (`zero-gas-price.test.js`) — value transfer, contract call and contract deployment submitted with `gasPrice: 0`; asserts Hedera accepts and executes them normally, and asserts the divergent rejection on the reference EVMs (see below)
+- **Self-relayed gas charging** (`self-relay-gas-sdk.test.js`) — an `EthereumTransaction` splits its gas cost between the ECDSA sender recovered from the inner signature and the outer HAPI payer (the "relayer") whenever the offered gas price is below the network gas price. When both roles resolve to the *same* account, the two shares are debited from one balance; this suite covers what that account is charged. It asserts that a self-relayed call pays the full network price of every gas unit it consumes — the same total as an equivalent call made with a separate relayer — and that when the single balance cannot cover the two shares combined the call is rejected with `INSUFFICIENT_PAYER_BALANCE`, changing no state, consuming no nonce and collecting no gas. Hedera-only and SDK-only: over the JSON-RPC relay the HAPI payer is the relay's own operator, so sender ≠ relayer, and making them coincide there would mean signing the inner transaction with the relay operator's key, which callers of the relay do not have. On `solo` they cannot coincide even by accident, because solo deploys the relay with `OPERATOR_ID_MAIN = 0.0.2`, an ED25519 account with no EVM alias that can never be the recovered sender of an EIP-1559 signature. The shape is therefore only expressible by submitting the `EthereumTransaction` yourself through the SDK. See the run note above for why it needs normal-fee mode
 
 ## Out of Scope — Known Hedera Divergences
 
