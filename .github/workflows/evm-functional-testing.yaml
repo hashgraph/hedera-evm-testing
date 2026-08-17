@@ -148,7 +148,7 @@ jobs:
         with:
           path: hiero-consensus-node
           repository: hiero-ledger/hiero-consensus-node
-          ref: feature/26684-Besu-downgrade-cherry-pick
+          ref: feature/low-gas-child-frame
           fetch-depth: 0
 
       - name: Build hiero-consensus-node
