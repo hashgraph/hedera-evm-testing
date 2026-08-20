@@ -16,14 +16,27 @@ APP_PROPERTIES_PATH="local/application.properties"
 ######################### MN configs #########################
 LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
-MIRROR_NODE_VERSION=0.153.0
+MIRROR_NODE_VERSION=0.161.0
 MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 
 ######################### Relay configs #########################
-LOCAL_RELAY_BUILD=true
-RELAY_RELEASE=0.76.2
+LOCAL_RELAY_BUILD=false
+RELAY_RELEASE=0.79.0-rc1
 RELAY_DIR="../../hiero-json-rpc-relay"
 RELAY_YAML_PATH="local/relay-values.yaml"
+
+######################### Zero gas price mode #########################
+# When EVM_ZERO_GAS_PRICE=true, start the network so it accepts and executes transactions
+# submitted with a zero gas price (used by the eth-validation suite, which is run with the
+# same env var). This swaps in:
+#   - zero-fees.properties for the consensus node (fees.simpleFeesAreFree=true), so a
+#     zero-gas-price transaction is not rejected for an insufficient fee
+#   - relay-zero-gas-values.yaml for the relay, so it accepts a zero gas price
+if [ "${EVM_ZERO_GAS_PRICE:-false}" = "true" ]; then
+  APP_PROPERTIES_PATH="local/zero-fees.properties"
+  RELAY_YAML_PATH="local/relay-zero-gas-values.yaml"
+  echo "EVM_ZERO_GAS_PRICE=true -> consensus node: ${APP_PROPERTIES_PATH}, relay: ${RELAY_YAML_PATH}"
+fi
 
 ######################### Solo configs #########################
 export SOLO_BASE_NAME=hedera
