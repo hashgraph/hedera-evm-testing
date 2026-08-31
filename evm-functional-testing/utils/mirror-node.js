@@ -39,12 +39,25 @@ class MirrorNode {
     }
 
     /**
-     * 
-     * @param {string} transactionIdOrHash 
-     * @returns 
+     *
+     * @param {string} transactionIdOrHash
+     * @returns
      */
     getContractResults(transactionIdOrHash) {
         return this.#fetch(`contracts/results/${transactionIdOrHash}`);
+    }
+
+    /**
+     * Lists the most recent contract results, newest first. Unlike
+     * `getContractResults(hash)`, the listing also includes results of failed
+     * EthereumTransactions (e.g. INVALID_SIGNATURE), for which the by-hash
+     * endpoint returns "Not found".
+     *
+     * @param {number=} limit
+     * @returns
+     */
+    getLatestContractResults(limit = 25) {
+        return this.#fetch(`contracts/results?limit=${limit}&order=desc`);
     }
 
     /**
