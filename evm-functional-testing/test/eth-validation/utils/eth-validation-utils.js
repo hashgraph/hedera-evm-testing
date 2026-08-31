@@ -163,6 +163,7 @@ function deployedAddress(factory, receipt) {
 
 module.exports = {
   tinybarValue,
+  zeroGasPriceEnabled,
   callGasPrice,
   ZERO_GAS_PRICE,
   evmScale,
