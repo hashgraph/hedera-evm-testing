@@ -63,10 +63,11 @@ npm install -g @hashgraph/solo@0.72.0
 ./test.sh solo start
 ```
 It will deploy:
-- Consensus Node gRPC port forward enabled on `localhost:50211`
-- Mirror Node port forward enabled on `localhost:8081`
-- Explorer port forward enabled on `http://localhost:8080`
-- JSON RPC Relay forward enabled on `localhost:7546`
+- Consensus Node gRPC port forward enabled on `localhost:35211`
+- Mirror Node port forward enabled on `localhost:38081`
+  - Swagger UI `localhost:38081/api/v1/docs/`
+- Explorer port forward enabled on `http://localhost:38080`
+- JSON RPC Relay forward enabled on `localhost:37546`
 
 #### Local build
 - CN build locally by default, to disable it set `LOCAL_CN_BUILD=false`
