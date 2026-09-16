@@ -218,7 +218,7 @@ async function clearAccountDelegation(accountId, privateKey, client) {
  *
  * @param {AccountId} accountId - The account to query
  * @param {Client} client - SDK client
- * @returns {Promise<string|null>} - Delegation address or null if none
+ * @returns {Promise<string>} - 0x-prefixed delegation address, or '0x' when the account has no delegation
  */
 async function getDelegationAddress(accountId, client) {
     const accountInfo = await new AccountInfoQuery()
