@@ -405,23 +405,20 @@ describe("EIP-2930 AccessList testing", async () => {
       const data = encodeFunctionData("execute()");
 
       // Check if `buildRawAccessListTx` is working with as an empty list (RLP 0xc0) Access List
-      const wellFormedTx = await buildRawAccessListTx({
+      const tx = await buildRawAccessListTx({
         wallet: eoa,
         to: callerContract.target,
         data,
         gasLimit: 100_000n,
         accessListRlpItem: [],
       });
-      const wellFormedTxHash = await ethers.provider.send(
-        "eth_sendRawTransaction",
-        [wellFormedTx],
-      );
+      const txHash = await ethers.provider.send("eth_sendRawTransaction", [tx]);
       const rc = await Async.waitForCondition(
         "getTransactionReceipt",
-        () => ethers.provider.getTransactionReceipt(wellFormedTxHash),
+        () => ethers.provider.getTransactionReceipt(txHash),
         (result) => result != null,
         1000,
-        60,
+        15,
       );
       expect(rc.status).to.equal(1);
 
