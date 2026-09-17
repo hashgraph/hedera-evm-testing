@@ -30,11 +30,11 @@ const getScheduleInfoFromMN = async (scheduleAddress) => {
 };
 
 describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
-  let hip1215, impl1215, signers;
+  let hip1215, signers;
 
   // ----------------- Tests
   before(async () => {
-    [hip1215, impl1215, signers] = await beforeTests();
+    [hip1215, signers] = await beforeTests();
   });
 
   // schedules result check ofter tests passes to save the time
@@ -50,7 +50,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         Math.floor(Date.now() / 1000) + 60,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("deleteSchedule")
+        addTestCallData("deleteSchedule"),
       );
       const scheduleAddress = await expectScheduleCallEvent(
         createTx,
@@ -148,7 +148,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         Math.floor(Date.now() / 1000) + 60,
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("deleteSchedule proxy")
+        addTestCallData("deleteSchedule proxy"),
       );
       const scheduleAddress = await expectScheduleCallEvent(
         createTx,
@@ -173,7 +173,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         Math.floor(Date.now() / 1000) + 2, // just enough to execute transaction
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("deleteSchedule fail expired")
+        addTestCallData("deleteSchedule fail expired"),
       );
       const scheduleAddress = await expectScheduleCallEvent(
         receipt,

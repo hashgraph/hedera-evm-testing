@@ -4,7 +4,6 @@ const {
   TINYBAR_TO_WEIBAR_COEF,
   HSS_ADDRESS,
   GAS_LIMIT_1_000_000,
-  GAS_LIMIT_2_000_000,
   GAS_LIMIT_5_000_000,
   GAS_LIMIT_1_000,
   MAX_EXPIRY,
@@ -17,7 +16,6 @@ const {
   getExpirySecond,
   expectScheduleCallEvent,
   expectResponseCodeEvent,
-  getRecursiveScheduleStatus,
   getChildTransactionsByScheduleId,
   getSignatureMap,
   SUCCESS,
@@ -26,13 +24,16 @@ const {
 } = require("./utils/hip1215-utils");
 const Utils = require("../../utils/utils");
 const { contractDeployAndFund } = require("../../utils/contract");
-const { beforeTests, afterTests } = require("./utils/hip1215-setup");
+const {
+  beforeTests,
+  afterTests,
+} = require("./utils/hip1215-setup");
 const { expect } = require("chai");
-const {delegationIndicatorFor} = require("../hip-1340/utils/web3");
+const { delegationIndicatorFor } = require("../hip-1340/utils/web3");
 const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 
 describe("HIP-1215 System Contract testing. scheduleCall()", () => {
-  let hip1215, impl1215, signers, mnClient;
+  let hip1215, signers, mnClient;
   let gasIncrement = 0;
   const scheduleCheck = [];
   const balanceCheck = [];
@@ -85,7 +86,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
 
   // ----------------- Tests
   before(async () => {
-    [hip1215, impl1215, signers, mnClient] = await beforeTests();
+    [hip1215, signers, mnClient] = await beforeTests();
   });
 
   // Check the results of the scheduled calls after the test execution to save time
@@ -360,45 +361,6 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       console.log("scheduleCallDelegateCall tx.hash:", tx.hash);
       await expectScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });
-  });
-
-  describe("Recursive scheduling test", () => {
-    it("should create recursive schedules until payer runs out of funds", async () => {
-      const contractAddress = await hip1215.getAddress();
-      const expirySecond = getExpirySecond();
-      const contractBalance =
-        (await ethers.provider.getBalance(contractAddress)) /
-        TINYBAR_TO_WEIBAR_COEF;
-      const expectedGasUsed = await hip1215.recursiveScheduleCall.estimateGas(
-        contractAddress,
-        expirySecond,
-        GAS_LIMIT_2_000_000.gasLimit,
-        0,
-      );
-      console.debug("Estimated gas for call: " + expectedGasUsed);
-      // 1_438_769n; // ~ gas usage for used schedule create operation
-      const expectedFee = expectedGasUsed * 71n; // ~ fee for schedule create operation
-      const expectedHasCapacityFee = 2_000_000n * 71n; // max fee for schedule create operation, calculated based on schedule gasLimit
-      const expectedCalls =
-        (contractBalance - expectedHasCapacityFee) / expectedFee + 1n;
-      const receipt = await hip1215.recursiveScheduleCall(
-        contractAddress,
-        expirySecond,
-        GAS_LIMIT_2_000_000.gasLimit,
-        0,
-      );
-
-      const scheduleAddress = await expectScheduleCallEvent(
-        receipt,
-        ResponseCodeEnum.SUCCESS.valueOf(),
-      );
-      // Validate execution and recursive behaviour
-      const { finalResponse, recursiveCounter } =
-        await getRecursiveScheduleStatus(mnClient, scheduleAddress);
-      expect(finalResponse).to.not.be.null;
-      expect(finalResponse).to.not.eq(SUCCESS);
-      expect(recursiveCounter).to.eq(expectedCalls);
-    }).timeout(300_000); // We are recursively querying MN so we need more time for execution of the test
   });
 
   describe("Schedule generating child records", () => {

@@ -26,7 +26,7 @@ const { contractDeployAndFund } = require("../../utils/contract");
 const { ResponseCodeEnum } = require("@hiero-ledger/proto").proto;
 
 describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
-  let hip1215, impl1215, signers;
+  let hip1215, signers;
   let gasIncrement = 0;
   const scheduleCheck = [];
   const balanceCheck = [];
@@ -85,7 +85,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
 
   // ----------------- Tests
   before(async () => {
-    [hip1215, impl1215, signers] = await beforeTests();
+    [hip1215, signers] = await beforeTests();
   });
 
   // schedules result check ofter tests passes to save the time

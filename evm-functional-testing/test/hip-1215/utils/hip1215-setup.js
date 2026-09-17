@@ -8,27 +8,33 @@ const { getScheduledTxStatus } = require("./hip1215-utils");
 const { MirrorNode } = require("evm-functional-testing/mirror-node");
 
 const WAIT_STEP = 2000;
-let hip1215, impl1215, signers, mnClient;
+let hip1215, signers, mnClient;
 
 async function beforeTests() {
   // provider configs override
   signers = await ethers.getSigners();
+  // deploy test contract
+  hip1215 = await deployHIP1215Contract(10n);
+  // sdkClient = await Utils.createSDKClient();
+  mnClient = new MirrorNode();
+  console.log("Done hip1215:", hip1215.target);
+  return [hip1215, signers, mnClient];
+}
+
+async function deployHIP1215Contract(value) {
   // deploy impl contract
-  impl1215 = await contractDeployAndFund("HederaScheduleService_HIP1215", 0);
+  const impl1215 = await contractDeployAndFund("HederaScheduleService_HIP1215", 0);
   // deploy test contract
   const HIP1215Factory = await ethers.getContractFactory("HIP1215Contract");
   console.log("Deploy hip1215 with impl:", impl1215.target);
-  hip1215 = await HIP1215Factory.deploy(impl1215.target);
+  const hip1215 = await HIP1215Factory.deploy(impl1215.target);
   await hip1215.waitForDeployment();
   // transfer funds to test contract
   await signers[0].sendTransaction({
     to: hip1215.target,
-    value: ONE_HBAR * 10n,
+    value: ONE_HBAR * value,
   });
-  // sdkClient = await Utils.createSDKClient();
-  mnClient = new MirrorNode();
-  console.log("Done hip1215:", hip1215.target);
-  return [hip1215, impl1215, signers, mnClient];
+  return hip1215;
 }
 
 async function afterTests(
