@@ -354,7 +354,7 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       const tx = await hip1215.scheduleCallDelegateCall(
         await hip1215.getAddress(),
         getExpirySecond(),
-        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
+        100_000 + gasIncrement++,
         0,
         addTestCallData("scheduleCall fail gasLimit 0"),
       );
