@@ -54,23 +54,26 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       );
       const scheduleAddress = await expectScheduleCallEvent(
         createTx,
-        ResponseCodeEnum.SUCCESS.valueOf()
+        ResponseCodeEnum.SUCCESS.valueOf(),
       );
       // delete schedule
       const deleteTx = await hip1215.deleteSchedule(scheduleAddress);
-      await expectResponseCodeEvent(deleteTx, ResponseCodeEnum.SUCCESS.valueOf());
+      await expectResponseCodeEvent(
+        deleteTx,
+        ResponseCodeEnum.SUCCESS.valueOf(),
+      );
     });
 
     it("should delete a schedule created from sdk", async () => {
       const client = await Utils.createSDKClient();
       const key = PrivateKey.fromStringECDSA(
-        Utils.getHardhatSignerPrivateKeyByIndex(0)
+        Utils.getHardhatSignerPrivateKeyByIndex(0),
       );
       const txn = await new ScheduleCreateTransaction()
         .setScheduledTransaction(
           new TransferTransaction()
             .addHbarTransfer(await signers[0].getAddress(), new Hbar(-1))
-            .addHbarTransfer(await signers[1].getAddress(), new Hbar(1))
+            .addHbarTransfer(await signers[1].getAddress(), new Hbar(1)),
         )
         .setAdminKey(key.publicKey)
         .setWaitForExpiry(true)
@@ -83,7 +86,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       const contractIHRC1215 = await ethers.getContractAt(
         "IHRC1215ScheduleFacade",
         "0x" + scheduleAddress,
-        signers[0]
+        signers[0],
       );
       await new Promise((r) => setTimeout(r, 5000));
       const deleteScheduleTx =
@@ -91,7 +94,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       await deleteScheduleTx.wait();
 
       const scheduleInfo = await getScheduleInfoFromMN(
-        Utils.convertAccountIdToLongZeroAddress(scheduleAddress, true)
+        Utils.convertAccountIdToLongZeroAddress(scheduleAddress, true),
       );
       expect(scheduleInfo.deleted).to.be.true;
     });
@@ -102,22 +105,22 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       const genesisSdkClient = await Utils.createSDKClient();
       const senderInfo = await Utils.getAccountInfo(
         signerSender.address,
-        genesisSdkClient
+        genesisSdkClient,
       );
       const receiverInfo = await Utils.getAccountInfo(
         signerReceiver.address,
-        genesisSdkClient
+        genesisSdkClient,
       );
 
       const adminPrivateKey = PrivateKey.fromStringECDSA(
-        Utils.getHardhatSignerPrivateKeyByIndex(0)
+        Utils.getHardhatSignerPrivateKeyByIndex(0),
       );
       const { scheduleId } = await Utils.createScheduleTransactionForTransfer(
         senderInfo,
         receiverInfo,
         genesisSdkClient,
         adminPrivateKey,
-        10000000000000
+        10000000000000,
       );
       await new Promise((r) => setTimeout(r, 2500));
 
@@ -127,14 +130,14 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       const contractIHRC1215 = await ethers.getContractAt(
         "IHRC1215ScheduleFacade",
         Utils.convertAccountIdToLongZeroAddress(scheduleId.toString(), true),
-        signerSender
+        signerSender,
       );
       const deleteScheduleTx =
         await contractIHRC1215.deleteSchedule(GAS_LIMIT_2_000_000);
       await deleteScheduleTx.wait();
 
       const infoAfter = await getScheduleInfoFromMN(
-        Utils.convertAccountIdToLongZeroAddress(scheduleId.toString(), true)
+        Utils.convertAccountIdToLongZeroAddress(scheduleId.toString(), true),
       );
 
       expect(infoBefore.deleted).to.be.false;
@@ -152,23 +155,29 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       );
       const scheduleAddress = await expectScheduleCallEvent(
         createTx,
-        ResponseCodeEnum.SUCCESS.valueOf()
+        ResponseCodeEnum.SUCCESS.valueOf(),
       );
       // delete schedule
       const deleteTx = await hip1215.deleteScheduleProxy(scheduleAddress);
-      await expectResponseCodeEvent(deleteTx, ResponseCodeEnum.SUCCESS.valueOf());
+      await expectResponseCodeEvent(
+        deleteTx,
+        ResponseCodeEnum.SUCCESS.valueOf(),
+      );
     });
   });
 
   describe("negative cases", () => {
     it("should fail with random address for to", async () => {
-      const receipt = await hip1215.deleteSchedule(randomAddress());
-      await expectResponseCodeEvent(receipt, ResponseCodeEnum.UNKNOWN.valueOf());
+      const tx = await hip1215.deleteSchedule(
+        randomAddress(),
+        { gaLimit: GAS_LIMIT_1_000_000 }, // override gas limit because estimation is too big
+      );
+      await expectResponseCodeEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });
 
     it("should fail with expired address for to", async () => {
       // create schedule
-      const receipt = await hip1215.scheduleCall(
+      const tx = await hip1215.scheduleCall(
         await hip1215.getAddress(),
         Math.floor(Date.now() / 1000) + 2, // just enough to execute transaction
         GAS_LIMIT_1_000_000.gasLimit,
@@ -176,28 +185,28 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
         addTestCallData("deleteSchedule fail expired"),
       );
       const scheduleAddress = await expectScheduleCallEvent(
-        receipt,
-        ResponseCodeEnum.SUCCESS.valueOf()
+        tx,
+        ResponseCodeEnum.SUCCESS.valueOf(),
       );
       await Async.wait(2000);
       // delete schedule
       const deleteTx = await hip1215.deleteSchedule(scheduleAddress);
       await expectResponseCodeEvent(
         deleteTx,
-        ResponseCodeEnum.INVALID_SCHEDULE_ID.valueOf()
+        ResponseCodeEnum.INVALID_SCHEDULE_ID.valueOf(),
       );
     });
 
     it("should fail when invoked with wrong schedule admin key", async () => {
       const client = await Utils.createSDKClient();
       const key = PrivateKey.fromStringECDSA(
-        Utils.getHardhatSignerPrivateKeyByIndex(0)
+        Utils.getHardhatSignerPrivateKeyByIndex(0),
       );
       const txn = await new ScheduleCreateTransaction()
         .setScheduledTransaction(
           new TransferTransaction()
             .addHbarTransfer(await signers[0].getAddress(), new Hbar(-1))
-            .addHbarTransfer(await signers[1].getAddress(), new Hbar(1))
+            .addHbarTransfer(await signers[1].getAddress(), new Hbar(1)),
         )
         .setAdminKey(key.publicKey)
         .setWaitForExpiry(true)
@@ -212,28 +221,28 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
       const invalidPrivateKey = Utils.getHardhatSignerPrivateKeyByIndex(2);
       const invalidWallet = new ethers.Wallet(
         invalidPrivateKey,
-        ethers.provider
+        ethers.provider,
       );
 
       // create contract instance with the invalid key wallet
       const hip1215WithInvalidKey = await ethers.getContractAt(
         "HIP1215Contract",
         await hip1215.getAddress(),
-        invalidWallet
+        invalidWallet,
       );
 
       // attempt to delete schedule with invalid key - should fail
       const deleteTx = await hip1215WithInvalidKey.deleteSchedule(
-        "0x" + scheduleAddress
+        "0x" + scheduleAddress,
       );
       await expectResponseCodeEvent(
         deleteTx,
-        ResponseCodeEnum.INVALID_SIGNATURE.valueOf()
+        ResponseCodeEnum.INVALID_SIGNATURE.valueOf(),
       );
 
       // verify schedule is NOT deleted (still exists)
       const scheduleInfo = await getScheduleInfoFromMN(
-        Utils.convertAccountIdToLongZeroAddress(scheduleAddress, true)
+        Utils.convertAccountIdToLongZeroAddress(scheduleAddress, true),
       );
       expect(scheduleInfo.deleted).to.be.false;
     });

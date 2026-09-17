@@ -46,8 +46,8 @@ function payableCallData() {
 // ---------------------------------------------------------------------------
 
 // Assertion helper functions --------------------------------------------------
-async function expectScheduleCallEvent(receipt, responseCode) {
-  const rc = await receipt.wait();
+async function expectScheduleCallEvent(transaction, responseCode) {
+  const rc = await transaction.wait();
   const log = rc.logs.find((e) => e.fragment.name === Events.ScheduleCall);
   expect(log.args[0]).to.equal(responseCode);
   const address = log.args[1];

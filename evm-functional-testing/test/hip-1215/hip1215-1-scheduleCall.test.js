@@ -354,9 +354,10 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
       const tx = await hip1215.scheduleCallDelegateCall(
         await hip1215.getAddress(),
         getExpirySecond(),
-        100_000 + gasIncrement++,
+        GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
         0,
         addTestCallData("scheduleCall fail gasLimit 0"),
+        { gaLimit: GAS_LIMIT_1_000_000 }, // override gas limit because estimation is too big
       );
       console.log("scheduleCallDelegateCall tx.hash:", tx.hash);
       await expectScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());

@@ -261,15 +261,16 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
 
   describe("negative cases", () => {
     it("should fail with payer as zero address", async () => {
-      const receipt = await hip1215.scheduleCallWithPayer(
+      const tx = await hip1215.scheduleCallWithPayer(
         await hip1215.getAddress(),
         ethers.ZeroAddress,
         getExpirySecond(),
         GAS_LIMIT_1_000_000.gasLimit,
         0,
-        addTestCallData("scheduleCallWithPayer fail payer zero address")
+        addTestCallData("scheduleCallWithPayer fail payer zero address"),
+        { gaLimit: GAS_LIMIT_1_000_000 }, // override gas limit because estimation is too big
       );
-      await expectScheduleCallEvent(receipt, ResponseCodeEnum.UNKNOWN.valueOf());
+      await expectScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });
 
     it("should fail with gasLimit 0", async () => {
