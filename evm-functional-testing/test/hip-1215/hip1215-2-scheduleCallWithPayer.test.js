@@ -268,7 +268,7 @@ describe("HIP-1215 System Contract testing. scheduleCallWithPayer()", () => {
         GAS_LIMIT_1_000_000.gasLimit,
         0,
         addTestCallData("scheduleCallWithPayer fail payer zero address"),
-        { GAS_LIMIT_1_000_000 }, // override gas limit because estimation is too big
+        GAS_LIMIT_1_000_000, // override gas limit because estimation is too big
       );
       await expectScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });

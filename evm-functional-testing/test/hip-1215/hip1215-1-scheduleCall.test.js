@@ -357,9 +357,9 @@ describe("HIP-1215 System Contract testing. scheduleCall()", () => {
         GAS_LIMIT_1_000_000.gasLimit + gasIncrement++,
         0,
         addTestCallData("scheduleCall fail gasLimit 0"),
-        { GAS_LIMIT_1_000_000 }, // override gas limit because estimation is too big
+        GAS_LIMIT_1_000_000, // override gas limit because estimation is too big
       );
-      console.log("scheduleCallDelegateCall tx.hash:", tx.hash);
+      console.log("scheduleCallDelegateCall tx.hash:", tx);
       await expectScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });
   });
