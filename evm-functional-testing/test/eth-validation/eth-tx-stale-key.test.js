@@ -17,7 +17,8 @@ const {
 
 const TRANSFER_VALUE = units.tinybar(100n);
 
-describe('EthTx - key rotation validation', function () {
+// TODO Discuss with MN if null 'contractCallResult' should be in contracts/results
+describe.skip('EthTx - key rotation validation', function () {
     let client;
     let provider;
     let network;

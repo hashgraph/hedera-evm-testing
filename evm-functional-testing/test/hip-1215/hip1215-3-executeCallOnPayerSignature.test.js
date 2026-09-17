@@ -264,7 +264,7 @@ describe("HIP-1215 System Contract testing. executeCallOnPayerSignature()", () =
         GAS_LIMIT_1_000_000.gasLimit,
         0,
         addTestCallData("executeCallOnPayerSignature fail payer zero address"),
-        { gaLimit: GAS_LIMIT_1_000_000 }, // override gas limit because estimation is too big
+        { GAS_LIMIT_1_000_000 }, // override gas limit because estimation is too big
       );
       await expectScheduleCallEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });

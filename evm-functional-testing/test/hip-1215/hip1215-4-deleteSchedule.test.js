@@ -170,7 +170,7 @@ describe("HIP-1215 System Contract testing. deleteSchedule()", () => {
     it("should fail with random address for to", async () => {
       const tx = await hip1215.deleteSchedule(
         randomAddress(),
-        { gaLimit: GAS_LIMIT_1_000_000 }, // override gas limit because estimation is too big
+        { GAS_LIMIT_1_000_000 }, // override gas limit because estimation is too big
       );
       await expectResponseCodeEvent(tx, ResponseCodeEnum.UNKNOWN.valueOf());
     });
