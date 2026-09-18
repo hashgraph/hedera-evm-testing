@@ -1,5 +1,5 @@
 const { randomAddress, randomStorageSlot } = require("../../../utils/random");
-const {ethers} = require("hardhat");
+const { ethers } = require("hardhat");
 const Constants = require("../../../utils/constants");
 
 const SLOT_MASK =
@@ -66,8 +66,79 @@ async function createEoa(balance) {
   return eoa;
 }
 
+/**
+ * Converts a value to the minimal big-endian hex RLP requires (no leading
+ * zero bytes; zero itself must be the empty byte string "0x").
+ * @param { number | bigint | string } value
+ * @returns { string } minimal-encoded hex string
+ */
+function toRlpQuantity(value) {
+  const bn = BigInt(value);
+  if (bn === 0n) return "0x";
+  let hex = bn.toString(16);
+  if (hex.length % 2) hex = "0" + hex;
+  return "0x" + hex;
+}
+
+/**
+ * Builds and signs a raw EIP-2930 (type 1) transaction, letting the caller
+ * override the raw RLP item used for the accessList field. ethers always
+ * normalizes accessList to a list (so an empty one serializes to 0xc0);
+ * passing "0x" here instead forces that field to be RLP-encoded as a 0-byte
+ * string (0x80) instead of the spec-correct empty list, which can only be
+ * done by bypassing ethers' Transaction serialization entirely.
+ * @param { import("ethers").Wallet } wallet signer used to sign the transaction, must be connected to a provider
+ * @param { string } to recipient address
+ * @param { string } data calldata
+ * @param { number | bigint } [value] value to send, defaults to 0
+ * @param { number | bigint } gasLimit gas limit
+ * @param { string | Array } accessListRlpItem raw RLP item to use for the accessList field, e.g. [] for a well-formed empty list or "0x" for a 0-byte string
+ * @returns { Promise<string> } the signed raw transaction, hex-encoded
+ */
+async function buildRawAccessListTx({
+  wallet,
+  to,
+  data,
+  value = 0n,
+  gasLimit,
+  accessListRlpItem,
+}) {
+  const provider = wallet.provider;
+  const [network, nonce, feeData] = await Promise.all([
+    provider.getNetwork(),
+    provider.getTransactionCount(wallet.address),
+    provider.getFeeData(),
+  ]);
+
+  const fields = [
+    toRlpQuantity(network.chainId),
+    toRlpQuantity(nonce),
+    toRlpQuantity(feeData.gasPrice),
+    toRlpQuantity(gasLimit),
+    to,
+    toRlpQuantity(value),
+    data,
+    accessListRlpItem,
+  ];
+
+  const unsignedPayload = ethers.concat(["0x01", ethers.encodeRlp(fields)]);
+  const signature = new ethers.SigningKey(wallet.privateKey).sign(
+    ethers.keccak256(unsignedPayload),
+  );
+
+  const signedFields = [
+    ...fields,
+    toRlpQuantity(signature.yParity),
+    toRlpQuantity(signature.r),
+    toRlpQuantity(signature.s),
+  ];
+
+  return ethers.concat(["0x01", ethers.encodeRlp(signedFields)]);
+}
+
 module.exports = {
   callWithRandomAccessList,
   callWithAccessList,
   createEoa,
+  buildRawAccessListTx,
 };

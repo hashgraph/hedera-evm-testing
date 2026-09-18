@@ -162,9 +162,9 @@ function getArtifact(contractPath) {
  *
  * @param {string} contractName - Contract path used by `getArtifact`.
  * @param {unknown[]} [args] - Constructor arguments.
- * @param {ethers.BaseWallet} [deployer] - Wallet used for deployment.
+ * @param {import("ethers").BaseWallet} [deployer] - Wallet used for deployment.
  * @param {number} [gasLimit=5000000] - Max gas for deployment transaction.
- * @returns {Promise<{address: string, deployer: ethers.BaseWallet, contract: ethers.Contract}>}
+ * @returns {Promise<{address: string, deployer: import("ethers").BaseWallet, contract: ethers.Contract}>}
  */
 async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
     if (!deployer) {
@@ -192,7 +192,7 @@ async function deploy(contractName, args, deployer, gasLimit = 5_000_000) {
         data: bytecode + consArgs,
     });
     const receipt = await resp.wait();
-    log('Contract `%s` deployed at %s in transanction %s', contractName, receipt?.contractAddress, resp.hash);
+    log('Contract `%s` deployed at %s in transaction %s', contractName, receipt?.contractAddress, resp.hash);
 
     assert(receipt !== null, 'Transaction receipt is null');
     assert(receipt.contractAddress !== null, 'Contract address is null');
@@ -386,7 +386,7 @@ function asHexUint256(value) {
 
 module.exports = {
     isEthNetwork, txFees,
-    gas, units, deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256, getArtifact,
+    gas, units, deploy, delegationIndicatorFor, encodeFunctionData, asHexUint256,
     asLongZeroAddress, getNonces, getCodes, cartesianProduct,
     DelegationTransactionBuilder, verifyDelegation, executeBatchViaDelegation,
     assertAccountDoesNotExist, assertAccountExists,

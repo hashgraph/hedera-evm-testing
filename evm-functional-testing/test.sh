@@ -16,12 +16,12 @@ APP_PROPERTIES_PATH="local/application.properties"
 ######################### MN configs #########################
 LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
-MIRROR_NODE_VERSION=0.161.0
+MIRROR_NODE_VERSION=0.163.1
 MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 
 ######################### Relay configs #########################
 LOCAL_RELAY_BUILD=false
-RELAY_RELEASE=0.79.0-rc1
+RELAY_RELEASE=0.79.0-rc4
 RELAY_DIR="../../hiero-json-rpc-relay"
 RELAY_YAML_PATH="local/relay-values.yaml"
 

@@ -177,10 +177,5 @@ async function expectEthTxHbarTransferToFailViaBothPaths(
 
 module.exports = {
     rotateAccountKey,
-    buildEthTxRequest,
-    submitEthTxViaRelay,
-    submitEthTxViaSdk,
-    expectRelayEthTxHbarTransferToFail,
-    expectSdkEthTxHbarTransferToFail,
     expectEthTxHbarTransferToFailViaBothPaths,
 };

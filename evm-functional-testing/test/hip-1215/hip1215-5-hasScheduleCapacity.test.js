@@ -8,11 +8,11 @@ const { expect } = require("chai");
 const { beforeTests, afterTests } = require("./utils/hip1215-setup");
 
 describe("HIP-1215 System Contract testing. hasScheduleCapacity()", () => {
-  let hip1215, impl1215, signers;
+  let hip1215, signers;
 
   // ----------------- Tests
   before(async () => {
-    [hip1215, impl1215, signers] = await beforeTests();
+    [hip1215, signers] = await beforeTests();
   });
 
   // schedules result check ofter tests passes to save the time

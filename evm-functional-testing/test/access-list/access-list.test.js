@@ -7,10 +7,12 @@ const {
   callWithAccessList,
   callWithRandomAccessList,
   createEoa,
+  buildRawAccessListTx,
 } = require("./utils/access-list-utils");
 const { encodeFunctionData } = require("../hip-1340/utils/web3");
 const { randomAddress, randomStorageSlot } = require("../../utils/random");
 const { HSS_ADDRESS } = require("../../utils/constants");
+const Async = require("../../utils/async");
 
 const storageSlot0 =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -184,7 +186,9 @@ describe("EIP-2930 AccessList testing", async () => {
           })
           .then((tx) => tx.wait())
       ).gasUsed;
-      expect(actualGas).to.equal(emptyStorageKeysGas - ACCESS_LIST_DISCOUNT * 2n);
+      expect(actualGas).to.equal(
+        emptyStorageKeysGas - ACCESS_LIST_DISCOUNT * 2n,
+      );
       // -100 x 3 for SLOAD x 3, -100 for SSTORE
       actualGas = (
         await callerContract
@@ -199,7 +203,9 @@ describe("EIP-2930 AccessList testing", async () => {
           })
           .then((tx) => tx.wait())
       ).gasUsed;
-      expect(actualGas).to.equal(emptyStorageKeysGas - ACCESS_LIST_DISCOUNT * 4n);
+      expect(actualGas).to.equal(
+        emptyStorageKeysGas - ACCESS_LIST_DISCOUNT * 4n,
+      );
     });
 
     it("should apply discount to SLOAD and SSTORE operations for sub-calls", async () => {
@@ -215,12 +221,16 @@ describe("EIP-2930 AccessList testing", async () => {
       actualGas = (
         await callWithAccessList(callerContract, targetContract.target, [0])
       ).gasUsed;
-      expect(actualGas).to.equal(emptyAccessListGas - ACCESS_LIST_DISCOUNT * 2n);
+      expect(actualGas).to.equal(
+        emptyAccessListGas - ACCESS_LIST_DISCOUNT * 2n,
+      );
       // -100 for CALL, -100 x 2 for SLOAD x 2
       actualGas = (
         await callWithAccessList(callerContract, targetContract.target, [0, 1])
       ).gasUsed;
-      expect(actualGas).to.equal(emptyAccessListGas - ACCESS_LIST_DISCOUNT * 3n);
+      expect(actualGas).to.equal(
+        emptyAccessListGas - ACCESS_LIST_DISCOUNT * 3n,
+      );
       // -100 for CALL, -100 x 3 for SLOAD x 3, -100 for SSTORE
       actualGas = (
         await callWithAccessList(
@@ -229,7 +239,9 @@ describe("EIP-2930 AccessList testing", async () => {
           [0, 1, 2],
         )
       ).gasUsed;
-      expect(actualGas).to.equal(emptyAccessListGas - ACCESS_LIST_DISCOUNT *5n);
+      expect(actualGas).to.equal(
+        emptyAccessListGas - ACCESS_LIST_DISCOUNT * 5n,
+      );
     });
 
     it("should apply discount to Hedera Precompiles calls", async () => {
@@ -325,7 +337,9 @@ describe("EIP-2930 AccessList testing", async () => {
         ],
         data: data,
       });
-      expect(withDiscountGas).to.equal(noDiscountGas - ACCESS_LIST_DISCOUNT * 2n);
+      expect(withDiscountGas).to.equal(
+        noDiscountGas - ACCESS_LIST_DISCOUNT * 2n,
+      );
     });
 
     it("should not change eth_call with access list", async () => {
@@ -382,6 +396,44 @@ describe("EIP-2930 AccessList testing", async () => {
       await expect(exceedsBlockGasLimitCall()).to.be.rejectedWith(
         /Oversized data/,
       );
+    });
+
+    // ethers can not produce 0-byte string (RLP 0x80) encoding for Access List through the normal
+    // Transaction/Contract call path, so the raw bytes are built by hand.
+    it("should fail if access list is RLP-encoded as a 0-byte string instead of an empty list", async () => {
+      const eoa = await createEoa(10);
+      const data = encodeFunctionData("execute()");
+
+      // Check if `buildRawAccessListTx` is working with as an empty list (RLP 0xc0) Access List
+      const tx = await buildRawAccessListTx({
+        wallet: eoa,
+        to: callerContract.target,
+        data,
+        gasLimit: 100_000n,
+        accessListRlpItem: [],
+      });
+      const txHash = await ethers.provider.send("eth_sendRawTransaction", [tx]);
+      const rc = await Async.waitForCondition(
+        "getTransactionReceipt",
+        () => ethers.provider.getTransactionReceipt(txHash),
+        (result) => result != null,
+        1000,
+        15,
+      );
+      expect(rc.status).to.equal(1);
+
+      // Send `buildRawAccessListTx` with the accessList field is RLP-encoded as a 0-byte string (0x80)
+      const malformedTx = await buildRawAccessListTx({
+        wallet: eoa,
+        to: callerContract.target,
+        data,
+        gasLimit: 100_000n,
+        accessListRlpItem: "0x",
+      });
+      // Error returned from the Relay
+      await expect(
+        ethers.provider.send("eth_sendRawTransaction", [malformedTx]),
+      ).to.be.rejectedWith(/invalid access list/);
     });
   });
 });
