@@ -194,11 +194,11 @@ jobs:
           if [ -n "${RELAY_VALUES_PATH}" ]; then
             RELAY_VALUES_ARG="--values-file ${RELAY_VALUES_PATH}"
           fi
-          solo relay node add --relay-release ${RELAY_RELEASE} --deployment "${SOLO_DEPLOYMENT}" -i node1 ${RELAY_VALUES_ARG} --dev
+          solo relay node add --relay-release ${RELAY_RELEASE} --deployment "${SOLO_DEPLOYMENT}" -i node1 ${RELAY_VALUES_ARG}
           # accounts pre-setup
-          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
-          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
-          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
+          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
+          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
+          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
         env:
           SOLO_NAMESPACE: solo-evm-e2e
           SOLO_DEPLOYMENT: solo-evm-deployment
