@@ -286,6 +286,7 @@ jobs:
 
           # Geth's HTTP server accepts requests before its transaction indexer has caught up,
           # so poll until 'transaction indexing is in progress' stops being returned.
+          ready=false
           for i in $(seq 1 60); do
             response=$(curl -s -X POST http://localhost:8545 \
               -H "Content-Type: application/json" \
@@ -293,14 +294,17 @@ jobs:
 
             if [[ "$response" != *"transaction indexing is in progress"* ]]; then
               echo "Geth is ready"
-              exit 0
+              ready=true
+              break
             fi
 
             sleep 1
           done
 
-          echo "Geth did not become ready in time" >&2
-          exit 1
+          if [[ "$ready" != true ]]; then
+            echo "Geth did not become ready in time" >&2
+            false
+          fi
 
       - name: Run HIP-1340 - EIP-7702 tests against Geth local network
         run: npx hardhat test test/hip-1340/hip1340-*.test.js --grep 'Ethereum Specific tests' --network geth
