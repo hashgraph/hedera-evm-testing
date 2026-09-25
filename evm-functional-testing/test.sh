@@ -67,33 +67,29 @@ check_k8s_context() {
 
 # solo -> required solo, kubectl, kind
 solo_start() {
-  # Workaround for besu native libs with solo. See https://github.com/hiero-ledger/solo/issues/4387#issuecomment-4555650036
- export SOLO_S6_NODE_IMAGE_REPOSITORY=hashgraph/solo-containers/debian-s6-java25
- export SOLO_S6_NODE_IMAGE_VERSION=0.45.3
-
   # base setup
   kind create cluster -n "${SOLO_CLUSTER_NAME}" || true
 
   # Solo deploy
   check_k8s_context
-  solo cluster-ref config connect --cluster-ref kind-${SOLO_CLUSTER_NAME} --context kind-${SOLO_CLUSTER_NAME} --dev
-  solo deployment config create -n "${SOLO_NAMESPACE}" --deployment "${SOLO_DEPLOYMENT}" --dev
-  solo deployment cluster attach --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --num-consensus-nodes 1 --dev
+  solo cluster-ref config connect --cluster-ref kind-${SOLO_CLUSTER_NAME} --context kind-${SOLO_CLUSTER_NAME}
+  solo deployment config create -n "${SOLO_NAMESPACE}" --deployment "${SOLO_DEPLOYMENT}"
+  solo deployment cluster attach --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --num-consensus-nodes 1
 
   # CN deploy
-  solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}" --dev
-  solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --dev
-  solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --dev
+  solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}"
+  solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}"
+  solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}"
   if [ "${LOCAL_CN_BUILD}" = true ] ; then
     # local CN build
     cd "${CONSENSUS_NODE_DIR}"
     ./gradlew assemble
     cd "${WORK_DIR}"
-    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/" --dev
+    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/"
   else
-    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --dev
+    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}"
   fi
-  solo consensus node start --deployment "${SOLO_DEPLOYMENT}" --dev
+  solo consensus node start --deployment "${SOLO_DEPLOYMENT}"
 
   # MN deploy
   if [ "${LOCAL_MN_BUILD}" = true ] ; then
@@ -110,9 +106,9 @@ solo_start() {
     docker build -t "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" importer/
     kind load docker-image "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
     cd "${WORK_DIR}"
-    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME}
   else
-    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME}
   fi
 
   # Relay deploy
@@ -122,29 +118,29 @@ solo_start() {
     docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" .
     kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" --name "${SOLO_CLUSTER_NAME}"
     cd "${WORK_DIR}"
-    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" --dev
+    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}"
   else
-    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}" --dev
+    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}"
   fi
 
   # Explorer deploy
-  solo explorer node add --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev
+  solo explorer node add --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME}
 
   # Add test accounts to the network
-  solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
-  solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
-  solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
+  solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
+  solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
+  solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
 }
 
 solo_stop() {
-  solo explorer node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
-  solo relay node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --dev || true
-  solo mirror-node node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force --dev || true
-  solo consensus node stop --deployment="${SOLO_DEPLOYMENT}" --dev || true
-  solo consensus network destroy --deployment="${SOLO_DEPLOYMENT}" --force --delete-pvcs --delete-secrets --dev || true
+  solo explorer node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force || true
+  solo relay node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" || true
+  solo mirror-node node destroy --cluster-ref=kind-${SOLO_CLUSTER_NAME} --deployment="${SOLO_DEPLOYMENT}" --force || true
+  solo consensus node stop --deployment="${SOLO_DEPLOYMENT}" || true
+  solo consensus network destroy --deployment="${SOLO_DEPLOYMENT}" --force --delete-pvcs --delete-secrets || true
   # next step is hanging and not ending by itself. Do we need it?
   # solo cluster-ref reset --cluster-ref kind-${SOLO_CLUSTER_NAME} -s "${SOLO_CLUSTER_SETUP_NAMESPACE}" --force || true
-  solo cluster-ref config disconnect --cluster-ref kind-${SOLO_CLUSTER_NAME} --dev || true
+  solo cluster-ref config disconnect --cluster-ref kind-${SOLO_CLUSTER_NAME} || true
   solo_destroy
 }
 
