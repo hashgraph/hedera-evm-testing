@@ -145,7 +145,7 @@ jobs:
       - name: Install Solo
         run: npm install --global @hashgraph/solo@${SOLO_VERSION}
         env:
-          SOLO_VERSION: 0.82.0
+          SOLO_VERSION: 0.91.0
 
       - name: Setup Kind
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
@@ -194,11 +194,11 @@ jobs:
           if [ -n "${RELAY_VALUES_PATH}" ]; then
             RELAY_VALUES_ARG="--values-file ${RELAY_VALUES_PATH}"
           fi
-          solo relay node add --relay-release ${RELAY_RELEASE} --deployment "${SOLO_DEPLOYMENT}" -i node1 ${RELAY_VALUES_ARG} --dev
+          solo relay node add --relay-release ${RELAY_RELEASE} --deployment "${SOLO_DEPLOYMENT}" -i node1 ${RELAY_VALUES_ARG}
           # accounts pre-setup
-          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
-          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
-          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --dev --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
+          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
+          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
+          solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
         env:
           SOLO_NAMESPACE: solo-evm-e2e
           SOLO_DEPLOYMENT: solo-evm-deployment
@@ -284,7 +284,7 @@ jobs:
         run: |
           docker run --name geth --publish 8545:8545 --detach registry.hub.docker.com/ethereum/client-go:v1.17.1 --dev --verbosity 3 --http --http.api eth --http.addr 0.0.0.0
           # small wait for startup to exclude 'transaction indexing is in progress'
-          sleep 2
+          sleep 3
 
       - name: Run HIP-1340 - EIP-7702 tests against Geth local network
         run: npx hardhat test test/hip-1340/hip1340-*.test.js --grep 'Ethereum Specific tests' --network geth
