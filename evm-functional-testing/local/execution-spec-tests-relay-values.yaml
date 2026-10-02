@@ -1,0 +1,41 @@
+relay:
+  # Increase the MEM limits for 'Ethereum execution spec tests', because of 'CALL_DATA_SIZE_LIMIT' increase
+  resources:
+    requests:
+      memory: 300Mi
+    limits:
+      memory: 600Mi
+  config:
+    # Using this to 'blocking' eth_sendRawTransaction execution to see the execution error, if there is one.
+    USE_ASYNC_TX_PROCESSING: "false"
+
+    # The relay (pectra-upgrade branch) gates EIP-7702 type 4 ("set code") transactions
+    # behind TX_TYPE_4_ENABLED, which defaults to "false" since hiero-json-rpc-relay#5563
+    # (2026-07-28), rejecting them in the eth_sendRawTransaction precheck with
+    # "unsupported transaction type". The HIP-1340 suites submit type 4 transactions
+    # through the relay, so the flag must be enabled explicitly.
+    TX_TYPE_4_ENABLED: "true"
+
+    # New configs for Ethereum execution spec tests
+
+    # Enables nonce management via the per-address pending pool.
+    # causes nonce problems `Nonce too low. Provided nonce: 0, current nonce: 1) Transact...`
+    # ENABLE_TX_POOL: "true"
+    # Master feature flag that enables the nonce ordering mechanism.
+    # When enabled, transactions acquire locks before any async operations or side effects.
+    # ENABLE_NONCE_ORDERING: "true"
+    # Max gasLimit
+    MAX_TRANSACTION_GAS_LIMIT: 150000000
+    # Call data size
+    # All zero bytes: (gas_limit − 21,000) / 10 bytes = 14 997 900
+    # All non-zero bytes: (gas_limit − 21,000) / 40 bytes = 3 749 475
+    # AVG = (14 997 900 + 3 749 475) / 2 = 9 373 687,5
+    SEND_RAW_TRANSACTION_SIZE_LIMIT: 9000000
+    CALL_DATA_SIZE_LIMIT: 9000000
+    # Batch requests
+    INPUT_SIZE_LIMIT: 9 # in MB
+    # Increase (100->1200) maximum number of requests allowed in a batch
+    BATCH_REQUESTS_MAX_SIZE: "1200"
+    # Tracing
+    # LOG_LEVEL: "trace"
+    # SDK_LOG_LEVEL: "trace"
