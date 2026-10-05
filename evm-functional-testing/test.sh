@@ -16,7 +16,7 @@ APP_PROPERTIES_PATH="local/execution-spec-tests-application.properties"
 ######################### MN configs #########################
 LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
-MIRROR_NODE_VERSION=0.161.0
+MIRROR_NODE_VERSION=0.163.0
 MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
 
 ######################### Relay configs #########################

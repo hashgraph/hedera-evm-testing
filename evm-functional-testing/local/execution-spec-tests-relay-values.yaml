@@ -19,11 +19,13 @@ relay:
     # New configs for Ethereum execution spec tests
 
     # Enables nonce management via the per-address pending pool.
-    # causes nonce problems `Nonce too low. Provided nonce: 0, current nonce: 1) Transact...`
-    # ENABLE_TX_POOL: "true"
+    # Error: Transaction rejected: WRONG_NONCE - receipt for transaction
+    # Error: Nonce too low. Provided nonce: 28, current nonce: 31)
+#    ENABLE_TX_POOL: "true"
     # Master feature flag that enables the nonce ordering mechanism.
     # When enabled, transactions acquire locks before any async operations or side effects.
-    # ENABLE_NONCE_ORDERING: "true"
+    # ERROR: Nonce too low. Provided nonce: 0, current nonce: 1
+#    ENABLE_NONCE_ORDERING: "true"
     # Max gasLimit
     MAX_TRANSACTION_GAS_LIMIT: 150000000
     # Call data size
