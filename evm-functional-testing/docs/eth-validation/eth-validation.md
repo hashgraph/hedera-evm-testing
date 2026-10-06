@@ -13,18 +13,20 @@ On Hedera the suite runs **end-to-end at a zero gas price**: setting `EVM_TESTIN
 - **Consensus node** with `local/zero-fees.properties` (`fees.simpleFeesAreFree=true`), so a zero-gas-price transaction incurs no fee and is not rejected for an insufficient fee.
 - **Relay** with `local/relay-zero-gas-values.yaml`, which enables the paymaster wildcard whitelist (`PAYMASTER_ENABLED=true`, `PAYMASTER_WHITELIST=["*"]`) — without a paymaster match, the relay's precheck rejects any gas price below the network minimum (`GAS_PRICE_TOO_LOW`). `MAX_GAS_ALLOWANCE_HBAR` stays `"0"`, so the relay never subsidizes anything: the transactions are free because the consensus node charges no fee, not because the relay operator pays.
 
-`test.sh` wires it up: `./test.sh solo start --profile zero-gas-price` starts the consensus node with `zero-fees.properties` and the relay with `relay-zero-gas-values.yaml`; running the suite with `EVM_TESTING_PROFILE=zero-gas-price` makes hardhat submit at `gasPrice: 0` to match. The CI eth-validation shards do the same. The reference EVMs reject a gas price below the block base fee, so they always run at their normal (base-fee) price; because none of the assertions depend on the gas price, the parity comparison still holds. See the divergence note below.
+`EVM_TESTING_PROFILE=zero-gas-price` wires up both sides from one exported variable: `test.sh` reads it (or `--profile zero-gas-price`) to start the consensus node with `zero-fees.properties` and the relay with `relay-zero-gas-values.yaml`, and `hardhat.config.js` reads the same variable to submit at `gasPrice: 0`. The CI eth-validation shards do the same. The reference EVMs reject a gas price below the block base fee, so they always run at their normal (base-fee) price; because none of the assertions depend on the gas price, the parity comparison still holds. See the divergence note below.
 
 ## Run Tests
 
 ```sh
-# Hedera solo — start the network in zero-gas-price mode first (consensus node with
-# zero-fees.properties, relay with relay-zero-gas-values.yaml):
-./test.sh solo start --profile zero-gas-price
+# Hedera solo — export once, both test.sh and hardhat read the same variable:
+export EVM_TESTING_PROFILE=zero-gas-price
+# start the network in zero-gas-price mode (consensus node with zero-fees.properties,
+# relay with relay-zero-gas-values.yaml):
+./test.sh solo start
 # then run the whole suite at zero gas price:
-EVM_TESTING_PROFILE=zero-gas-price npx hardhat test test/eth-validation/*.test.js --network solo
+npx hardhat test test/eth-validation/*.test.js --network solo
 
-# Reference Ethereum EVMs (normal fee data; do NOT set EVM_TESTING_PROFILE=zero-gas-price)
+# Reference Ethereum EVMs (normal fee data; unset EVM_TESTING_PROFILE or use another profile)
 npx hardhat test test/eth-validation/*.test.js --network hardhat
 npx hardhat test test/eth-validation/*.test.js --network geth
 ```
