@@ -8,23 +8,23 @@ Every test is asserted for **Ethereum parity**: the same network-agnostic test b
 
 ### Zero gas price
 
-On Hedera the suite runs **end-to-end at a zero gas price**: setting `EVM_ZERO_GAS_PRICE=true` makes the `solo` network submit every transaction — deployments and calls alike — with `gasPrice: 0` (see `hardhat.config.js`). For those transactions to be accepted and executed, the network must be started in a matching mode:
+On Hedera the suite runs **end-to-end at a zero gas price**: setting `EVM_TESTING_PROFILE=zero-gas-price` makes the `solo` network submit every transaction — deployments and calls alike — with `gasPrice: 0` (see `hardhat.config.js`). For those transactions to be accepted and executed, the network must be started in a matching mode:
 
 - **Consensus node** with `local/zero-fees.properties` (`fees.simpleFeesAreFree=true`), so a zero-gas-price transaction incurs no fee and is not rejected for an insufficient fee.
 - **Relay** with `local/relay-zero-gas-values.yaml`, which enables the paymaster wildcard whitelist (`PAYMASTER_ENABLED=true`, `PAYMASTER_WHITELIST=["*"]`) — without a paymaster match, the relay's precheck rejects any gas price below the network minimum (`GAS_PRICE_TOO_LOW`). `MAX_GAS_ALLOWANCE_HBAR` stays `"0"`, so the relay never subsidizes anything: the transactions are free because the consensus node charges no fee, not because the relay operator pays.
 
-`test.sh` wires both up: `EVM_ZERO_GAS_PRICE=true ./test.sh solo start` starts the consensus node with `zero-fees.properties` and the relay with `relay-zero-gas-values.yaml`. The CI eth-validation shards do the same. The reference EVMs reject a gas price below the block base fee, so they always run at their normal (base-fee) price; because none of the assertions depend on the gas price, the parity comparison still holds. See the divergence note below.
+`test.sh` wires it up: `./test.sh solo start --profile zero-gas-price` starts the consensus node with `zero-fees.properties` and the relay with `relay-zero-gas-values.yaml`; running the suite with `EVM_TESTING_PROFILE=zero-gas-price` makes hardhat submit at `gasPrice: 0` to match. The CI eth-validation shards do the same. The reference EVMs reject a gas price below the block base fee, so they always run at their normal (base-fee) price; because none of the assertions depend on the gas price, the parity comparison still holds. See the divergence note below.
 
 ## Run Tests
 
 ```sh
 # Hedera solo — start the network in zero-gas-price mode first (consensus node with
 # zero-fees.properties, relay with relay-zero-gas-values.yaml):
-EVM_ZERO_GAS_PRICE=true ./test.sh solo start
+./test.sh solo start --profile zero-gas-price
 # then run the whole suite at zero gas price:
-EVM_ZERO_GAS_PRICE=true npx hardhat test test/eth-validation/*.test.js --network solo
+EVM_TESTING_PROFILE=zero-gas-price npx hardhat test test/eth-validation/*.test.js --network solo
 
-# Reference Ethereum EVMs (normal fee data; do NOT set EVM_ZERO_GAS_PRICE)
+# Reference Ethereum EVMs (normal fee data; do NOT set EVM_TESTING_PROFILE=zero-gas-price)
 npx hardhat test test/eth-validation/*.test.js --network hardhat
 npx hardhat test test/eth-validation/*.test.js --network geth
 ```

@@ -67,7 +67,7 @@ jobs:
             test_args: "test/eth-validation/eth-tx-stale-key.test.js"
             relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
           # The eth-validation suite runs end-to-end at zero gas price on Hedera:
-          #   zero_gas_price   -> EVM_ZERO_GAS_PRICE on the run step (read by hardhat.config.js)
+          #   profile          -> EVM_TESTING_PROFILE on the run step (read by hardhat.config.js)
           #   app_properties   -> consensus node started with zero-fees.properties
           #                       (fees.simpleFeesAreFree=true) so zero-gas-price txs incur no fee
           #   relay_values     -> relay deployed with the paymaster wildcard whitelist so its
@@ -75,33 +75,33 @@ jobs:
           #                       kept at 0, so nothing is relay-subsidized)
           - shard: ETH Validation deployment
             test_args: "test/eth-validation/deployment.test.js"
-            zero_gas_price: "true"
+            profile: "zero-gas-price"
             app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
             relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
           - shard: ETH Validation CREATE/CREATE2
             test_args: "test/eth-validation/create-create2.test.js"
-            zero_gas_price: "true"
+            profile: "zero-gas-price"
             app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
             relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
           - shard: ETH Validation call semantics
             test_args: "test/eth-validation/call-semantics.test.js"
-            zero_gas_price: "true"
+            profile: "zero-gas-price"
             app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
             relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
           - shard: ETH Validation call edge cases
             test_args: "test/eth-validation/call-edge-cases.test.js"
-            zero_gas_price: "true"
+            profile: "zero-gas-price"
             app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
             relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
           - shard: ETH Validation zero gas price
             test_args: "test/eth-validation/zero-gas-price.test.js"
-            zero_gas_price: "true"
+            profile: "zero-gas-price"
             app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
             relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
           # The one eth-validation shard that must NOT run in zero-gas-price mode: it asserts how
           # much gas an EthereumTransaction is charged, and with fees.simpleFeesAreFree=true the
           # consensus node skips gas charging entirely (the suite skips itself if it finds that
-          # mode on). So no zero_gas_price and no app_properties override -> the node gets the
+          # mode on). So no profile and no app_properties override -> the node gets the
           # default local/application.properties and charges real fees. The suite drives the
           # consensus node over the SDK; the relay only serves its contract deployment, and
           # relay-values.yaml is used for USE_ASYNC_TX_PROCESSING=false so a failed deployment
@@ -222,7 +222,7 @@ jobs:
         working-directory: evm-testing/evm-functional-testing
         env:
           # Empty for non-eth-validation shards -> hardhat.config.js falls back to "auto".
-          EVM_ZERO_GAS_PRICE: ${{ matrix.zero_gas_price }}
+          EVM_TESTING_PROFILE: ${{ matrix.profile }}
 
       - name: Stop solo
         if: always()

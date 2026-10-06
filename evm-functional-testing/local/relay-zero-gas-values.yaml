@@ -1,6 +1,6 @@
 relay:
   config:
-    # Relay configuration for the zero-gas-price eth-validation runs (EVM_ZERO_GAS_PRICE=true).
+    # Relay configuration for the zero-gas-price eth-validation runs (EVM_TESTING_PROFILE=zero-gas-price).
     # The relay's gasPrice precheck rejects any offered gas price below the network minimum
     # (GAS_PRICE_TOO_LOW) unless the paymaster matches the transaction, so the wildcard
     # whitelist is what lets zero-gas-price transactions through. It must be "*": contract
