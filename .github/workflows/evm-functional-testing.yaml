@@ -185,27 +185,23 @@ jobs:
           solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --local-build-path ./hiero-consensus-node/hedera-node/data
           solo consensus node start --deployment "${SOLO_DEPLOYMENT}"
           # mirror node
-          solo mirror node add --enable-ingress --pinger --mirror-node-version ${MIRROR_NODE_VERSION} --values-file "${MIRROR_NODE_VALUES_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME} 
+          solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME}
           # relay
           # Shards that set RELAY_VALUES_PATH get a customized relay: HIP-1340 shards enable
           # type 4 (EIP-7702) transactions, eth-validation zero-gas-price shards accept
-          # zero-gas-price transactions (paymaster whitelist, zero allowance); others use defaults.
-          RELAY_VALUES_ARG=""
-          if [ -n "${RELAY_VALUES_PATH}" ]; then
-            RELAY_VALUES_ARG="--values-file ${RELAY_VALUES_PATH}"
-          fi
-          solo relay node add --relay-release ${RELAY_RELEASE} --deployment "${SOLO_DEPLOYMENT}" -i node1 ${RELAY_VALUES_ARG}
+          # zero-gas-price transactions (paymaster whitelist, zero allowance); others use defaults
+          solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}"
           # accounts pre-setup
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}"
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}"
           solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"
         env:
-          SOLO_NAMESPACE: solo-evm-e2e
-          SOLO_DEPLOYMENT: solo-evm-deployment
-          SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup
+          SOLO_NAMESPACE: solo-ns-hedera
+          SOLO_DEPLOYMENT: solo-deployment-hedera
+          SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup-ns-hedera
           MIRROR_NODE_VALUES_PATH: "evm-testing/evm-functional-testing/local/mn-values.yaml"
           # Empty when the shard sets no relay_values -> relay deployed with default config.
-          RELAY_VALUES_PATH: ${{ matrix.relay_values }}
+          RELAY_VALUES_PATH: ${{ matrix.relay_values || 'evm-testing/evm-functional-testing/local/relay-values.yaml' }}
           # eth-validation zero-gas shards override this with zero-fees.properties.
           APP_PROPERTIES_PATH: ${{ matrix.app_properties || 'evm-testing/evm-functional-testing/local/application.properties' }}
           # alias f70febf7420398c3892ce79fdc393c1a5487ad27
