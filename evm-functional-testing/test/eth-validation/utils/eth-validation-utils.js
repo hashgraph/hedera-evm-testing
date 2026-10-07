@@ -20,21 +20,23 @@ function tinybarValue(tinybars) {
 /**
  * Whether the suite submits transactions at a zero gas price on Hedera.
  *
- * Driven by the EVM_ZERO_GAS_PRICE flag, which is also read by `hardhat.config.js` so
- * the solo network's default gas price matches. This single switch keeps the whole
- * suite consistent: both transactions that inherit the network default and those that
- * set `gasPrice: callGasPrice()` explicitly run at the same price.
+ * Driven by the EVM_TESTING_PROFILE=zero-gas-price flag, which is also read by
+ * `hardhat.config.js` so the solo network's default gas price matches. This single switch
+ * keeps the whole suite consistent: both transactions that inherit the network default and
+ * those that set `gasPrice: callGasPrice()` explicitly run at the same price. Note this only
+ * affects the hardhat-side gas price — the network itself must separately be started in
+ * zero-gas-price mode (`test.sh solo start --profile zero-gas-price`).
  *
  * @returns {boolean}
  */
 function zeroGasPriceEnabled() {
-  return process.env.EVM_ZERO_GAS_PRICE === "true";
+  return process.env.EVM_TESTING_PROFILE === "zero-gas-price";
 }
 
 /**
  * Legacy gas price for raw transactions on Hedera, `undefined` on Ethereum networks
- * (lets ethers populate fee data). On Hedera this is zero when EVM_ZERO_GAS_PRICE is
- * set, otherwise the relay-compatible fixed price. Kept in lock-step with the solo
+ * (lets ethers populate fee data). On Hedera this is zero when EVM_TESTING_PROFILE=zero-gas-price
+ * is set, otherwise the relay-compatible fixed price. Kept in lock-step with the solo
  * network default in `hardhat.config.js` so explicit and inherited gas prices agree.
  *
  * @returns {bigint | undefined}

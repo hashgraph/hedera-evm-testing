@@ -61,6 +61,12 @@ npm install -g @hashgraph/solo@0.91.0
 ```sh
 # Deploy with local CN
 ./test.sh solo start
+
+# Deploy with `spec test` profile configuration
+./test.sh solo start --profile spec
+
+# Deploy with `zero gas price` profile configuration
+./test.sh solo start --profile zero-gas-price
 ```
 It will deploy:
 - Consensus Node gRPC port forward enabled on `localhost:35211`

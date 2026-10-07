@@ -28,7 +28,7 @@
 //     as a HAPI EthereumTransaction through a client whose *operator is the signing account
 //     itself*. This is the only place in the suite that talks to the consensus node directly.
 //
-//  2. It only means anything in normal-fee mode. Under EVM_ZERO_GAS_PRICE the network runs with
+//  2. It only means anything in normal-fee mode. Under EVM_TESTING_PROFILE=zero-gas-price the network runs with
 //     fees.simpleFeesAreFree=true and the consensus node skips gas charging altogether, so every
 //     assertion here would hold without the charging path ever running. The suite therefore skips
 //     itself in that mode (and on the Ethereum reference networks, which have no HAPI layer) and

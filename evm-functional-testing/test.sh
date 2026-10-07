@@ -8,6 +8,12 @@ set -e
 
 WORK_DIR="$(pwd)"
 
+######################### Profile config #########################
+# Selects which predefined set of CN/MN/relay config files solo_start uses.
+# Precedence: `solo start --profile <name>` overrides $EVM_TESTING_PROFILE overrides "default".
+# Available profiles: default | spec | zero-gas-price (see set_profile() below).
+PROFILE="${EVM_TESTING_PROFILE:-default}"
+
 ######################### CN configs #########################
 LOCAL_CN_BUILD=true
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
@@ -17,26 +23,13 @@ APP_PROPERTIES_PATH="local/application.properties"
 LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
 MIRROR_NODE_VERSION=0.163.1
-MIRROR_NODE_YAML_PATH="local/mn-values.yaml"
+MIRROR_NODE_VALUES_PATH="local/mn-values.yaml"
 
 ######################### Relay configs #########################
 LOCAL_RELAY_BUILD=false
-RELAY_RELEASE=0.79.0-rc4
+RELAY_RELEASE=0.79.0
 RELAY_DIR="../../hiero-json-rpc-relay"
-RELAY_YAML_PATH="local/relay-values.yaml"
-
-######################### Zero gas price mode #########################
-# When EVM_ZERO_GAS_PRICE=true, start the network so it accepts and executes transactions
-# submitted with a zero gas price (used by the eth-validation suite, which is run with the
-# same env var). This swaps in:
-#   - zero-fees.properties for the consensus node (fees.simpleFeesAreFree=true), so a
-#     zero-gas-price transaction is not rejected for an insufficient fee
-#   - relay-zero-gas-values.yaml for the relay, so it accepts a zero gas price
-if [ "${EVM_ZERO_GAS_PRICE:-false}" = "true" ]; then
-  APP_PROPERTIES_PATH="local/zero-fees.properties"
-  RELAY_YAML_PATH="local/relay-zero-gas-values.yaml"
-  echo "EVM_ZERO_GAS_PRICE=true -> consensus node: ${APP_PROPERTIES_PATH}, relay: ${RELAY_YAML_PATH}"
-fi
+RELAY_VALUES_PATH="local/relay-values.yaml"
 
 ######################### Solo configs #########################
 export SOLO_BASE_NAME=hedera
@@ -56,6 +49,33 @@ export TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3=3030020100300706052b8104000a04220420
 export TEST_ACCOUNT_HBAR_AMOUNT=1000000000
 
 ######################### functions #########################
+
+set_profile() {
+  case "$1" in
+    default)
+      # keep the CN/MN/relay config paths set above as-is
+      ;;
+    spec)
+      APP_PROPERTIES_PATH="local/execution-spec-tests-application.properties"
+      RELAY_VALUES_PATH="local/execution-spec-tests-relay-values.yaml"
+      ;;
+    zero-gas-price)
+      # Starts the network so it accepts and executes transactions submitted with a zero gas
+      # price. Run the eth-validation suite with the same `EVM_TESTING_PROFILE=zero-gas-price`,
+      # which hardhat.config.js also reads to submit test transactions at gasPrice: 0 to match.
+      #   - zero-fees.properties for the consensus node (fees.simpleFeesAreFree=true), so a
+      #     zero-gas-price transaction is not rejected for an insufficient fee
+      #   - relay-zero-gas-values.yaml for the relay, so it accepts a zero gas price
+      APP_PROPERTIES_PATH="local/zero-fees.properties"
+      RELAY_VALUES_PATH="local/relay-zero-gas-values.yaml"
+      ;;
+    *)
+      echo "Unknown profile: '$1' (expected: default | spec | zero-gas-price)"
+      exit 1
+      ;;
+  esac
+  echo "profile: ${PROFILE} -> consensus node: ${APP_PROPERTIES_PATH}, mirror node: ${MIRROR_NODE_VALUES_PATH}, relay: ${RELAY_VALUES_PATH}"
+}
 
 check_k8s_context() {
   CURRENT_CONTEXT=$(kubectl config current-context)
@@ -106,9 +126,9 @@ solo_start() {
     docker build -t "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" importer/
     kind load docker-image "gcr.io/mirrornode/hedera-mirror-importer:${MIRROR_NODE_VERSION}" --name "${SOLO_CLUSTER_NAME}"
     cd "${WORK_DIR}"
-    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME}
+    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_VALUES_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME}
   else
-    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_YAML_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME}
+    solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_VALUES_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME}
   fi
 
   # Relay deploy
@@ -118,9 +138,9 @@ solo_start() {
     docker build -t "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" .
     kind load docker-image "ghcr.io/hiero-ledger/hiero-json-rpc-relay:${RELAY_RELEASE}" --name "${SOLO_CLUSTER_NAME}"
     cd "${WORK_DIR}"
-    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}"
+    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_VALUES_PATH}"
   else
-    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_YAML_PATH}"
+    solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${RELAY_VALUES_PATH}"
   fi
 
   # Explorer deploy
@@ -164,6 +184,23 @@ case "$1" in
     case "$1" in
       start)
         shift
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            --profile)
+              PROFILE="$2"
+              shift 2
+              ;;
+            --profile=*)
+              PROFILE="${1#*=}"
+              shift
+              ;;
+            *)
+              echo "Unknown option: $1"
+              exit 1
+              ;;
+          esac
+        done
+        set_profile "${PROFILE}"
         solo_start
         ;;
       stop)
@@ -179,7 +216,7 @@ case "$1" in
         solo_destroy
         ;;
     	*)
-    		echo "Usage: [ start | stop | status | destroy ]"
+    		echo "Usage: [ start [--profile default|spec|zero-gas-price] | stop | status | destroy ]"
     		exit 1
     		;;
     esac
