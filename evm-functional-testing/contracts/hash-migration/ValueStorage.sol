@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.28;
 
+import {SlotReader} from "./SlotReader.sol";
+
 /**
- * Storage fixture for the SHA-384 -> SHA-256 migration test: one variable per storage case,
+ * Value storage fixture for the SHA-384 -> SHA-256 migration test: one variable per value case,
  * written before the consensus node upgrade and compared after it.
  */
-contract StorageMatrix {
+contract ValueStorage is SlotReader {
     enum Color {
         Red,
         Green,
@@ -166,19 +168,6 @@ contract StorageMatrix {
             slotCount := endOfLayout.slot
             longStringSlot := longString.slot
             longBytesSlot := longBytes.slot
-        }
-    }
-
-    /// Raw storage reads, so a ContractCallQuery can read slots straight from the consensus node.
-    function readSlots(uint256[] calldata slots) external view returns (bytes32[] memory values) {
-        values = new bytes32[](slots.length);
-        for (uint256 i = 0; i < slots.length; i++) {
-            uint256 slot = slots[i];
-            bytes32 value;
-            assembly {
-                value := sload(slot)
-            }
-            values[i] = value;
         }
     }
 }

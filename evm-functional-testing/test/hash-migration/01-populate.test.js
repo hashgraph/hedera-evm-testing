@@ -9,17 +9,15 @@ const {
 } = require("./utils/snapshot");
 const { expectHash32 } = require("./utils/hashes");
 const { getCodeOnConsensusNode } = require("./utils/consensus-node");
+const { readGetters, readSlots, findMismatches } = require("./utils/storage");
 const {
   ORIGINAL_VALUES,
-  deployStorageMatrix,
+  deployValueStorage,
   writeValues,
-  expectedGetterResults,
-  readGetters,
+  expectedGetters,
   usedSlots,
-  readSlots,
-  findMismatches,
   expectTransientNotKept,
-} = require("./utils/storage-matrix");
+} = require("./utils/value-storage");
 
 // Phase 1 of the SHA-384 -> SHA-256 migration test: runs on the old network and records
 // everything 02-verify.test.js compares after the consensus node upgrade.
@@ -44,45 +42,45 @@ describe("Hash migration - 01 populate (old network)", function () {
     this.snapshot.startBlock = { number: block.number, hash: block.hash };
   });
 
-  describe("StorageMatrix", function () {
-    it("should deploy StorageMatrix and write every storage case", async function () {
-      this.storageMatrix = await deployStorageMatrix();
-      await writeValues(this.storageMatrix, ORIGINAL_VALUES);
+  describe("ValueStorage", function () {
+    it("should deploy ValueStorage and write every value case", async function () {
+      this.valueStorage = await deployValueStorage();
+      await writeValues(this.valueStorage, ORIGINAL_VALUES);
 
-      this.snapshot.storageMatrix = {
-        address: await this.storageMatrix.getAddress(),
+      this.snapshot.valueStorage = {
+        address: await this.valueStorage.getAddress(),
       };
     });
 
     it("should return the written value from every getter through the relay and the consensus node", async function () {
-      const expected = expectedGetterResults(
-        this.storageMatrix.interface,
+      const expected = expectedGetters(
+        this.valueStorage.interface,
         ORIGINAL_VALUES,
       );
       const actual = await readGetters(
-        this.storageMatrix,
+        this.valueStorage,
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
-      this.snapshot.storageMatrix.getters = expected;
+      this.snapshot.valueStorage.getters = expected;
     });
 
     it("should read the same raw storage slots through the relay and the consensus node", async function () {
-      const slots = await usedSlots(this.storageMatrix, ORIGINAL_VALUES);
+      const slots = await usedSlots(this.valueStorage, ORIGINAL_VALUES);
       const { relay, consensusNode } = await readSlots(
-        this.storageMatrix,
+        this.valueStorage,
         slots,
       );
       const mismatches = findMismatches("slot", relay, { consensusNode });
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
-      this.snapshot.storageMatrix.slots = relay;
+      this.snapshot.valueStorage.slots = relay;
     });
 
     it("should read the same code through the relay and the consensus node", async function () {
-      const address = await this.storageMatrix.getAddress();
+      const address = await this.valueStorage.getAddress();
       const relayCode = await ethers.provider.getCode(address);
       const consensusNodeCode = await getCodeOnConsensusNode(address);
       expect(relayCode, "relay returned no code").to.not.equal("0x");
@@ -91,11 +89,11 @@ describe("Hash migration - 01 populate (old network)", function () {
         "code differs between relay and consensus node",
       ).to.equal(relayCode);
 
-      this.snapshot.storageMatrix.code = relayCode;
+      this.snapshot.valueStorage.code = relayCode;
     });
 
     it("should not keep transient storage between transactions", async function () {
-      await expectTransientNotKept(this.storageMatrix);
+      await expectTransientNotKept(this.valueStorage);
     });
   });
 });

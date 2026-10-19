@@ -4,15 +4,13 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { readSnapshot } = require("./utils/snapshot");
 const { getCodeOnConsensusNode } = require("./utils/consensus-node");
+const { readGetters, readSlots, findMismatches } = require("./utils/storage");
 const {
   UPDATED_VALUES,
   writeValues,
-  expectedGetterResults,
-  readGetters,
-  readSlots,
-  findMismatches,
+  expectedGetters,
   expectTransientNotKept,
-} = require("./utils/storage-matrix");
+} = require("./utils/value-storage");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
 // it with the snapshot written by 01-populate.test.js.
@@ -34,26 +32,26 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
     ).to.be.greaterThan(this.snapshot.startBlock.number);
   });
 
-  describe("StorageMatrix", function () {
+  describe("ValueStorage", function () {
     before(async function () {
-      this.storageMatrix = await ethers.getContractAt(
-        "StorageMatrix",
-        this.snapshot.storageMatrix.address,
+      this.valueStorage = await ethers.getContractAt(
+        "ValueStorage",
+        this.snapshot.valueStorage.address,
       );
     });
 
     it("should keep every raw storage slot", async function () {
-      const expected = this.snapshot.storageMatrix.slots;
+      const expected = this.snapshot.valueStorage.slots;
       const slots = Object.keys(expected).map(BigInt);
-      const actual = await readSlots(this.storageMatrix, slots);
+      const actual = await readSlots(this.valueStorage, slots);
       const mismatches = findMismatches("slot", expected, actual);
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
 
     it("should keep every getter value", async function () {
-      const expected = this.snapshot.storageMatrix.getters;
+      const expected = this.snapshot.valueStorage.getters;
       const actual = await readGetters(
-        this.storageMatrix,
+        this.valueStorage,
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
@@ -61,8 +59,8 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
     });
 
     it("should keep the contract code", async function () {
-      const address = this.snapshot.storageMatrix.address;
-      const expected = this.snapshot.storageMatrix.code;
+      const address = this.snapshot.valueStorage.address;
+      const expected = this.snapshot.valueStorage.code;
       expect(await ethers.provider.getCode(address), "code via relay").to.equal(
         expected,
       );
@@ -73,18 +71,18 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
     });
 
     it("should not keep transient storage between transactions", async function () {
-      await expectTransientNotKept(this.storageMatrix);
+      await expectTransientNotKept(this.valueStorage);
     });
 
-    it("should accept new values for every storage case", async function () {
-      await writeValues(this.storageMatrix, UPDATED_VALUES);
+    it("should accept new values for every value case", async function () {
+      await writeValues(this.valueStorage, UPDATED_VALUES);
 
-      const expected = expectedGetterResults(
-        this.storageMatrix.interface,
+      const expected = expectedGetters(
+        this.valueStorage.interface,
         UPDATED_VALUES,
       );
       const actual = await readGetters(
-        this.storageMatrix,
+        this.valueStorage,
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
