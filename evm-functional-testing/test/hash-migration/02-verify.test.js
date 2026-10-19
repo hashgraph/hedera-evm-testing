@@ -21,6 +21,12 @@ const {
   writeCollections,
   expectedCollections,
 } = require("./utils/collection-storage");
+const {
+  UPDATED_SALT,
+  UPDATED_KEYS,
+  writeEntries,
+  expectedSample,
+} = require("./utils/large-storage");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
 // it with the snapshot written by 01-populate.test.js.
@@ -148,6 +154,62 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
       );
       const actual = await readGetters(
         this.collectionStorage,
+        Object.keys(expected),
+      );
+      const mismatches = findMismatches("getter", expected, actual);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+  });
+
+  describe("LargeStorage", function () {
+    before(async function () {
+      this.largeStorage = await ethers.getContractAt(
+        "LargeStorage",
+        this.snapshot.largeStorage.address,
+      );
+    });
+
+    it("should keep every raw storage slot", async function () {
+      this.timeout(600_000);
+      const expected = this.snapshot.largeStorage.slots;
+      const slots = Object.keys(expected).map(BigInt);
+      const actual = await readSlots(this.largeStorage, slots);
+      const mismatches = findMismatches("slot", expected, actual);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should keep every sampled getter value", async function () {
+      const expected = this.snapshot.largeStorage.getters;
+      const actual = await readGetters(
+        this.largeStorage,
+        Object.keys(expected),
+      );
+      const mismatches = findMismatches("getter", expected, actual);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should keep the contract code", async function () {
+      const address = this.snapshot.largeStorage.address;
+      const expected = this.snapshot.largeStorage.code;
+      expect(await ethers.provider.getCode(address), "code via relay").to.equal(
+        expected,
+      );
+      expect(
+        await getCodeOnConsensusNode(address),
+        "code via consensus node",
+      ).to.equal(expected);
+    });
+
+    it("should accept new values for a batch of entries and leave the rest unchanged", async function () {
+      this.timeout(300_000);
+      await writeEntries(this.largeStorage, UPDATED_SALT, UPDATED_KEYS);
+
+      const expected = expectedGetterResults(
+        this.largeStorage.interface,
+        expectedSample(true),
+      );
+      const actual = await readGetters(
+        this.largeStorage,
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);

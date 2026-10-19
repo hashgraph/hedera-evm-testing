@@ -3,7 +3,7 @@
 const { ethers } = require("hardhat");
 const { callOnConsensusNode } = require("./consensus-node");
 
-// Helpers shared by the storage contracts (ValueStorage, CollectionStorage, ...): reading getters and raw slots
+// Helpers shared by the storage contracts (ValueStorage, CollectionStorage, LargeStorage): reading getters and raw slots
 // through the relay and on the consensus node, and comparing them.
 
 /**
@@ -102,6 +102,15 @@ function dataSlots(slot, byteLength) {
   return Array.from({ length: count }, (_, i) => first + BigInt(i));
 }
 
+const CONSENSUS_NODE_BATCH = 100;
+const RELAY_BATCH = 20;
+
+function chunks(items, size) {
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, i) =>
+    items.slice(i * size, (i + 1) * size),
+  );
+}
+
 /**
  * Reads raw slots through the relay (eth_getStorageAt) and on the consensus node (readSlots).
  *
@@ -111,16 +120,23 @@ async function readSlots(contract, slots) {
   const address = await contract.getAddress();
   const relay = {};
   const consensusNode = {};
-  const data = contract.interface.encodeFunctionData("readSlots", [slots]);
-  const [cnValues] = contract.interface.decodeFunctionResult(
-    "readSlots",
-    await callOnConsensusNode(address, data),
-  );
-  for (const [i, slot] of slots.entries()) {
-    const key = ethers.toBeHex(slot);
-    const relayValue = await ethers.provider.getStorage(address, slot);
-    relay[key] = ethers.toBeHex(BigInt(relayValue), 32);
-    consensusNode[key] = cnValues[i];
+  for (const batch of chunks(slots, CONSENSUS_NODE_BATCH)) {
+    const data = contract.interface.encodeFunctionData("readSlots", [batch]);
+    const [values] = contract.interface.decodeFunctionResult(
+      "readSlots",
+      await callOnConsensusNode(address, data),
+    );
+    batch.forEach((slot, i) => {
+      consensusNode[ethers.toBeHex(slot)] = values[i];
+    });
+  }
+  for (const batch of chunks(slots, RELAY_BATCH)) {
+    const values = await Promise.all(
+      batch.map((slot) => ethers.provider.getStorage(address, slot)),
+    );
+    batch.forEach((slot, i) => {
+      relay[ethers.toBeHex(slot)] = ethers.toBeHex(BigInt(values[i]), 32);
+    });
   }
   return { relay, consensusNode };
 }

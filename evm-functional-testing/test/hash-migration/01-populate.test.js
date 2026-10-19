@@ -32,6 +32,14 @@ const {
   collectionSlots,
   clearedCollectionSlots,
 } = require("./utils/collection-storage");
+const {
+  ORIGINAL_SALT,
+  ENTRY_COUNT,
+  deployLargeStorage,
+  writeEntries,
+  expectedSample,
+  largeSlots,
+} = require("./utils/large-storage");
 
 // Phase 1 of the SHA-384 -> SHA-256 migration test: runs on the old network and records
 // everything 02-verify.test.js compares after the consensus node upgrade.
@@ -193,6 +201,69 @@ describe("Hash migration - 01 populate (old network)", function () {
       ).to.equal(relayCode);
 
       this.snapshot.collectionStorage.code = relayCode;
+    });
+  });
+
+  describe("LargeStorage", function () {
+    it(`should deploy LargeStorage and write ${ENTRY_COUNT} entries`, async function () {
+      this.timeout(600_000);
+      this.largeStorage = await deployLargeStorage();
+      await writeEntries(this.largeStorage, ORIGINAL_SALT, {
+        first: 0,
+        count: ENTRY_COUNT,
+      });
+
+      this.snapshot.largeStorage = {
+        address: await this.largeStorage.getAddress(),
+      };
+    });
+
+    it("should return the written value from sampled getters through the relay and the consensus node", async function () {
+      const expected = expectedGetterResults(
+        this.largeStorage.interface,
+        expectedSample(false),
+      );
+      const actual = await readGetters(
+        this.largeStorage,
+        Object.keys(expected),
+      );
+      const mismatches = findMismatches("getter", expected, actual);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+
+      this.snapshot.largeStorage.getters = expected;
+    });
+
+    it("should read the same raw storage slots through the relay and the consensus node", async function () {
+      this.timeout(600_000);
+      const slots = await largeSlots(this.largeStorage);
+      const { relay, consensusNode } = await readSlots(
+        this.largeStorage,
+        slots,
+      );
+      const mismatches = findMismatches("slot", relay, { consensusNode });
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+
+      // A wrongly computed slot would read zero on both paths and still match
+      const empty = Object.entries(relay)
+        .filter(([, value]) => BigInt(value) === 0n)
+        .map(([slot]) => slot);
+      expect(empty, `slots expected to hold data are empty: ${empty}`).to.be
+        .empty;
+
+      this.snapshot.largeStorage.slots = relay;
+    });
+
+    it("should read the same code through the relay and the consensus node", async function () {
+      const address = await this.largeStorage.getAddress();
+      const relayCode = await ethers.provider.getCode(address);
+      const consensusNodeCode = await getCodeOnConsensusNode(address);
+      expect(relayCode, "relay returned no code").to.not.equal("0x");
+      expect(
+        consensusNodeCode,
+        "code differs between relay and consensus node",
+      ).to.equal(relayCode);
+
+      this.snapshot.largeStorage.code = relayCode;
     });
   });
 });
