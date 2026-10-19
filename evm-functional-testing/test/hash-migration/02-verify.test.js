@@ -4,13 +4,23 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { readSnapshot } = require("./utils/snapshot");
 const { getCodeOnConsensusNode } = require("./utils/consensus-node");
-const { readGetters, readSlots, findMismatches } = require("./utils/storage");
+const {
+  expectedGetterResults,
+  readGetters,
+  readSlots,
+  findMismatches,
+} = require("./utils/storage");
 const {
   UPDATED_VALUES,
   writeValues,
   expectedGetters,
   expectTransientNotKept,
 } = require("./utils/value-storage");
+const {
+  UPDATED_COLLECTIONS,
+  writeCollections,
+  expectedCollections,
+} = require("./utils/collection-storage");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
 // it with the snapshot written by 01-populate.test.js.
@@ -83,6 +93,61 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
       );
       const actual = await readGetters(
         this.valueStorage,
+        Object.keys(expected),
+      );
+      const mismatches = findMismatches("getter", expected, actual);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+  });
+
+  describe("CollectionStorage", function () {
+    before(async function () {
+      this.collectionStorage = await ethers.getContractAt(
+        "CollectionStorage",
+        this.snapshot.collectionStorage.address,
+      );
+    });
+
+    it("should keep every raw storage slot", async function () {
+      const expected = this.snapshot.collectionStorage.slots;
+      const slots = Object.keys(expected).map(BigInt);
+      const actual = await readSlots(this.collectionStorage, slots);
+      const mismatches = findMismatches("slot", expected, actual);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should keep every getter value", async function () {
+      const expected = this.snapshot.collectionStorage.getters;
+      const actual = await readGetters(
+        this.collectionStorage,
+        Object.keys(expected),
+      );
+      const mismatches = findMismatches("getter", expected, actual);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should keep the contract code", async function () {
+      const address = this.snapshot.collectionStorage.address;
+      const expected = this.snapshot.collectionStorage.code;
+      expect(await ethers.provider.getCode(address), "code via relay").to.equal(
+        expected,
+      );
+      expect(
+        await getCodeOnConsensusNode(address),
+        "code via consensus node",
+      ).to.equal(expected);
+    });
+
+    it("should accept new entries for every collection", async function () {
+      this.timeout(300_000);
+      await writeCollections(this.collectionStorage, UPDATED_COLLECTIONS);
+
+      const expected = expectedGetterResults(
+        this.collectionStorage.interface,
+        expectedCollections(UPDATED_COLLECTIONS, false),
+      );
+      const actual = await readGetters(
+        this.collectionStorage,
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);

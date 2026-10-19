@@ -9,7 +9,12 @@ const {
 } = require("./utils/snapshot");
 const { expectHash32 } = require("./utils/hashes");
 const { getCodeOnConsensusNode } = require("./utils/consensus-node");
-const { readGetters, readSlots, findMismatches } = require("./utils/storage");
+const {
+  expectedGetterResults,
+  readGetters,
+  readSlots,
+  findMismatches,
+} = require("./utils/storage");
 const {
   ORIGINAL_VALUES,
   deployValueStorage,
@@ -18,6 +23,15 @@ const {
   usedSlots,
   expectTransientNotKept,
 } = require("./utils/value-storage");
+const {
+  ORIGINAL_COLLECTIONS,
+  deployCollectionStorage,
+  writeCollections,
+  popAndDelete,
+  expectedCollections,
+  collectionSlots,
+  clearedCollectionSlots,
+} = require("./utils/collection-storage");
 
 // Phase 1 of the SHA-384 -> SHA-256 migration test: runs on the old network and records
 // everything 02-verify.test.js compares after the consensus node upgrade.
@@ -94,6 +108,91 @@ describe("Hash migration - 01 populate (old network)", function () {
 
     it("should not keep transient storage between transactions", async function () {
       await expectTransientNotKept(this.valueStorage);
+    });
+  });
+  describe("CollectionStorage", function () {
+    it("should deploy CollectionStorage, write every collection, then pop and delete", async function () {
+      this.timeout(300_000);
+      this.collectionStorage = await deployCollectionStorage();
+      await writeCollections(this.collectionStorage, ORIGINAL_COLLECTIONS);
+      await popAndDelete(this.collectionStorage);
+
+      this.snapshot.collectionStorage = {
+        address: await this.collectionStorage.getAddress(),
+      };
+    });
+
+    it("should return the written entry from every getter through the relay and the consensus node", async function () {
+      const expected = expectedGetterResults(
+        this.collectionStorage.interface,
+        expectedCollections(ORIGINAL_COLLECTIONS, true),
+      );
+      const actual = await readGetters(
+        this.collectionStorage,
+        Object.keys(expected),
+      );
+      const mismatches = findMismatches("getter", expected, actual);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+
+      this.snapshot.collectionStorage.getters = expected;
+    });
+
+    it("should read the same raw storage slots through the relay and the consensus node", async function () {
+      const slots = await collectionSlots(
+        this.collectionStorage,
+        ORIGINAL_COLLECTIONS,
+      );
+      const { relay, consensusNode } = await readSlots(
+        this.collectionStorage,
+        slots,
+      );
+      const mismatches = findMismatches("slot", relay, { consensusNode });
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+
+      // A wrongly computed slot would read zero on both paths and still match, so every slot
+      // except the ones freed by pop() and delete must hold data
+      const cleared = (
+        await clearedCollectionSlots(
+          this.collectionStorage,
+          ORIGINAL_COLLECTIONS,
+        )
+      ).map((slot) => ethers.toBeHex(slot));
+      const empty = Object.entries(relay)
+        .filter(
+          ([slot, value]) => BigInt(value) === 0n && !cleared.includes(slot),
+        )
+        .map(([slot]) => slot);
+      expect(empty, `slots expected to hold data are empty: ${empty}`).to.be
+        .empty;
+
+      this.snapshot.collectionStorage.slots = relay;
+    });
+
+    it("should clear the slots freed by pop() and delete", async function () {
+      const slots = await clearedCollectionSlots(
+        this.collectionStorage,
+        ORIGINAL_COLLECTIONS,
+      );
+      const actual = await readSlots(this.collectionStorage, slots);
+      const zero = ethers.toBeHex(0, 32);
+      const expected = Object.fromEntries(
+        slots.map((slot) => [ethers.toBeHex(slot), zero]),
+      );
+      const mismatches = findMismatches("slot", expected, actual);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should read the same code through the relay and the consensus node", async function () {
+      const address = await this.collectionStorage.getAddress();
+      const relayCode = await ethers.provider.getCode(address);
+      const consensusNodeCode = await getCodeOnConsensusNode(address);
+      expect(relayCode, "relay returned no code").to.not.equal("0x");
+      expect(
+        consensusNodeCode,
+        "code differs between relay and consensus node",
+      ).to.equal(relayCode);
+
+      this.snapshot.collectionStorage.code = relayCode;
     });
   });
 });

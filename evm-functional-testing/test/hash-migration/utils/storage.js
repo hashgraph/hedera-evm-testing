@@ -3,53 +3,101 @@
 const { ethers } = require("hardhat");
 const { callOnConsensusNode } = require("./consensus-node");
 
-// Helpers shared by the storage contracts (ValueStorage, ...): reading getters and raw slots
+// Helpers shared by the storage contracts (ValueStorage, CollectionStorage, ...): reading getters and raw slots
 // through the relay and on the consensus node, and comparing them.
 
 /**
- * ABI-encoded return data each getter must return for the given values.
+ * Key naming one getter call, e.g. "uint8Value" or "nestedMapping(0xa1…,1)" for a getter with
+ * arguments. Used as the snapshot key and in failure messages.
+ *
+ * @param {string} name
+ * @param {unknown[]} args
+ * @returns {string}
+ */
+function getterKey(name, args = []) {
+  return args.length ? `${name}(${args.join(",")})` : name;
+}
+
+/** Splits a getterKey back into the getter name and its arguments. */
+function parseGetterKey(key) {
+  const [, name, args] = key.match(/^(\w+)(?:\((.*)\))?$/);
+  return { name, args: args ? args.split(",") : [] };
+}
+
+/**
+ * ABI-encoded return data each getter call must return for the given values.
  *
  * @param {import("ethers").Interface} iface
- * @param {Record<string, unknown>} values keyed by getter name
+ * @param {Record<string, unknown>} values keyed by getterKey
  * @returns {Record<string, string>}
  */
 function expectedGetterResults(iface, values) {
   return Object.fromEntries(
-    Object.entries(values).map(([name, value]) => {
+    Object.entries(values).map(([key, value]) => {
+      const { name } = parseGetterKey(key);
       // A struct getter returns its members as separate values
       const result =
         iface.getFunction(name).outputs.length > 1 ? value : [value];
-      return [name, iface.encodeFunctionResult(name, result)];
+      return [key, iface.encodeFunctionResult(name, result)];
     }),
   );
 }
 
 /**
- * Calls every getter through the relay and on the consensus node.
+ * Makes every getter call through the relay and on the consensus node.
  *
+ * @param {import("ethers").Contract} contract
+ * @param {string[]} keys getterKeys
  * @returns {Promise<{ relay: Record<string, string>, consensusNode: Record<string, string> }>}
  */
-async function readGetters(contract, getterNames) {
+async function readGetters(contract, keys) {
   const address = await contract.getAddress();
   const relay = {};
   const consensusNode = {};
-  for (const name of getterNames) {
-    const data = contract.interface.encodeFunctionData(name);
-    relay[name] = await ethers.provider.call({ to: address, data });
-    consensusNode[name] = await callOnConsensusNode(address, data);
+  for (const key of keys) {
+    const { name, args } = parseGetterKey(key);
+    const data = contract.interface.encodeFunctionData(name, args);
+    relay[key] = await ethers.provider.call({ to: address, data });
+    consensusNode[key] = await callOnConsensusNode(address, data);
   }
   return { relay, consensusNode };
 }
 
 /**
- * Data slots of a long string or bytes value stored at `slot`: they start at keccak256(slot).
+ * First slot of a dynamic array's elements (or a long string's data): keccak256(base slot).
+ *
+ * @param {bigint} slot
+ * @returns {bigint}
+ */
+function arrayDataSlot(slot) {
+  return BigInt(ethers.keccak256(ethers.toBeHex(slot, 32)));
+}
+
+/**
+ * Slot of a mapping entry: keccak256(abi.encode(key, base slot)).
+ *
+ * @param {string} keyType Solidity type of the key, e.g. "uint256" or "address"
+ * @param {unknown} key
+ * @param {bigint} slot base slot of the mapping
+ * @returns {bigint}
+ */
+function mappingSlot(keyType, key, slot) {
+  const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
+    [keyType, "uint256"],
+    [key, slot],
+  );
+  return BigInt(ethers.keccak256(encoded));
+}
+
+/**
+ * Data slots of a long string or bytes value stored at `slot`.
  *
  * @param {bigint} slot
  * @param {number} byteLength
  * @returns {bigint[]}
  */
 function dataSlots(slot, byteLength) {
-  const first = BigInt(ethers.keccak256(ethers.toBeHex(slot, 32)));
+  const first = arrayDataSlot(slot);
   const count = Math.ceil(byteLength / 32);
   return Array.from({ length: count }, (_, i) => first + BigInt(i));
 }
@@ -100,8 +148,11 @@ function findMismatches(kind, expected, actualBySource) {
 }
 
 module.exports = {
+  getterKey,
   expectedGetterResults,
   readGetters,
+  arrayDataSlot,
+  mappingSlot,
   dataSlots,
   readSlots,
   findMismatches,
