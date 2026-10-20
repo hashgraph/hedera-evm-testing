@@ -39,6 +39,7 @@ const {
   findUpgradeBlock,
   parentChainMismatches,
 } = require("./utils/block-hashes");
+const { rpc, logFilter, fieldMismatches } = require("./utils/history");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
 // it with the snapshot written by 01-populate.test.js.
@@ -342,6 +343,83 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+  });
+
+  describe("History", function () {
+    it("should return the same transaction and receipt for every populate transaction", async function () {
+      this.timeout(600_000);
+
+      const { transactions } = this.snapshot.history;
+      const mismatches = [];
+
+      for (const [hash, expected] of Object.entries(transactions)) {
+        const transaction = await rpc("eth_getTransactionByHash", [hash]);
+        const receipt = await rpc("eth_getTransactionReceipt", [hash]);
+
+        mismatches.push(
+          ...fieldMismatches(
+            `transaction ${hash}`,
+            expected.transaction,
+            transaction,
+          ),
+          ...fieldMismatches(`receipt of ${hash}`, expected.receipt, receipt),
+        );
+      }
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should return the same logs for every contract", async function () {
+      const { fromBlock, toBlock, logsByAddress } = this.snapshot.history;
+      const mismatches = [];
+
+      for (const [address, expected] of Object.entries(logsByAddress)) {
+        const logs = await rpc("eth_getLogs", [
+          logFilter(address, fromBlock, toBlock),
+        ]);
+
+        mismatches.push(
+          ...fieldMismatches(`logs of ${address}`, expected, logs),
+        );
+      }
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should find old blocks, their logs and their transactions by block hash", async function () {
+      this.timeout(600_000);
+
+      const { transactions, blocks } = this.snapshot.history;
+      const mismatches = [];
+
+      for (const [blockHash, expected] of Object.entries(blocks)) {
+        const block = await rpc("eth_getBlockByHash", [blockHash, false]);
+        const logs = await rpc("eth_getLogs", [{ blockHash }]);
+
+        mismatches.push(
+          ...fieldMismatches(`block ${blockHash}`, expected.block, block),
+          ...fieldMismatches(`logs of block ${blockHash}`, expected.logs, logs),
+        );
+      }
+
+      for (const { receipt, byBlockIndex } of Object.values(transactions)) {
+        const { blockHash, transactionIndex } = receipt;
+        const found = await rpc("eth_getTransactionByBlockHashAndIndex", [
+          blockHash,
+          transactionIndex,
+        ]);
+
+        mismatches.push(
+          ...fieldMismatches(
+            `transaction ${transactionIndex} of block ${blockHash}`,
+            byBlockIndex,
+            found,
+          ),
+        );
+      }
 
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });

@@ -49,6 +49,7 @@ const {
   runProbe,
   checkProbe,
 } = require("./utils/block-hashes");
+const { findTransactions, recordHistory } = require("./utils/history");
 
 // Phase 1 of the SHA-384 -> SHA-256 migration test: runs on the old network and records
 // everything 02-verify.test.js compares after the consensus node upgrade.
@@ -322,6 +323,36 @@ describe("Hash migration - 01 populate (old network)", function () {
 
       const address = await contract.getAddress();
       this.snapshot.blockHashProbe = { address, probes, blocks };
+    });
+  });
+
+  // Last, so it includes every transaction populate sent
+  describe("History", function () {
+    it("should record every transaction populate sent, with its receipt, block and logs", async function () {
+      this.timeout(600_000);
+
+      const [signer] = await ethers.getSigners();
+      const fromBlock = this.snapshot.startBlock.number;
+      const toBlock = await ethers.provider.getBlockNumber();
+      const txHashes = await findTransactions(
+        signer.address,
+        fromBlock,
+        toBlock,
+      );
+
+      expect(
+        txHashes,
+        `no transactions from ${signer.address} in blocks ${fromBlock}-${toBlock}`,
+      ).to.not.be.empty;
+
+      const history = await recordHistory(txHashes, fromBlock, toBlock);
+
+      expect(
+        Object.keys(history.logsByAddress),
+        "no populate transaction emitted a log",
+      ).to.not.be.empty;
+
+      this.snapshot.history = history;
     });
   });
 });
