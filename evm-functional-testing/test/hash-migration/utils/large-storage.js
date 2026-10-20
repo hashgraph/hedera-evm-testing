@@ -26,6 +26,7 @@ async function deployLargeStorage() {
   const factory = await ethers.getContractFactory("LargeStorage");
   const contract = await factory.deploy();
   await contract.waitForDeployment();
+
   return contract;
 }
 
@@ -39,7 +40,8 @@ async function deployLargeStorage() {
 async function writeEntries(contract, salt, { first, count }) {
   for (let key = first; key < first + count; key += BATCH_SIZE) {
     const batch = Math.min(BATCH_SIZE, first + count - key);
-    await (await contract.write(key, batch, salt, WRITE_GAS)).wait();
+    const tx = await contract.write(key, batch, salt, WRITE_GAS);
+    await tx.wait();
   }
 }
 
@@ -54,6 +56,7 @@ function expectedSample(updated) {
     updated &&
     key >= UPDATED_KEYS.first &&
     key < UPDATED_KEYS.first + UPDATED_KEYS.count;
+
   return Object.fromEntries(
     SAMPLE_KEYS.map((key) => [
       getterKey("entries", [key]),
@@ -70,6 +73,7 @@ function expectedSample(updated) {
  */
 async function largeSlots(contract) {
   const entriesSlot = await contract.layout();
+
   return Array.from({ length: ENTRY_COUNT }, (_, key) =>
     mappingSlot("uint256", key, entriesSlot),
   );

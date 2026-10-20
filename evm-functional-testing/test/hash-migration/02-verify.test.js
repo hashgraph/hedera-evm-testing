@@ -43,11 +43,13 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
 
   it("should run on the same network the snapshot was taken on", async function () {
     const { chainId } = await ethers.provider.getNetwork();
+
     expect(chainId.toString(), "chain id differs from the snapshot").to.equal(
       this.snapshot.network.chainId,
     );
 
     const latest = await ethers.provider.getBlockNumber();
+
     expect(
       latest,
       "latest block is not past the snapshot's starting block",
@@ -115,6 +117,7 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
       const slots = Object.keys(expected).map(BigInt);
       const actual = await readSlots(this.valueStorage, slots);
       const mismatches = findMismatches("slot", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
 
@@ -125,19 +128,19 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
 
     it("should keep the contract code", async function () {
       const address = this.snapshot.valueStorage.address;
       const expected = this.snapshot.valueStorage.code;
-      expect(await ethers.provider.getCode(address), "code via relay").to.equal(
-        expected,
-      );
-      expect(
-        await getCodeOnConsensusNode(address),
-        "code via consensus node",
-      ).to.equal(expected);
+
+      const relayCode = await ethers.provider.getCode(address);
+      const consensusNodeCode = await getCodeOnConsensusNode(address);
+
+      expect(relayCode, "code via relay").to.equal(expected);
+      expect(consensusNodeCode, "code via consensus node").to.equal(expected);
     });
 
     it("should not keep transient storage between transactions", async function () {
@@ -156,6 +159,7 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
   });
@@ -173,6 +177,7 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
       const slots = Object.keys(expected).map(BigInt);
       const actual = await readSlots(this.collectionStorage, slots);
       const mismatches = findMismatches("slot", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
 
@@ -183,23 +188,24 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
 
     it("should keep the contract code", async function () {
       const address = this.snapshot.collectionStorage.address;
       const expected = this.snapshot.collectionStorage.code;
-      expect(await ethers.provider.getCode(address), "code via relay").to.equal(
-        expected,
-      );
-      expect(
-        await getCodeOnConsensusNode(address),
-        "code via consensus node",
-      ).to.equal(expected);
+
+      const relayCode = await ethers.provider.getCode(address);
+      const consensusNodeCode = await getCodeOnConsensusNode(address);
+
+      expect(relayCode, "code via relay").to.equal(expected);
+      expect(consensusNodeCode, "code via consensus node").to.equal(expected);
     });
 
     it("should accept new entries for every collection", async function () {
       this.timeout(300_000);
+
       await writeCollections(this.collectionStorage, UPDATED_COLLECTIONS);
 
       const expected = expectedGetterResults(
@@ -211,6 +217,7 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
   });
@@ -225,10 +232,12 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
 
     it("should keep every raw storage slot", async function () {
       this.timeout(600_000);
+
       const expected = this.snapshot.largeStorage.slots;
       const slots = Object.keys(expected).map(BigInt);
       const actual = await readSlots(this.largeStorage, slots);
       const mismatches = findMismatches("slot", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
 
@@ -239,23 +248,24 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
 
     it("should keep the contract code", async function () {
       const address = this.snapshot.largeStorage.address;
       const expected = this.snapshot.largeStorage.code;
-      expect(await ethers.provider.getCode(address), "code via relay").to.equal(
-        expected,
-      );
-      expect(
-        await getCodeOnConsensusNode(address),
-        "code via consensus node",
-      ).to.equal(expected);
+
+      const relayCode = await ethers.provider.getCode(address);
+      const consensusNodeCode = await getCodeOnConsensusNode(address);
+
+      expect(relayCode, "code via relay").to.equal(expected);
+      expect(consensusNodeCode, "code via consensus node").to.equal(expected);
     });
 
     it("should accept new values for a batch of entries and leave the rest unchanged", async function () {
       this.timeout(300_000);
+
       await writeEntries(this.largeStorage, UPDATED_SALT, UPDATED_KEYS);
 
       const expected = expectedGetterResults(
@@ -267,6 +277,7 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
   });

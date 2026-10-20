@@ -28,6 +28,7 @@ function writeSnapshot(snapshot, complete) {
     (_, value) => (typeof value === "bigint" ? value.toString() : value),
     2,
   );
+
   fs.writeFileSync(SNAPSHOT_PATH, json);
 }
 
@@ -42,12 +43,15 @@ function readSnapshot() {
       `Snapshot not found at ${SNAPSHOT_PATH}. Run 01-populate.test.js first.`,
     );
   }
+
   const snapshot = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, "utf8"));
+
   if (!snapshot.complete) {
     throw new Error(
       `Snapshot at ${SNAPSHOT_PATH} is incomplete: a populate test failed.`,
     );
   }
+
   return snapshot;
 }
 

@@ -82,6 +82,7 @@ async function deployCollectionStorage() {
   const factory = await ethers.getContractFactory("CollectionStorage");
   const contract = await factory.deploy();
   await contract.waitForDeployment();
+
   return contract;
 }
 
@@ -125,8 +126,10 @@ async function writeCollections(contract, values) {
         WRITE_GAS,
       ),
   ];
+
   for (const write of writes) {
-    await (await write()).wait();
+    const tx = await write();
+    await tx.wait();
   }
 }
 
@@ -136,8 +139,11 @@ async function writeCollections(contract, values) {
  * @param {import("ethers").Contract} contract
  */
 async function popAndDelete(contract) {
-  await (await contract.popPoppedArray(WRITE_GAS)).wait();
-  await (await contract.deleteDeletedArray(WRITE_GAS)).wait();
+  const popTx = await contract.popPoppedArray(WRITE_GAS);
+  await popTx.wait();
+
+  const deleteTx = await contract.deleteDeletedArray(WRITE_GAS);
+  await deleteTx.wait();
 }
 
 /**
@@ -152,6 +158,7 @@ function expectedCollections(values, poppedAndDeleted) {
     ? values.poppedArray.slice(0, -1)
     : values.poppedArray;
   const deleted = poppedAndDeleted ? [] : values.deletedArray;
+
   const expected = {};
   const add = (name, args, value) => {
     expected[getterKey(name, args)] = value;
@@ -163,14 +170,17 @@ function expectedCollections(values, poppedAndDeleted) {
 
   values.staticArray.forEach((value, i) => add("staticArray", [i], value));
   addArray("dynamicArray", values.dynamicArray);
+
   add("array2dLength", [], values.array2d.length);
   values.array2d.forEach((inner, i) => {
     add("array2dInnerLength", [i], inner.length);
     inner.forEach((value, j) => add("array2d", [i, j], value));
   });
+
   addArray("structArray", values.structArray);
   addArray("poppedArray", popped);
   addArray("deletedArray", deleted);
+
   values.simpleMapping.forEach(([key, value]) =>
     add("simpleMapping", [key], value),
   );
@@ -184,6 +194,7 @@ function expectedCollections(values, poppedAndDeleted) {
     add("arrayMappingLength", [key], array.length);
     array.forEach((value, i) => add("arrayMapping", [key, i], value));
   });
+
   return expected;
 }
 
@@ -198,9 +209,11 @@ function expectedCollections(values, poppedAndDeleted) {
 async function collectionSlots(contract, values) {
   const layout = await contract.layout();
   const slots = [];
+
   const addRange = (first, count) => {
     for (let i = 0n; i < BigInt(count); i++) slots.push(first + i);
   };
+
   // Base slot holds the length; elements start at keccak256(base)
   const addDynamicArray = (base, length, slotsPerElement = 1) => {
     slots.push(base);
@@ -209,6 +222,7 @@ async function collectionSlots(contract, values) {
 
   addRange(layout.staticArraySlot, values.staticArray.length);
   addDynamicArray(layout.dynamicArraySlot, values.dynamicArray.length);
+
   slots.push(layout.array2dSlot);
   values.array2d.forEach((inner, i) =>
     addDynamicArray(
@@ -216,9 +230,11 @@ async function collectionSlots(contract, values) {
       inner.length,
     ),
   );
+
   addDynamicArray(layout.structArraySlot, values.structArray.length, 2);
   addDynamicArray(layout.poppedArraySlot, values.poppedArray.length);
   addDynamicArray(layout.deletedArraySlot, values.deletedArray.length);
+
   values.simpleMapping.forEach(([key]) =>
     slots.push(mappingSlot("uint256", key, layout.simpleMappingSlot)),
   );
@@ -240,6 +256,7 @@ async function collectionSlots(contract, values) {
       array.length,
     ),
   );
+
   return slots;
 }
 
@@ -257,6 +274,7 @@ async function clearedCollectionSlots(contract, values) {
   const deleted = values.deletedArray.map(
     (_, i) => arrayDataSlot(deletedArraySlot) + BigInt(i),
   );
+
   return [lastPopped, deletedArraySlot, ...deleted];
 }
 

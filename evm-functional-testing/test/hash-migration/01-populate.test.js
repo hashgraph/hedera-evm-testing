@@ -75,6 +75,7 @@ describe("Hash migration - 01 populate (old network)", function () {
   it("should record the network and the starting block", async function () {
     const { chainId } = await ethers.provider.getNetwork();
     const block = await ethers.provider.getBlock("latest");
+
     expect(block, "relay returned no latest block").to.not.be.null;
     expectHash32(block.hash, `relay hash of block ${block.number}`);
 
@@ -87,9 +88,8 @@ describe("Hash migration - 01 populate (old network)", function () {
       this.valueStorage = await deployValueStorage();
       await writeValues(this.valueStorage, ORIGINAL_VALUES);
 
-      this.snapshot.valueStorage = {
-        address: await this.valueStorage.getAddress(),
-      };
+      const address = await this.valueStorage.getAddress();
+      this.snapshot.valueStorage = { address };
     });
 
     it("should return the written value from every getter through the relay and the consensus node", async function () {
@@ -102,6 +102,7 @@ describe("Hash migration - 01 populate (old network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
       this.snapshot.valueStorage.getters = expected;
@@ -114,6 +115,7 @@ describe("Hash migration - 01 populate (old network)", function () {
         slots,
       );
       const mismatches = findMismatches("slot", relay, { consensusNode });
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
       this.snapshot.valueStorage.slots = relay;
@@ -123,6 +125,7 @@ describe("Hash migration - 01 populate (old network)", function () {
       const address = await this.valueStorage.getAddress();
       const relayCode = await ethers.provider.getCode(address);
       const consensusNodeCode = await getCodeOnConsensusNode(address);
+
       expect(relayCode, "relay returned no code").to.not.equal("0x");
       expect(
         consensusNodeCode,
@@ -136,16 +139,17 @@ describe("Hash migration - 01 populate (old network)", function () {
       await expectTransientNotKept(this.valueStorage);
     });
   });
+
   describe("CollectionStorage", function () {
     it("should deploy CollectionStorage, write every collection, then pop and delete", async function () {
       this.timeout(300_000);
+
       this.collectionStorage = await deployCollectionStorage();
       await writeCollections(this.collectionStorage, ORIGINAL_COLLECTIONS);
       await popAndDelete(this.collectionStorage);
 
-      this.snapshot.collectionStorage = {
-        address: await this.collectionStorage.getAddress(),
-      };
+      const address = await this.collectionStorage.getAddress();
+      this.snapshot.collectionStorage = { address };
     });
 
     it("should return the written entry from every getter through the relay and the consensus node", async function () {
@@ -158,6 +162,7 @@ describe("Hash migration - 01 populate (old network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
       this.snapshot.collectionStorage.getters = expected;
@@ -173,16 +178,16 @@ describe("Hash migration - 01 populate (old network)", function () {
         slots,
       );
       const mismatches = findMismatches("slot", relay, { consensusNode });
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
       // A wrongly computed slot would read zero on both paths and still match, so every slot
       // except the ones freed by pop() and delete must hold data
-      const cleared = (
-        await clearedCollectionSlots(
-          this.collectionStorage,
-          ORIGINAL_COLLECTIONS,
-        )
-      ).map((slot) => ethers.toBeHex(slot));
+      const clearedSlots = await clearedCollectionSlots(
+        this.collectionStorage,
+        ORIGINAL_COLLECTIONS,
+      );
+      const cleared = clearedSlots.map((slot) => ethers.toBeHex(slot));
       const empty = Object.entries(relay)
         .filter(
           ([slot, value]) => BigInt(value) === 0n && !cleared.includes(slot),
@@ -205,6 +210,7 @@ describe("Hash migration - 01 populate (old network)", function () {
         slots.map((slot) => [ethers.toBeHex(slot), zero]),
       );
       const mismatches = findMismatches("slot", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
 
@@ -212,6 +218,7 @@ describe("Hash migration - 01 populate (old network)", function () {
       const address = await this.collectionStorage.getAddress();
       const relayCode = await ethers.provider.getCode(address);
       const consensusNodeCode = await getCodeOnConsensusNode(address);
+
       expect(relayCode, "relay returned no code").to.not.equal("0x");
       expect(
         consensusNodeCode,
@@ -225,15 +232,15 @@ describe("Hash migration - 01 populate (old network)", function () {
   describe("LargeStorage", function () {
     it(`should deploy LargeStorage and write ${ENTRY_COUNT} entries`, async function () {
       this.timeout(600_000);
+
       this.largeStorage = await deployLargeStorage();
       await writeEntries(this.largeStorage, ORIGINAL_SALT, {
         first: 0,
         count: ENTRY_COUNT,
       });
 
-      this.snapshot.largeStorage = {
-        address: await this.largeStorage.getAddress(),
-      };
+      const address = await this.largeStorage.getAddress();
+      this.snapshot.largeStorage = { address };
     });
 
     it("should return the written value from sampled getters through the relay and the consensus node", async function () {
@@ -246,6 +253,7 @@ describe("Hash migration - 01 populate (old network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
       this.snapshot.largeStorage.getters = expected;
@@ -253,12 +261,14 @@ describe("Hash migration - 01 populate (old network)", function () {
 
     it("should read the same raw storage slots through the relay and the consensus node", async function () {
       this.timeout(600_000);
+
       const slots = await largeSlots(this.largeStorage);
       const { relay, consensusNode } = await readSlots(
         this.largeStorage,
         slots,
       );
       const mismatches = findMismatches("slot", relay, { consensusNode });
+
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
       // A wrongly computed slot would read zero on both paths and still match
@@ -275,6 +285,7 @@ describe("Hash migration - 01 populate (old network)", function () {
       const address = await this.largeStorage.getAddress();
       const relayCode = await ethers.provider.getCode(address);
       const consensusNodeCode = await getCodeOnConsensusNode(address);
+
       expect(relayCode, "relay returned no code").to.not.equal("0x");
       expect(
         consensusNodeCode,
@@ -289,6 +300,7 @@ describe("Hash migration - 01 populate (old network)", function () {
   describe("BlockHashProbe", function () {
     it(`should record blockhash() in ${PROBE_COUNT} different blocks, matching the relay and the mirror node`, async function () {
       this.timeout(1_800_000);
+
       const contract = await deployBlockHashProbe();
       const probes = [];
       const blocks = {};
@@ -345,11 +357,8 @@ describe("Hash migration - 01 populate (old network)", function () {
 
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
-      this.snapshot.blockHashProbe = {
-        address: await contract.getAddress(),
-        probes,
-        blocks,
-      };
+      const address = await contract.getAddress();
+      this.snapshot.blockHashProbe = { address, probes, blocks };
     });
   });
 });

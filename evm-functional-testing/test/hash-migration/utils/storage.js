@@ -21,6 +21,7 @@ function getterKey(name, args = []) {
 /** Splits a getterKey back into the getter name and its arguments. */
 function parseGetterKey(key) {
   const [, name, args] = key.match(/^(\w+)(?:\((.*)\))?$/);
+
   return { name, args: args ? args.split(",") : [] };
 }
 
@@ -38,6 +39,7 @@ function expectedGetterResults(iface, values) {
       // A struct getter returns its members as separate values
       const result =
         iface.getFunction(name).outputs.length > 1 ? value : [value];
+
       return [key, iface.encodeFunctionResult(name, result)];
     }),
   );
@@ -54,12 +56,14 @@ async function readGetters(contract, keys) {
   const address = await contract.getAddress();
   const relay = {};
   const consensusNode = {};
+
   for (const key of keys) {
     const { name, args } = parseGetterKey(key);
     const data = contract.interface.encodeFunctionData(name, args);
     relay[key] = await ethers.provider.call({ to: address, data });
     consensusNode[key] = await callOnConsensusNode(address, data);
   }
+
   return { relay, consensusNode };
 }
 
@@ -86,6 +90,7 @@ function mappingSlot(keyType, key, slot) {
     [keyType, "uint256"],
     [key, slot],
   );
+
   return BigInt(ethers.keccak256(encoded));
 }
 
@@ -99,6 +104,7 @@ function mappingSlot(keyType, key, slot) {
 function dataSlots(slot, byteLength) {
   const first = arrayDataSlot(slot);
   const count = Math.ceil(byteLength / 32);
+
   return Array.from({ length: count }, (_, i) => first + BigInt(i));
 }
 
@@ -120,24 +126,30 @@ async function readSlots(contract, slots) {
   const address = await contract.getAddress();
   const relay = {};
   const consensusNode = {};
+
   for (const batch of chunks(slots, CONSENSUS_NODE_BATCH)) {
     const data = contract.interface.encodeFunctionData("readSlots", [batch]);
+    const result = await callOnConsensusNode(address, data);
     const [values] = contract.interface.decodeFunctionResult(
       "readSlots",
-      await callOnConsensusNode(address, data),
+      result,
     );
+
     batch.forEach((slot, i) => {
       consensusNode[ethers.toBeHex(slot)] = values[i];
     });
   }
+
   for (const batch of chunks(slots, RELAY_BATCH)) {
     const values = await Promise.all(
       batch.map((slot) => ethers.provider.getStorage(address, slot)),
     );
+
     batch.forEach((slot, i) => {
       relay[ethers.toBeHex(slot)] = ethers.toBeHex(BigInt(values[i]), 32);
     });
   }
+
   return { relay, consensusNode };
 }
 
@@ -151,6 +163,7 @@ async function readSlots(contract, slots) {
  */
 function findMismatches(kind, expected, actualBySource) {
   const mismatches = [];
+
   for (const [source, actual] of Object.entries(actualBySource)) {
     for (const [name, value] of Object.entries(expected)) {
       if (actual[name] !== value) {
@@ -160,6 +173,7 @@ function findMismatches(kind, expected, actualBySource) {
       }
     }
   }
+
   return mismatches;
 }
 

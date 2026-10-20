@@ -132,6 +132,7 @@ async function deployValueStorage() {
   const factory = await ethers.getContractFactory("ValueStorage");
   const contract = await factory.deploy(IMMUTABLE_VALUE);
   await contract.waitForDeployment();
+
   return contract;
 }
 
@@ -170,13 +171,16 @@ function expectedGetters(iface, values) {
 async function usedSlots(contract, values) {
   const [slotCount, longStringSlot, longBytesSlot] = await contract.layout();
   const slots = [];
+
   for (let slot = 0n; slot < slotCount; slot++) slots.push(slot);
+
   slots.push(
     ...dataSlots(longStringSlot, ethers.toUtf8Bytes(values.longString).length),
   );
   slots.push(
     ...dataSlots(longBytesSlot, ethers.getBytes(values.longBytes).length),
   );
+
   return slots;
 }
 
@@ -188,10 +192,12 @@ async function usedSlots(contract, values) {
  */
 async function expectTransientNotKept(contract) {
   const value = 0x77n;
-  const receipt = await (await contract.writeAndReadTransient(value)).wait();
+  const tx = await contract.writeAndReadTransient(value);
+  const receipt = await tx.wait();
   const [readInSameTx] = receipt.logs
     .map((log) => contract.interface.parseLog(log))
     .find((event) => event?.name === "TransientReadBack").args;
+
   expect(readInSameTx, "transient value read in the same transaction").to.equal(
     value,
   );
@@ -200,6 +206,7 @@ async function expectTransientNotKept(contract) {
     "readTransient",
   ]);
   const zero = contract.interface.encodeFunctionResult("readTransient", [0]);
+
   expect(
     relay.readTransient,
     "transient value via relay in a later call",

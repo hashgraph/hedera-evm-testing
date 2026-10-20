@@ -17,6 +17,7 @@ async function deployBlockHashProbe() {
   const factory = await ethers.getContractFactory("BlockHashProbe");
   const contract = await factory.deploy();
   await contract.waitForDeployment();
+
   return contract;
 }
 

@@ -21,6 +21,7 @@ async function withClient(run) {
     operatorId,
     operatorKey,
   );
+
   try {
     return await run(client);
   } finally {
@@ -43,6 +44,7 @@ function callOnConsensusNode(address, data) {
       .setFunctionParameters(Buffer.from(data.slice(2), "hex"))
       .setQueryPayment(new Hbar(1))
       .execute(client);
+
     return ethers.hexlify(result.asBytes());
   });
 }
@@ -58,6 +60,7 @@ function getCodeOnConsensusNode(address) {
     const code = await new ContractByteCodeQuery()
       .setContractId(ContractId.fromEvmAddress(0, 0, address))
       .execute(client);
+
     return ethers.hexlify(code);
   });
 }
