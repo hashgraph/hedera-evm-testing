@@ -21,11 +21,11 @@ relay:
     # Enables nonce management via the per-address pending pool.
     # Error: Transaction rejected: WRONG_NONCE - receipt for transaction
     # Error: Nonce too low. Provided nonce: 28, current nonce: 31)
-#    ENABLE_TX_POOL: "true"
+    ENABLE_TX_POOL: "true"
     # Master feature flag that enables the nonce ordering mechanism.
     # When enabled, transactions acquire locks before any async operations or side effects.
     # ERROR: Nonce too low. Provided nonce: 0, current nonce: 1
-#    ENABLE_NONCE_ORDERING: "true"
+    ENABLE_NONCE_ORDERING: "true"
     # Max gasLimit
     MAX_TRANSACTION_GAS_LIMIT: 150000000
     # Call data size
@@ -39,5 +39,5 @@ relay:
     # Increase (100->1200) maximum number of requests allowed in a batch
     BATCH_REQUESTS_MAX_SIZE: "1200"
     # Tracing
-    # LOG_LEVEL: "trace"
+    # LOG_LEVEL: "debug"
     # SDK_LOG_LEVEL: "trace"
