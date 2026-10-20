@@ -27,6 +27,12 @@ const {
   writeEntries,
   expectedSample,
 } = require("./utils/large-storage");
+const {
+  WINDOW,
+  ZERO_HASH,
+  reportedHashes,
+  readHashesInTransaction,
+} = require("./utils/block-hashes");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
 // it with the snapshot written by 01-populate.test.js.
@@ -46,6 +52,54 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
       latest,
       "latest block is not past the snapshot's starting block",
     ).to.be.greaterThan(this.snapshot.startBlock.number);
+  });
+
+  // First, before any other transaction makes new blocks: old blocks must still be within reach
+  describe("BlockHashProbe", function () {
+    it("should return the same blockhash() for old blocks in a new transaction", async function () {
+      const { address, blocks } = this.snapshot.blockHashProbe;
+      const contract = await ethers.getContractAt("BlockHashProbe", address);
+      const blockNumbers = Object.keys(blocks).map(Number);
+      const { number, hashes } = await readHashesInTransaction(
+        contract,
+        blockNumbers,
+      );
+      const inWindow = blockNumbers.filter(
+        (n) => n >= number - WINDOW && n < number,
+      );
+
+      expect(
+        inWindow,
+        `no recorded block is within ${WINDOW} blocks of block ${number}`,
+      ).to.not.be.empty;
+
+      const mismatches = [];
+
+      for (const n of blockNumbers) {
+        if (!inWindow.includes(n)) {
+          if (hashes[n] !== ZERO_HASH) {
+            mismatches.push(
+              `blockhash(${n}) in block ${number} is outside the window but not zero`,
+            );
+          }
+          continue;
+        }
+
+        const reported = await reportedHashes(n);
+
+        if (
+          hashes[n] !== blocks[n] ||
+          reported.relay !== blocks[n] ||
+          reported.mirrorNode !== blocks[n]
+        ) {
+          mismatches.push(
+            `block ${n}: snapshot ${blocks[n]}, blockhash() in block ${number} ${hashes[n]}, relay ${reported.relay}, mirror node ${reported.mirrorNode}`,
+          );
+        }
+      }
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
   });
 
   describe("ValueStorage", function () {
