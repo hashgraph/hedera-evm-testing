@@ -27,7 +27,7 @@ MIRROR_NODE_VALUES_PATH="local/mn-values.yaml"
 
 ######################### Relay configs #########################
 LOCAL_RELAY_BUILD=false
-RELAY_RELEASE=0.79.0
+RELAY_RELEASE=0.80.2-rc1
 RELAY_DIR="../../hiero-json-rpc-relay"
 RELAY_VALUES_PATH="local/relay-values.yaml"
 
