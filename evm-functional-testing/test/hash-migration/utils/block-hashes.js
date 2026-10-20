@@ -2,6 +2,7 @@
 
 const { ethers } = require("hardhat");
 const { MirrorNode } = require("../../../utils/mirror-node");
+const { expectHash32 } = require("./hashes");
 
 // k in blockhash(block.number - k): recent blocks, both edges of the 256-block window, and one past it
 const OFFSETS = [1, 2, 10, 255, 256, 257];
@@ -86,6 +87,130 @@ async function readHashesInTransaction(contract, blockNumbers) {
   };
 }
 
+/**
+ * Compares a BLOCKHASH result with the hash the relay and the mirror node report for that block.
+ * Also fails if either reported hash is not 32 bytes.
+ *
+ * @returns {Promise<string | null>} a mismatch description, or null if all three agree
+ */
+async function compareWithReported(blockNumber, hash, context) {
+  const reported = await reportedHashes(blockNumber);
+  expectHash32(reported.relay, `relay hash of block ${blockNumber}`);
+  expectHash32(reported.mirrorNode, `mirror node hash of block ${blockNumber}`);
+
+  if (
+    hash !== ZERO_HASH &&
+    hash === reported.relay &&
+    hash === reported.mirrorNode
+  ) {
+    return null;
+  }
+
+  return `blockhash(${blockNumber}) ${context} = ${hash}, relay = ${reported.relay}, mirror node = ${reported.mirrorNode}`;
+}
+
+/**
+ * Checks one probe: the current and next block read zero, blocks outside the 256-block window
+ * read zero, and every block inside it matches the relay and the mirror node.
+ *
+ * @returns {Promise<{ mismatches: string[], blocks: Record<number, string> }>}
+ */
+async function checkProbe(probe) {
+  const at = `in block ${probe.number}`;
+  const mismatches = [];
+  const blocks = {};
+
+  if (probe.currentHash !== ZERO_HASH) {
+    mismatches.push(`blockhash(block.number) ${at} is not zero`);
+  }
+
+  if (probe.nextHash !== ZERO_HASH) {
+    mismatches.push(`blockhash(block.number + 1) ${at} is not zero`);
+  }
+
+  for (const [n, hash] of Object.entries(probe.hashes)) {
+    const blockNumber = Number(n);
+
+    if (blockNumber < probe.number - WINDOW) {
+      if (hash !== ZERO_HASH) {
+        mismatches.push(
+          `blockhash(${n}) ${at} is outside the window but not zero`,
+        );
+      }
+      continue;
+    }
+
+    const mismatch = await compareWithReported(blockNumber, hash, at);
+
+    if (mismatch) {
+      mismatches.push(mismatch);
+    }
+
+    blocks[blockNumber] = hash;
+  }
+
+  return { mismatches, blocks };
+}
+
+/**
+ * First block made by a different consensus node version than `afterBlock`, found through the
+ * mirror node's hapi_version of each block.
+ *
+ * @param {number} afterBlock a block made before the upgrade
+ * @returns {Promise<{ number: number, oldVersion: string, newVersion: string }>}
+ */
+async function findUpgradeBlock(afterBlock) {
+  const mirrorNode = new MirrorNode();
+  const before = await mirrorNode.getBlock(afterBlock);
+  const oldVersion = before.hapi_version;
+
+  for (let n = afterBlock + 1; ; n++) {
+    const block = await mirrorNode.getBlock(n);
+
+    if (block.number === undefined) {
+      throw new Error(
+        `No block after ${afterBlock} was made by a version other than ${oldVersion}: was the consensus node upgraded?`,
+      );
+    }
+
+    if (block.hapi_version !== oldVersion) {
+      return { number: n, oldVersion, newVersion: block.hapi_version };
+    }
+  }
+}
+
+/**
+ * Checks that each block's parent hash equals the previous block's hash, for every block in
+ * (from, to], through the relay and the mirror node.
+ *
+ * @returns {Promise<string[]>} mismatch descriptions
+ */
+async function parentChainMismatches(from, to) {
+  const mirrorNode = new MirrorNode();
+  const mismatches = [];
+
+  for (let n = from + 1; n <= to; n++) {
+    const relayParent = await ethers.provider.getBlock(n - 1);
+    const relayBlock = await ethers.provider.getBlock(n);
+    const mirrorNodeParent = await mirrorNode.getBlock(n - 1);
+    const mirrorNodeBlock = await mirrorNode.getBlock(n);
+
+    if (relayBlock.parentHash !== relayParent.hash) {
+      mismatches.push(
+        `relay: block ${n} parentHash ${relayBlock.parentHash} != block ${n - 1} hash ${relayParent.hash}`,
+      );
+    }
+
+    if (mirrorNodeBlock.previous_hash !== mirrorNodeParent.hash) {
+      mismatches.push(
+        `mirror node: block ${n} previous_hash ${mirrorNodeBlock.previous_hash} != block ${n - 1} hash ${mirrorNodeParent.hash}`,
+      );
+    }
+  }
+
+  return mismatches;
+}
+
 module.exports = {
   OFFSETS,
   WINDOW,
@@ -97,4 +222,8 @@ module.exports = {
   runProbe,
   reportedHashes,
   readHashesInTransaction,
+  compareWithReported,
+  checkProbe,
+  findUpgradeBlock,
+  parentChainMismatches,
 };

@@ -27,11 +27,17 @@ const {
   writeEntries,
   expectedSample,
 } = require("./utils/large-storage");
+const { generateBlocksUntil } = require("./utils/blocks");
 const {
   WINDOW,
   ZERO_HASH,
+  runProbe,
   reportedHashes,
   readHashesInTransaction,
+  compareWithReported,
+  checkProbe,
+  findUpgradeBlock,
+  parentChainMismatches,
 } = require("./utils/block-hashes");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
@@ -58,12 +64,20 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
 
   // First, before any other transaction makes new blocks: old blocks must still be within reach
   describe("BlockHashProbe", function () {
+    before(async function () {
+      const { address, probes } = this.snapshot.blockHashProbe;
+      this.blockHashProbe = await ethers.getContractAt(
+        "BlockHashProbe",
+        address,
+      );
+      this.lastProbeBlock = probes.at(-1).number;
+    });
+
     it("should return the same blockhash() for old blocks in a new transaction", async function () {
-      const { address, blocks } = this.snapshot.blockHashProbe;
-      const contract = await ethers.getContractAt("BlockHashProbe", address);
+      const { blocks } = this.snapshot.blockHashProbe;
       const blockNumbers = Object.keys(blocks).map(Number);
       const { number, hashes } = await readHashesInTransaction(
-        contract,
+        this.blockHashProbe,
         blockNumbers,
       );
       const inWindow = blockNumbers.filter(
@@ -99,6 +113,57 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
           );
         }
       }
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should link the blocks before and after the upgrade without a gap", async function () {
+      this.timeout(300_000);
+
+      const upgrade = await findUpgradeBlock(this.lastProbeBlock);
+      const u = upgrade.number;
+      const around = [u - 1, u, u + 1];
+
+      // blockhash(U + 1) can only be read from a later block
+      await generateBlocksUntil(u + 3);
+
+      const { number, hashes } = await readHashesInTransaction(
+        this.blockHashProbe,
+        around,
+      );
+      const mismatches = [];
+
+      for (const n of around) {
+        const mismatch = await compareWithReported(
+          n,
+          hashes[n],
+          `in block ${number}`,
+        );
+
+        if (mismatch) {
+          mismatches.push(mismatch);
+        }
+      }
+
+      const chainMismatches = await parentChainMismatches(u - 3, u + 2);
+      mismatches.push(...chainMismatches);
+
+      expect(
+        mismatches,
+        `upgrade at block ${u} (${upgrade.oldVersion} -> ${upgrade.newVersion}):\n${mismatches.join("\n")}`,
+      ).to.be.empty;
+    });
+
+    it("should keep the 256-block window while it still reaches back past the upgrade", async function () {
+      const upgrade = await findUpgradeBlock(this.lastProbeBlock);
+      const probe = await runProbe(this.blockHashProbe);
+
+      expect(
+        probe.number - WINDOW,
+        `the window in block ${probe.number} no longer reaches past the upgrade at block ${upgrade.number}`,
+      ).to.be.lessThan(upgrade.number);
+
+      const { mismatches } = await checkProbe(probe);
 
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
@@ -277,6 +342,79 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+  });
+
+  // Last: makes 256+ new blocks, so the window holds only blocks from the new version
+  describe("BlockHashProbe after the window moves past the upgrade", function () {
+    before(async function () {
+      const { address, probes } = this.snapshot.blockHashProbe;
+      this.blockHashProbe = await ethers.getContractAt(
+        "BlockHashProbe",
+        address,
+      );
+      this.upgrade = await findUpgradeBlock(probes.at(-1).number);
+    });
+
+    it("should keep the 256-block window once it holds only new blocks", async function () {
+      this.timeout(1_800_000);
+
+      await generateBlocksUntil(this.upgrade.number + WINDOW + 4);
+      const probe = await runProbe(this.blockHashProbe);
+
+      expect(
+        probe.number - WINDOW,
+        `the window in block ${probe.number} still reaches the upgrade at block ${this.upgrade.number}`,
+      ).to.be.greaterThan(this.upgrade.number);
+
+      const { mismatches } = await checkProbe(probe);
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should give every new block in the window a unique hash matching the relay and the mirror node", async function () {
+      this.timeout(600_000);
+
+      const current = await ethers.provider.getBlockNumber();
+      const blockNumbers = [];
+
+      for (let n = current - WINDOW + 10; n < current; n++) {
+        blockNumbers.push(n);
+      }
+
+      const mismatches = [];
+      const seen = new Map();
+
+      // Batches keep each transaction's call data small
+      for (let i = 0; i < blockNumbers.length; i += 100) {
+        const batch = blockNumbers.slice(i, i + 100);
+        const { number, hashes } = await readHashesInTransaction(
+          this.blockHashProbe,
+          batch,
+        );
+
+        for (const n of batch) {
+          const mismatch = await compareWithReported(
+            n,
+            hashes[n],
+            `in block ${number}`,
+          );
+
+          if (mismatch) {
+            mismatches.push(mismatch);
+          }
+
+          if (seen.has(hashes[n])) {
+            mismatches.push(
+              `blocks ${seen.get(hashes[n])} and ${n} have the same hash ${hashes[n]}`,
+            );
+          }
+
+          seen.set(hashes[n], n);
+        }
+      }
 
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });

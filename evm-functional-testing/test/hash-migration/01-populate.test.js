@@ -42,14 +42,12 @@ const {
 } = require("./utils/large-storage");
 const { generateBlocksUntil } = require("./utils/blocks");
 const {
-  WINDOW,
   PROBE_COUNT,
   BLOCKS_BETWEEN_PROBES,
   FIRST_PROBE_BLOCK,
-  ZERO_HASH,
   deployBlockHashProbe,
   runProbe,
-  reportedHashes,
+  checkProbe,
 } = require("./utils/block-hashes");
 
 // Phase 1 of the SHA-384 -> SHA-256 migration test: runs on the old network and records
@@ -312,44 +310,9 @@ describe("Hash migration - 01 populate (old network)", function () {
       for (let i = 0; i < PROBE_COUNT; i++) {
         await generateBlocksUntil(nextProbeBlock);
         const probe = await runProbe(contract);
-        const at = `in block ${probe.number}`;
-
-        if (probe.currentHash !== ZERO_HASH) {
-          mismatches.push(`blockhash(block.number) ${at} is not zero`);
-        }
-
-        if (probe.nextHash !== ZERO_HASH) {
-          mismatches.push(`blockhash(block.number + 1) ${at} is not zero`);
-        }
-
-        for (const [n, hash] of Object.entries(probe.hashes)) {
-          const blockNumber = Number(n);
-
-          if (blockNumber < probe.number - WINDOW) {
-            if (hash !== ZERO_HASH) {
-              mismatches.push(
-                `blockhash(${n}) ${at} is outside the window but not zero`,
-              );
-            }
-            continue;
-          }
-
-          const reported = await reportedHashes(blockNumber);
-          expectHash32(reported.relay, `relay hash of block ${n}`);
-          expectHash32(reported.mirrorNode, `mirror node hash of block ${n}`);
-
-          if (
-            hash === ZERO_HASH ||
-            hash !== reported.relay ||
-            hash !== reported.mirrorNode
-          ) {
-            mismatches.push(
-              `blockhash(${n}) ${at} = ${hash}, relay = ${reported.relay}, mirror node = ${reported.mirrorNode}`,
-            );
-          }
-
-          blocks[blockNumber] = hash;
-        }
+        const checked = await checkProbe(probe);
+        mismatches.push(...checked.mismatches);
+        Object.assign(blocks, checked.blocks);
 
         probes.push(probe);
         nextProbeBlock = probe.number + BLOCKS_BETWEEN_PROBES;
