@@ -69,5 +69,6 @@ async function generateBlocksUntil(targetBlock) {
 }
 
 module.exports = {
+  TRANSFER_GAS,
   generateBlocksUntil,
 };

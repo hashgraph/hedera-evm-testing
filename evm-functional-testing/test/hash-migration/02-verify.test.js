@@ -49,6 +49,8 @@ const {
   idOf,
 } = require("./utils/lifecycle");
 const { readAccounts, contractAddresses } = require("./utils/accounts");
+const { readAdminKey, updateMemo } = require("./utils/admin-key");
+const { sendTransfer, readNonceAccount } = require("./utils/nonce-account");
 const { rpc, logFilter, fieldMismatches } = require("./utils/history");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
@@ -465,6 +467,67 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
       }
 
       expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should keep the admin key of both SDK-deployed contracts", async function () {
+      const { adminKeys } = this.snapshot.lifecycle;
+      const mismatches = [];
+
+      for (const [name, contract] of Object.entries(adminKeys)) {
+        const adminKey = await readAdminKey(contract.address);
+
+        if (adminKey !== contract.adminKey) {
+          mismatches.push(
+            `${name} ${contract.address}: expected admin key ${contract.adminKey}, got ${adminKey}`,
+          );
+        }
+      }
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should let the admin key update its contract, and refuse to update the contract without one", async function () {
+      const { withKey, withoutKey } = this.snapshot.lifecycle.adminKeys;
+
+      const withKeyStatus = await updateMemo(withKey.contractId, "updated");
+      const withoutKeyStatus = await updateMemo(
+        withoutKey.contractId,
+        "updated",
+      );
+
+      expect(withKeyStatus, "update signed by the admin key").to.equal(
+        "SUCCESS",
+      );
+      expect(withoutKeyStatus, "update of the contract without one").to.equal(
+        "MODIFYING_IMMUTABLE_CONTRACT",
+      );
+    });
+
+    it("should keep the balance, nonce and key of the account with a nonzero nonce", async function () {
+      const { address, balance, nonce, key } =
+        this.snapshot.lifecycle.nonceAccount;
+      const actual = await readNonceAccount(address);
+      const mismatches = findMismatches(
+        "nonce account",
+        { balance, nonce },
+        { relay: actual.relay, consensusNode: actual.consensusNode },
+      );
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(actual.key, "account key").to.equal(key);
+    });
+
+    it("should accept the next transaction from that account with the next nonce", async function () {
+      const { address, privateKey, nonce } =
+        this.snapshot.lifecycle.nonceAccount;
+      const wallet = new ethers.Wallet(privateKey, ethers.provider);
+      const receipt = await sendTransfer(wallet, Number(nonce));
+      const nextNonce = await ethers.provider.getTransactionCount(address);
+
+      expect(receipt.status, "transaction status").to.equal(1);
+      expect(nextNonce, "nonce after the transaction").to.equal(
+        Number(nonce) + 1,
+      );
     });
   });
 

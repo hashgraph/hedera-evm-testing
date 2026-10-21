@@ -62,6 +62,18 @@ const {
   codeMismatches,
   contractAddresses,
 } = require("./utils/accounts");
+const {
+  ADMIN_KEY_CHILDREN,
+  operatorPublicKey,
+  deployWithSdk,
+  readAdminKey,
+} = require("./utils/admin-key");
+const {
+  SENT_TRANSFERS,
+  createNonceAccount,
+  sendTransfer,
+  readNonceAccount,
+} = require("./utils/nonce-account");
 const { findTransactions, recordHistory } = require("./utils/history");
 const { ONE_HBAR } = require("../../utils/constants");
 
@@ -392,6 +404,54 @@ describe("Hash migration - 01 populate (old network)", function () {
       }
 
       expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should deploy a contract with an admin key and one without through the SDK", async function () {
+      const withKey = await deployWithSdk(ADMIN_KEY_CHILDREN.withKey, true);
+      const withoutKey = await deployWithSdk(
+        ADMIN_KEY_CHILDREN.withoutKey,
+        false,
+      );
+
+      withKey.adminKey = await readAdminKey(withKey.address);
+      withoutKey.adminKey = await readAdminKey(withoutKey.address);
+
+      expect(withKey.adminKey, "admin key is not the operator key").to.equal(
+        operatorPublicKey(),
+      );
+      // Without an admin key the consensus node reports the contract's own id
+      expect(
+        withoutKey.adminKey,
+        "contract without an admin key reports another key",
+      ).to.equal(withoutKey.contractId);
+
+      this.snapshot.lifecycle.adminKeys = { withKey, withoutKey };
+    });
+
+    it(`should record an account with nonce ${SENT_TRANSFERS}, matching the relay and the consensus node`, async function () {
+      const wallet = await createNonceAccount();
+
+      for (let i = 0; i < SENT_TRANSFERS; i++) {
+        await sendTransfer(wallet);
+      }
+
+      const { relay, consensusNode, key } = await readNonceAccount(
+        wallet.address,
+      );
+      const mismatches = findMismatches("nonce account", relay, {
+        consensusNode,
+      });
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(relay.nonce, "nonce").to.equal(String(SENT_TRANSFERS));
+
+      // A throwaway key on a local test network: verify needs it to send the next transaction
+      this.snapshot.lifecycle.nonceAccount = {
+        address: wallet.address,
+        privateKey: wallet.privateKey,
+        ...relay,
+        key,
+      };
     });
   });
 

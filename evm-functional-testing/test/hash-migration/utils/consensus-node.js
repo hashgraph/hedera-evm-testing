@@ -69,10 +69,10 @@ function getCodeOnConsensusNode(address) {
 }
 
 /**
- * Reads an account's balance (in weibars, like the relay) and EVM nonce from the consensus node.
+ * Reads an account's balance (in weibars, like the relay), EVM nonce and key from the consensus node.
  *
  * @param {string} address account or contract EVM address
- * @returns {Promise<{ balance: bigint, nonce: number }>}
+ * @returns {Promise<{ balance: bigint, nonce: number, key: string }>}
  */
 function getAccountOnConsensusNode(address) {
   return withClient(async (client) => {
@@ -84,11 +84,13 @@ function getAccountOnConsensusNode(address) {
     return {
       balance: tinybars * TINYBAR_TO_WEIBAR_COEF,
       nonce: info.ethereumNonce.toNumber(),
+      key: info.key.toString(),
     };
   });
 }
 
 module.exports = {
+  withClient,
   callOnConsensusNode,
   getCodeOnConsensusNode,
   getAccountOnConsensusNode,

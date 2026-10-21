@@ -116,7 +116,7 @@ function codeMismatches(accounts, addresses) {
  * @returns {string[]}
  */
 function contractAddresses(snapshot) {
-  const { factory, children } = snapshot.lifecycle;
+  const { factory, children, adminKeys } = snapshot.lifecycle;
 
   return [
     snapshot.valueStorage.address,
@@ -125,6 +125,7 @@ function contractAddresses(snapshot) {
     snapshot.blockHashProbe.address,
     factory,
     ...Object.values(children).map((child) => child.address),
+    ...Object.values(adminKeys).map((contract) => contract.address),
   ];
 }
 
