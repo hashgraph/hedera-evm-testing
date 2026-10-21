@@ -70,10 +70,10 @@ const {
 } = require("./utils/admin-key");
 const {
   SENT_TRANSFERS,
-  createNonceAccount,
+  createWalletAccount,
   sendTransfer,
   readWalletAccount,
-} = require("./utils/nonce-account");
+} = require("./utils/wallet-account");
 const { HOLLOW_KEY, createHollowAccount } = require("./utils/hollow-account");
 const {
   ORIGINAL_STORED_VALUE,
@@ -83,6 +83,16 @@ const {
   storeThroughDelegation,
   readDelegation,
 } = require("./utils/delegation");
+const {
+  PAID_OUT,
+  ALLOWANCE,
+  FEE_TINYBARS,
+  deployTokenManager,
+  createFungibleToken,
+  setUpAccounts,
+  readTokenInfo,
+  readTokenAccounts,
+} = require("./utils/hts-token");
 const { findTransactions, recordHistory } = require("./utils/history");
 const { ONE_HBAR } = require("../../utils/constants");
 
@@ -438,7 +448,7 @@ describe("Hash migration - 01 populate (old network)", function () {
     });
 
     it(`should record an account with nonce ${SENT_TRANSFERS}, matching the relay and the consensus node`, async function () {
-      const wallet = await createNonceAccount();
+      const wallet = await createWalletAccount();
 
       for (let i = 0; i < SENT_TRANSFERS; i++) {
         await sendTransfer(wallet);
@@ -525,6 +535,75 @@ describe("Hash migration - 01 populate (old network)", function () {
         ...relay,
         key,
       };
+    });
+  });
+
+  describe("HTS fungible token", function () {
+    it("should create a fungible token with a fixed HBAR fee through the HTS system contract", async function () {
+      this.tokenManager = await deployTokenManager();
+      this.token = await createFungibleToken(this.tokenManager);
+
+      const { relay, consensusNode } = await readTokenInfo(this.token);
+      const mismatches = findMismatches("token info", relay, { consensusNode });
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(consensusNode.customFeeAmount, "custom fee").to.equal(
+        String(FEE_TINYBARS),
+      );
+
+      const manager = await this.tokenManager.getAddress();
+      this.snapshot.htsFungible = {
+        manager,
+        token: this.token,
+        info: { relay, consensusNode },
+      };
+    });
+
+    it("should set up a holder with an allowance, a frozen account and a spender", async function () {
+      this.timeout(300_000);
+
+      const wallets = await setUpAccounts(this.tokenManager, this.token);
+
+      // Throwaway keys on a local test network: verify needs them to send transactions
+      this.snapshot.htsFungible.accounts = Object.fromEntries(
+        Object.entries(wallets).map(([name, wallet]) => [
+          name,
+          { address: wallet.address, privateKey: wallet.privateKey },
+        ]),
+      );
+    });
+
+    it("should read the same balances, allowances, flags and associations through the relay and the consensus node", async function () {
+      const { accounts } = this.snapshot.htsFungible;
+      const addresses = Object.fromEntries(
+        Object.entries(accounts).map(([name, { address }]) => [name, address]),
+      );
+      const { relay, consensusNode } = await readTokenAccounts(
+        this.tokenManager,
+        this.token,
+        addresses,
+        accounts.spender.address,
+      );
+      const mismatches = findMismatches("token account", relay, {
+        consensusNode,
+      });
+      const expected = {
+        "holder balance": String(PAID_OUT),
+        "holder allowance": String(ALLOWANCE),
+        "holder frozen": "false",
+        "frozen balance": String(PAID_OUT),
+        "frozen frozen": "true",
+        "spender balance": "0",
+        "holder kyc": "true",
+        "holder associated": "true",
+        "frozen associated": "true",
+        "spender associated": "true",
+      };
+      mismatches.push(...findMismatches("token account", expected, { relay }));
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+
+      this.snapshot.htsFungible.state = relay;
     });
   });
 

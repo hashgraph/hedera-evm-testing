@@ -18,7 +18,7 @@ const INITIAL_BALANCE = new Hbar(10);
  *
  * @returns {Promise<import("ethers").Wallet>} connected to the relay
  */
-async function createNonceAccount() {
+async function createWalletAccount() {
   const [wallet] = await withClient((client) =>
     createEcdsaAliasedAccount(client, ethers.provider, INITIAL_BALANCE),
   );
@@ -35,6 +35,19 @@ async function createNonceAccount() {
 }
 
 /**
+ * Overrides for a transaction sent by a plain ethers wallet. Such a wallet derives a gas price below
+ * the relay's minimum, so the relay's gas price is used.
+ *
+ * @param {number} gasLimit
+ * @returns {Promise<{ gasPrice: bigint, gasLimit: number }>}
+ */
+async function walletOverrides(gasLimit) {
+  const { gasPrice } = await ethers.provider.getFeeData();
+
+  return { gasPrice, gasLimit };
+}
+
+/**
  * Sends a zero-value transfer to itself and waits for it.
  *
  * @param {import("ethers").Wallet} wallet
@@ -42,14 +55,12 @@ async function createNonceAccount() {
  * @returns {Promise<import("ethers").TransactionReceipt>}
  */
 async function sendTransfer(wallet, nonce) {
-  // A plain ethers wallet derives a fee below the relay's minimum, so the relay's gas price is used
-  const { gasPrice } = await ethers.provider.getFeeData();
+  const overrides = await walletOverrides(TRANSFER_GAS);
   const tx = await wallet.sendTransaction({
     to: wallet.address,
     value: 0,
     nonce,
-    gasLimit: TRANSFER_GAS,
-    gasPrice,
+    ...overrides,
   });
 
   return tx.wait();
@@ -75,7 +86,8 @@ async function readWalletAccount(address) {
 
 module.exports = {
   SENT_TRANSFERS,
-  createNonceAccount,
+  walletOverrides,
+  createWalletAccount,
   sendTransfer,
   readWalletAccount,
 };

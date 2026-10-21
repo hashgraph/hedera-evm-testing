@@ -126,6 +126,7 @@ function contractAddresses(snapshot) {
     factory,
     ...Object.values(children).map((child) => child.address),
     ...Object.values(adminKeys).map((contract) => contract.address),
+    snapshot.htsFungible.manager,
   ];
 }
 

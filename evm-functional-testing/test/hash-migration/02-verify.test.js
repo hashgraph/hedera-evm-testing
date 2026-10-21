@@ -3,7 +3,10 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { readSnapshot } = require("./utils/snapshot");
-const { getCodeOnConsensusNode } = require("./utils/consensus-node");
+const {
+  getCodeOnConsensusNode,
+  getAccountOnConsensusNode,
+} = require("./utils/consensus-node");
 const {
   expectedGetterResults,
   readGetters,
@@ -49,13 +52,25 @@ const {
 } = require("./utils/lifecycle");
 const { readAccounts, contractAddresses } = require("./utils/accounts");
 const { readAdminKey, updateMemo } = require("./utils/admin-key");
-const { sendTransfer, readWalletAccount } = require("./utils/nonce-account");
+const { sendTransfer, readWalletAccount } = require("./utils/wallet-account");
 const { completedKey } = require("./utils/hollow-account");
 const {
   UPDATED_STORED_VALUE,
   storeThroughDelegation,
   readDelegation,
 } = require("./utils/delegation");
+const {
+  PAID_OUT,
+  UPDATED_ALLOWANCE,
+  TRANSFERRED,
+  FEE_TINYBARS,
+  createTokenHolder,
+  transfer,
+  approve,
+  readTokenInfo,
+  readTokenAccounts,
+} = require("./utils/hts-token");
+const { TINYBAR_TO_WEIBAR_COEF } = require("../../utils/constants");
 const { rpc, logFilter, fieldMismatches } = require("./utils/history");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
@@ -608,6 +623,144 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
       expect(BigInt(slot0), "slot 0 of the account").to.equal(
         UPDATED_STORED_VALUE,
       );
+    });
+  });
+
+  describe("HTS fungible token", function () {
+    before(async function () {
+      const { manager, token, accounts } = this.snapshot.htsFungible;
+
+      this.tokenManager = await ethers.getContractAt("TokenManager", manager);
+      this.token = token;
+      this.wallets = Object.fromEntries(
+        Object.entries(accounts).map(([name, { privateKey }]) => [
+          name,
+          new ethers.Wallet(privateKey, ethers.provider),
+        ]),
+      );
+    });
+
+    it("should keep the token info and custom fee", async function () {
+      const { info } = this.snapshot.htsFungible;
+      const actual = await readTokenInfo(this.token);
+      const mismatches = [
+        ...findMismatches("token info", info.relay, { relay: actual.relay }),
+        ...findMismatches("token info", info.consensusNode, {
+          consensusNode: actual.consensusNode,
+        }),
+      ];
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should keep the balances, allowances, flags and associations", async function () {
+      const { accounts, state } = this.snapshot.htsFungible;
+      const addresses = Object.fromEntries(
+        Object.entries(accounts).map(([name, { address }]) => [name, address]),
+      );
+      const actual = await readTokenAccounts(
+        this.tokenManager,
+        this.token,
+        addresses,
+        accounts.spender.address,
+      );
+      const mismatches = findMismatches("token account", state, actual);
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should transfer the old token and charge its custom fee", async function () {
+      const { holder, spender } = this.wallets;
+      const manager = await this.tokenManager.getAddress();
+      const before = await getAccountOnConsensusNode(manager);
+
+      const status = await transfer(
+        holder,
+        this.token,
+        spender.address,
+        TRANSFERRED,
+      );
+
+      const after = await getAccountOnConsensusNode(manager);
+      const { relay, consensusNode } = await readTokenAccounts(
+        this.tokenManager,
+        this.token,
+        { holder: holder.address, spender: spender.address },
+        spender.address,
+      );
+      const expected = {
+        "holder balance": String(PAID_OUT - TRANSFERRED),
+        "spender balance": String(TRANSFERRED),
+      };
+      const mismatches = findMismatches("token account", expected, {
+        relay,
+        consensusNode,
+      });
+
+      expect(status, "transfer status").to.equal(1);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(after.balance - before.balance, "fee collected").to.equal(
+        BigInt(FEE_TINYBARS) * TINYBAR_TO_WEIBAR_COEF,
+      );
+    });
+
+    it("should set a new allowance on the old token", async function () {
+      const { holder, spender } = this.wallets;
+      const receipt = await approve(
+        holder,
+        this.token,
+        spender.address,
+        UPDATED_ALLOWANCE,
+      );
+      const { relay, consensusNode } = await readTokenAccounts(
+        this.tokenManager,
+        this.token,
+        { holder: holder.address },
+        spender.address,
+      );
+      const expected = { "holder allowance": String(UPDATED_ALLOWANCE) };
+      const mismatches = findMismatches("token account", expected, {
+        relay,
+        consensusNode,
+      });
+
+      expect(receipt.status, "approve status").to.equal(1);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should let a new account associate with the old token and receive it", async function () {
+      const wallet = await createTokenHolder(this.tokenManager, this.token);
+      const tx = await this.tokenManager.payOut(
+        this.token,
+        wallet.address,
+        PAID_OUT,
+      );
+      await tx.wait();
+
+      const { relay, consensusNode } = await readTokenAccounts(
+        this.tokenManager,
+        this.token,
+        { newHolder: wallet.address },
+        this.wallets.spender.address,
+      );
+      const expected = {
+        "newHolder associated": "true",
+        "newHolder kyc": "true",
+        "newHolder balance": String(PAID_OUT),
+      };
+      const mismatches = findMismatches("token account", expected, {
+        relay,
+        consensusNode,
+      });
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should still refuse transfers from the frozen account", async function () {
+      const { frozen, spender } = this.wallets;
+      const status = await transfer(frozen, this.token, spender.address, 1);
+
+      expect(status, "transfer from the frozen account").to.equal(0);
     });
   });
 
