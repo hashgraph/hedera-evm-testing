@@ -49,7 +49,13 @@ const {
 } = require("./utils/lifecycle");
 const { readAccounts, contractAddresses } = require("./utils/accounts");
 const { readAdminKey, updateMemo } = require("./utils/admin-key");
-const { sendTransfer, readNonceAccount } = require("./utils/nonce-account");
+const { sendTransfer, readWalletAccount } = require("./utils/nonce-account");
+const { completedKey } = require("./utils/hollow-account");
+const {
+  UPDATED_STORED_VALUE,
+  storeThroughDelegation,
+  readDelegation,
+} = require("./utils/delegation");
 const { rpc, logFilter, fieldMismatches } = require("./utils/history");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
@@ -505,7 +511,7 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
     it("should keep the balance, nonce and key of the account with a nonzero nonce", async function () {
       const { address, balance, nonce, key } =
         this.snapshot.lifecycle.nonceAccount;
-      const actual = await readNonceAccount(address);
+      const actual = await readWalletAccount(address);
       const mismatches = findMismatches(
         "nonce account",
         { balance, nonce },
@@ -526,6 +532,81 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
       expect(receipt.status, "transaction status").to.equal(1);
       expect(nextNonce, "nonce after the transaction").to.equal(
         Number(nonce) + 1,
+      );
+    });
+
+    it("should keep the balance, nonce and empty key of the hollow account", async function () {
+      const { address, balance, nonce, key } =
+        this.snapshot.lifecycle.hollowAccount;
+      const actual = await readWalletAccount(address);
+      const mismatches = findMismatches(
+        "hollow account",
+        { balance, nonce },
+        { relay: actual.relay, consensusNode: actual.consensusNode },
+      );
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(actual.key, "hollow account key").to.equal(key);
+    });
+
+    it("should complete the hollow account with its first transaction", async function () {
+      const { address, privateKey } = this.snapshot.lifecycle.hollowAccount;
+      const wallet = new ethers.Wallet(privateKey, ethers.provider);
+      const receipt = await sendTransfer(wallet);
+      const { relay, key } = await readWalletAccount(address);
+
+      expect(receipt.status, "first transaction status").to.equal(1);
+      expect(relay.nonce, "nonce after the first transaction").to.equal("1");
+      expect(key, "key after the first transaction").to.equal(
+        completedKey(privateKey),
+      );
+    });
+
+    it("should keep the code, delegation, storage, balance and nonce of the delegated account", async function () {
+      const {
+        address,
+        accountId,
+        code,
+        slot0,
+        delegationAddress,
+        balance,
+        nonce,
+        key,
+      } = this.snapshot.lifecycle.delegatedAccount;
+      const delegation = await readDelegation(address, accountId);
+      const account = await readWalletAccount(address);
+      const mismatches = [
+        ...findMismatches(
+          "delegated account",
+          { code, slot0, delegationAddress },
+          { current: delegation },
+        ),
+        ...findMismatches(
+          "delegated account",
+          { balance, nonce },
+          { relay: account.relay, consensusNode: account.consensusNode },
+        ),
+      ];
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(account.key, "delegated account key").to.equal(key);
+    });
+
+    it("should still run the delegated contract code through the account", async function () {
+      const { address, accountId, target } =
+        this.snapshot.lifecycle.delegatedAccount;
+      const targetContract = await ethers.getContractAt("StoreAndEmit", target);
+      const receipt = await storeThroughDelegation(
+        targetContract,
+        address,
+        UPDATED_STORED_VALUE,
+      );
+      const { slot0 } = await readDelegation(address, accountId);
+
+      expect(receipt.status, "storeAndEmit through the account").to.equal(1);
+      expect(receipt.logs[0].address, "event emitted by").to.equal(address);
+      expect(BigInt(slot0), "slot 0 of the account").to.equal(
+        UPDATED_STORED_VALUE,
       );
     });
   });

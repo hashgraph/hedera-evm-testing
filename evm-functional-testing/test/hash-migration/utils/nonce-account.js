@@ -61,7 +61,7 @@ async function sendTransfer(wallet, nonce) {
  *
  * @param {string} address
  */
-async function readNonceAccount(address) {
+async function readWalletAccount(address) {
   const relayBalance = await ethers.provider.getBalance(address);
   const relayNonce = await ethers.provider.getTransactionCount(address);
   const { balance, nonce, key } = await getAccountOnConsensusNode(address);
@@ -77,5 +77,5 @@ module.exports = {
   SENT_TRANSFERS,
   createNonceAccount,
   sendTransfer,
-  readNonceAccount,
+  readWalletAccount,
 };

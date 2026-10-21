@@ -72,8 +72,17 @@ const {
   SENT_TRANSFERS,
   createNonceAccount,
   sendTransfer,
-  readNonceAccount,
+  readWalletAccount,
 } = require("./utils/nonce-account");
+const { HOLLOW_KEY, createHollowAccount } = require("./utils/hollow-account");
+const {
+  ORIGINAL_STORED_VALUE,
+  delegationIndicatorFor,
+  deployDelegationTarget,
+  createDelegatedAccount,
+  storeThroughDelegation,
+  readDelegation,
+} = require("./utils/delegation");
 const { findTransactions, recordHistory } = require("./utils/history");
 const { ONE_HBAR } = require("../../utils/constants");
 
@@ -435,7 +444,7 @@ describe("Hash migration - 01 populate (old network)", function () {
         await sendTransfer(wallet);
       }
 
-      const { relay, consensusNode, key } = await readNonceAccount(
+      const { relay, consensusNode, key } = await readWalletAccount(
         wallet.address,
       );
       const mismatches = findMismatches("nonce account", relay, {
@@ -449,6 +458,70 @@ describe("Hash migration - 01 populate (old network)", function () {
       this.snapshot.lifecycle.nonceAccount = {
         address: wallet.address,
         privateKey: wallet.privateKey,
+        ...relay,
+        key,
+      };
+    });
+
+    it("should create a hollow account by sending HBAR to a new EVM address", async function () {
+      const wallet = await createHollowAccount();
+      const { relay, consensusNode, key } = await readWalletAccount(
+        wallet.address,
+      );
+      const mismatches = findMismatches("hollow account", relay, {
+        consensusNode,
+      });
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(key, "hollow account key").to.equal(HOLLOW_KEY);
+      expect(relay.nonce, "nonce").to.equal("0");
+
+      // A throwaway key on a local test network: verify needs it to send the first transaction
+      this.snapshot.lifecycle.hollowAccount = {
+        address: wallet.address,
+        privateKey: wallet.privateKey,
+        ...relay,
+        key,
+      };
+    });
+
+    it("should delegate an account to a contract with EIP-7702 and store a value through it", async function () {
+      const target = await deployDelegationTarget();
+      const targetAddress = await target.getAddress();
+      const { address, accountId } =
+        await createDelegatedAccount(targetAddress);
+
+      const receipt = await storeThroughDelegation(
+        target,
+        address,
+        ORIGINAL_STORED_VALUE,
+      );
+
+      expect(receipt.status, "storeAndEmit through the account").to.equal(1);
+
+      const delegation = await readDelegation(address, accountId);
+      const { relay, consensusNode, key } = await readWalletAccount(address);
+      const mismatches = findMismatches("delegated account", relay, {
+        consensusNode,
+      });
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(delegation.code, "code of the delegated account").to.equal(
+        delegationIndicatorFor(targetAddress).toLowerCase(),
+      );
+      expect(
+        delegation.delegationAddress,
+        "delegation address on the consensus node",
+      ).to.equal(targetAddress.toLowerCase());
+      expect(BigInt(delegation.slot0), "slot 0 of the account").to.equal(
+        ORIGINAL_STORED_VALUE,
+      );
+
+      this.snapshot.lifecycle.delegatedAccount = {
+        address,
+        accountId,
+        target: targetAddress,
+        ...delegation,
         ...relay,
         key,
       };
