@@ -12,8 +12,6 @@ const BLOCKS_BETWEEN_PROBES = 20;
 // The first probe needs 257 earlier blocks for every offset to point at a real block
 const FIRST_PROBE_BLOCK = 300;
 
-const ZERO_HASH = ethers.ZeroHash;
-
 async function deployBlockHashProbe() {
   const factory = await ethers.getContractFactory("BlockHashProbe");
   const contract = await factory.deploy();
@@ -99,7 +97,7 @@ async function compareWithReported(blockNumber, hash, context) {
   expectHash32(reported.mirrorNode, `mirror node hash of block ${blockNumber}`);
 
   if (
-    hash !== ZERO_HASH &&
+    hash !== ethers.ZeroHash &&
     hash === reported.relay &&
     hash === reported.mirrorNode
   ) {
@@ -120,11 +118,11 @@ async function checkProbe(probe) {
   const mismatches = [];
   const blocks = {};
 
-  if (probe.currentHash !== ZERO_HASH) {
+  if (probe.currentHash !== ethers.ZeroHash) {
     mismatches.push(`blockhash(block.number) ${at} is not zero`);
   }
 
-  if (probe.nextHash !== ZERO_HASH) {
+  if (probe.nextHash !== ethers.ZeroHash) {
     mismatches.push(`blockhash(block.number + 1) ${at} is not zero`);
   }
 
@@ -132,7 +130,7 @@ async function checkProbe(probe) {
     const blockNumber = Number(n);
 
     if (blockNumber < probe.number - WINDOW) {
-      if (hash !== ZERO_HASH) {
+      if (hash !== ethers.ZeroHash) {
         mismatches.push(
           `blockhash(${n}) ${at} is outside the window but not zero`,
         );
@@ -217,7 +215,6 @@ module.exports = {
   PROBE_COUNT,
   BLOCKS_BETWEEN_PROBES,
   FIRST_PROBE_BLOCK,
-  ZERO_HASH,
   deployBlockHashProbe,
   runProbe,
   reportedHashes,

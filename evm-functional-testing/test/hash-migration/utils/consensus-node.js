@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 const {
-  AccountId,
-  AccountInfoQuery,
-  Client,
   ContractByteCodeQuery,
   ContractCallQuery,
   ContractId,
   Hbar,
 } = require("@hiero-ledger/sdk");
-const hre = require("hardhat");
-const { ethers } = hre;
+const { ethers } = require("hardhat");
+const Utils = require("../../../utils/utils");
 const { TINYBAR_TO_WEIBAR_COEF } = require("../../../utils/constants");
 
 const QUERY_GAS = 1_000_000;
@@ -19,11 +16,7 @@ const QUERY_GAS = 1_000_000;
 // eth_call and eth_getStorageAt from the mirror node's copy of the state, so only these
 // reads see the consensus node's own (re-hashed) state.
 async function withClient(run) {
-  const { networkNode, operatorId, operatorKey } = hre.network.config.sdkClient;
-  const client = Client.forNetwork(networkNode).setOperator(
-    operatorId,
-    operatorKey,
-  );
+  const client = await Utils.createSDKClient();
 
   try {
     return await run(client);
@@ -76,9 +69,7 @@ function getCodeOnConsensusNode(address) {
  */
 function getAccountOnConsensusNode(address) {
   return withClient(async (client) => {
-    const info = await new AccountInfoQuery()
-      .setAccountId(AccountId.fromEvmAddress(0, 0, address))
-      .execute(client);
+    const info = await Utils.getAccountInfo(address, client);
     const tinybars = BigInt(info.balance.toTinybars().toString());
 
     return {

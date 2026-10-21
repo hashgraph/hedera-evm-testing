@@ -30,7 +30,6 @@ const {
 const { generateBlocksUntil } = require("./utils/blocks");
 const {
   WINDOW,
-  ZERO_HASH,
   runProbe,
   reportedHashes,
   readHashesInTransaction,
@@ -106,7 +105,7 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
 
       for (const n of blockNumbers) {
         if (!inWindow.includes(n)) {
-          if (hashes[n] !== ZERO_HASH) {
+          if (hashes[n] !== ethers.ZeroHash) {
             mismatches.push(
               `blockhash(${n}) in block ${number} is outside the window but not zero`,
             );

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 const { ethers } = require("hardhat");
+const Async = require("../../../utils/async");
 
 // A record file (block) closes every 2s, and only if it holds a transaction, so an idle network
 // makes no blocks. One transfer per period makes one block.
@@ -10,8 +11,6 @@ const TRANSFER_GAS = 30_000;
 const STALL_TIMEOUT_MS = 60_000;
 // A transfer's receipt normally arrives in seconds; stop waiting after 2 minutes so a stalled network can't hang the test
 const RECEIPT_TIMEOUT_MS = 120_000;
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Sends a zero-value self-transfer every block period until the network reaches `targetBlock`.
@@ -52,7 +51,7 @@ async function generateBlocksUntil(targetBlock) {
       }),
     );
 
-    await sleep(BLOCK_PERIOD_MS);
+    await Async.wait(BLOCK_PERIOD_MS);
     currentBlock = await ethers.provider.getBlockNumber();
 
     if (currentBlock > lastBlock) {
