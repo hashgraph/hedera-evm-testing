@@ -2,13 +2,12 @@
 
 const { ethers } = require("hardhat");
 const { getterKey, arrayDataSlot, mappingSlot } = require("./storage");
+const { GAS_LIMIT_1_000_000 } = require("../../../utils/constants");
 
 const A = "0x" + "a1".repeat(20);
 const B = "0x" + "b2".repeat(20);
 const C = "0x" + "c3".repeat(20);
 const D = "0x" + "d4".repeat(20);
-
-const WRITE_GAS = { gasLimit: 1_000_000 };
 
 // Written by populate; must survive the upgrade. Mapping entries are [key, value] pairs.
 // poppedArray loses its last element and deletedArray is emptied right after writing.
@@ -94,36 +93,36 @@ async function deployCollectionStorage() {
  */
 async function writeCollections(contract, values) {
   const writes = [
-    () => contract.setStaticArray(values.staticArray, WRITE_GAS),
-    () => contract.setDynamicArray(values.dynamicArray, WRITE_GAS),
-    () => contract.setArray2d(values.array2d, WRITE_GAS),
-    () => contract.setStructArray(values.structArray, WRITE_GAS),
-    () => contract.setPoppedArray(values.poppedArray, WRITE_GAS),
-    () => contract.setDeletedArray(values.deletedArray, WRITE_GAS),
+    () => contract.setStaticArray(values.staticArray, GAS_LIMIT_1_000_000),
+    () => contract.setDynamicArray(values.dynamicArray, GAS_LIMIT_1_000_000),
+    () => contract.setArray2d(values.array2d, GAS_LIMIT_1_000_000),
+    () => contract.setStructArray(values.structArray, GAS_LIMIT_1_000_000),
+    () => contract.setPoppedArray(values.poppedArray, GAS_LIMIT_1_000_000),
+    () => contract.setDeletedArray(values.deletedArray, GAS_LIMIT_1_000_000),
     () =>
       contract.setSimpleMapping(
         values.simpleMapping.map(([key]) => key),
         values.simpleMapping.map(([, value]) => value),
-        WRITE_GAS,
+        GAS_LIMIT_1_000_000,
       ),
     () =>
       contract.setNestedMapping(
         values.nestedMapping.map(([outer]) => outer),
         values.nestedMapping.map(([, inner]) => inner),
         values.nestedMapping.map(([, , value]) => value),
-        WRITE_GAS,
+        GAS_LIMIT_1_000_000,
       ),
     () =>
       contract.setStructMapping(
         values.structMapping.map(([key]) => key),
         values.structMapping.map(([, item]) => item),
-        WRITE_GAS,
+        GAS_LIMIT_1_000_000,
       ),
     () =>
       contract.setArrayMapping(
         values.arrayMapping.map(([key]) => key),
         values.arrayMapping.map(([, array]) => array),
-        WRITE_GAS,
+        GAS_LIMIT_1_000_000,
       ),
   ];
 
@@ -139,10 +138,10 @@ async function writeCollections(contract, values) {
  * @param {import("ethers").Contract} contract
  */
 async function popAndDelete(contract) {
-  const popTx = await contract.popPoppedArray(WRITE_GAS);
+  const popTx = await contract.popPoppedArray(GAS_LIMIT_1_000_000);
   await popTx.wait();
 
-  const deleteTx = await contract.deleteDeletedArray(WRITE_GAS);
+  const deleteTx = await contract.deleteDeletedArray(GAS_LIMIT_1_000_000);
   await deleteTx.wait();
 }
 
