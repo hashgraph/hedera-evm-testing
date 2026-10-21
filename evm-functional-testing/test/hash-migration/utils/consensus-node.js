@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 const {
+  AccountId,
+  AccountInfoQuery,
   Client,
   ContractByteCodeQuery,
   ContractCallQuery,
@@ -9,6 +11,7 @@ const {
 } = require("@hiero-ledger/sdk");
 const hre = require("hardhat");
 const { ethers } = hre;
+const { TINYBAR_TO_WEIBAR_COEF } = require("../../../utils/constants");
 
 const QUERY_GAS = 1_000_000;
 
@@ -65,7 +68,28 @@ function getCodeOnConsensusNode(address) {
   });
 }
 
+/**
+ * Reads an account's balance (in weibars, like the relay) and EVM nonce from the consensus node.
+ *
+ * @param {string} address account or contract EVM address
+ * @returns {Promise<{ balance: bigint, nonce: number }>}
+ */
+function getAccountOnConsensusNode(address) {
+  return withClient(async (client) => {
+    const info = await new AccountInfoQuery()
+      .setAccountId(AccountId.fromEvmAddress(0, 0, address))
+      .execute(client);
+    const tinybars = BigInt(info.balance.toTinybars().toString());
+
+    return {
+      balance: tinybars * TINYBAR_TO_WEIBAR_COEF,
+      nonce: info.ethereumNonce.toNumber(),
+    };
+  });
+}
+
 module.exports = {
   callOnConsensusNode,
   getCodeOnConsensusNode,
+  getAccountOnConsensusNode,
 };

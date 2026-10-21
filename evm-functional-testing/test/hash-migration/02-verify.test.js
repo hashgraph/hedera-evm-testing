@@ -39,6 +39,16 @@ const {
   findUpgradeBlock,
   parentChainMismatches,
 } = require("./utils/block-hashes");
+const {
+  UPDATED_CHILDREN,
+  deployLifecycleFactory,
+  createChild,
+  create2Child,
+  create2Again,
+  destroyChild,
+  idOf,
+} = require("./utils/lifecycle");
+const { readAccounts, contractAddresses } = require("./utils/accounts");
 const { rpc, logFilter, fieldMismatches } = require("./utils/history");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
@@ -165,6 +175,22 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
       ).to.be.lessThan(upgrade.number);
 
       const { mismatches } = await checkProbe(probe);
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+  });
+
+  // Before any test below creates a contract or moves HBAR
+  describe("Accounts", function () {
+    it("should keep the code, code hash, balance and nonce of every contract", async function () {
+      const expected = this.snapshot.accounts;
+      const addresses = contractAddresses(this.snapshot);
+      const reader = await ethers.getContractAt(
+        "LifecycleFactory",
+        this.snapshot.lifecycle.factory,
+      );
+      const actual = await readAccounts(reader, addresses);
+      const mismatches = findMismatches("account", expected, actual);
 
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });
@@ -343,6 +369,100 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         Object.keys(expected),
       );
       const mismatches = findMismatches("getter", expected, actual);
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+  });
+
+  describe("Contract lifecycle", function () {
+    before(async function () {
+      this.oldFactory = await ethers.getContractAt(
+        "LifecycleFactory",
+        this.snapshot.lifecycle.factory,
+      );
+    });
+
+    it("should create a child with CREATE at the address the factory's old nonce gives", async function () {
+      const factory = this.snapshot.lifecycle.factory;
+      const nonce = Number(this.snapshot.accounts[`${factory} nonce`]);
+      const expected = ethers.getCreateAddress({ from: factory, nonce });
+
+      const { address } = await createChild(
+        this.oldFactory,
+        UPDATED_CHILDREN.create,
+      );
+
+      expect(
+        address,
+        `CREATE address does not follow the factory's nonce ${nonce}`,
+      ).to.equal(expected);
+
+      this.newChild = address;
+    });
+
+    it("should create a child with CREATE2 at the predicted address", async function () {
+      const { address, predicted } = await create2Child(
+        this.oldFactory,
+        UPDATED_CHILDREN.create2,
+      );
+
+      expect(
+        predicted.factory,
+        "factory and JS predict different CREATE2 addresses",
+      ).to.equal(predicted.js);
+      expect(address, "CREATE2 address differs from the prediction").to.equal(
+        predicted.js,
+      );
+    });
+
+    it("should not create a contract at a CREATE2 address taken before the upgrade", async function () {
+      const { id, salt } = this.snapshot.lifecycle.children.create2;
+      const status = await create2Again(this.oldFactory, { id, salt });
+
+      expect(status, "CREATE2 to an address already taken succeeded").to.equal(
+        0,
+      );
+    });
+
+    it("should self-destruct a new child the same way as before the upgrade", async function () {
+      const expected = this.snapshot.lifecycle.children.destroyed.outcome;
+      const { relay, consensusNode } = await destroyChild(
+        this.oldFactory,
+        UPDATED_CHILDREN.destroyed,
+        this.newChild,
+      );
+      const mismatches = findMismatches("self-destruct", expected, {
+        relay,
+        consensusNode,
+      });
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should let contracts from before and after the upgrade call each other", async function () {
+      const { create, create2 } = this.snapshot.lifecycle.children;
+      const newFactory = await deployLifecycleFactory();
+      const calls = [
+        {
+          caller: this.oldFactory,
+          child: this.newChild,
+          id: UPDATED_CHILDREN.create.id,
+        },
+        { caller: newFactory, child: create.address, id: BigInt(create.id) },
+        { caller: newFactory, child: create2.address, id: BigInt(create2.id) },
+      ];
+      const mismatches = [];
+
+      for (const { caller, child, id } of calls) {
+        const ids = await idOf(caller, child);
+
+        if (ids.relay !== id || ids.consensusNode !== id) {
+          const callerAddress = await caller.getAddress();
+          mismatches.push(
+            `${callerAddress}.idOf(${child}): expected ${id}, relay ${ids.relay}, consensus node ${ids.consensusNode}`,
+          );
+        }
+      }
 
       expect(mismatches, mismatches.join("\n")).to.be.empty;
     });

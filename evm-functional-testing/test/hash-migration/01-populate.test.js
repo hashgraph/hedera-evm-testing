@@ -49,7 +49,21 @@ const {
   runProbe,
   checkProbe,
 } = require("./utils/block-hashes");
+const {
+  ORIGINAL_CHILDREN,
+  deployLifecycleFactory,
+  createChild,
+  create2Child,
+  destroyChild,
+  idOf,
+} = require("./utils/lifecycle");
+const {
+  readAccounts,
+  codeMismatches,
+  contractAddresses,
+} = require("./utils/accounts");
 const { findTransactions, recordHistory } = require("./utils/history");
+const { ONE_HBAR } = require("../../utils/constants");
 
 // Phase 1 of the SHA-384 -> SHA-256 migration test: runs on the old network and records
 // everything 02-verify.test.js compares after the consensus node upgrade.
@@ -295,6 +309,92 @@ describe("Hash migration - 01 populate (old network)", function () {
     });
   });
 
+  describe("Contract lifecycle", function () {
+    it("should create a child with CREATE at the address the factory's nonce gives", async function () {
+      this.lifecycleFactory = await deployLifecycleFactory();
+
+      const child = ORIGINAL_CHILDREN.create;
+      const { address, expected } = await createChild(
+        this.lifecycleFactory,
+        child,
+      );
+
+      expect(
+        address,
+        "CREATE address does not follow the factory's nonce",
+      ).to.equal(expected);
+
+      const factory = await this.lifecycleFactory.getAddress();
+      this.snapshot.lifecycle = {
+        factory,
+        children: { create: { address, ...child } },
+      };
+    });
+
+    it("should create a child with CREATE2 at the predicted address", async function () {
+      const child = ORIGINAL_CHILDREN.create2;
+      const { address, predicted } = await create2Child(
+        this.lifecycleFactory,
+        child,
+      );
+
+      expect(
+        predicted.factory,
+        "factory and JS predict different CREATE2 addresses",
+      ).to.equal(predicted.js);
+      expect(address, "CREATE2 address differs from the prediction").to.equal(
+        predicted.js,
+      );
+
+      this.snapshot.lifecycle.children.create2 = { address, ...child };
+    });
+
+    it("should self-destruct a funded child in a later transaction, sending its balance to another child", async function () {
+      const child = ORIGINAL_CHILDREN.destroyed;
+      const recipient = this.snapshot.lifecycle.children.create.address;
+      const { address, relay, consensusNode } = await destroyChild(
+        this.lifecycleFactory,
+        child,
+        recipient,
+      );
+      const mismatches = findMismatches("self-destruct", relay, {
+        consensusNode,
+      });
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(relay.balance, "self-destructed child kept its balance").to.equal(
+        "0",
+      );
+      expect(
+        relay.recipientGain,
+        "recipient did not get the child's balance",
+      ).to.equal(ONE_HBAR.toString());
+
+      this.snapshot.lifecycle.children.destroyed = {
+        address,
+        ...child,
+        outcome: relay,
+      };
+    });
+
+    it("should call the children from the factory through the relay and the consensus node", async function () {
+      const { create, create2 } = this.snapshot.lifecycle.children;
+      const mismatches = [];
+
+      for (const child of [create, create2]) {
+        const ids = await idOf(this.lifecycleFactory, child.address);
+
+        if (ids.relay !== child.id || ids.consensusNode !== child.id) {
+          mismatches.push(
+            `idOf(${child.address}): expected ${child.id}, relay ${ids.relay}, consensus node ${ids.consensusNode}`,
+          );
+        }
+      }
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+  });
+
   // Last, so the recorded blocks are as close as possible to the upgrade
   describe("BlockHashProbe", function () {
     it(`should record blockhash() in ${PROBE_COUNT} different blocks, matching the relay and the mirror node`, async function () {
@@ -323,6 +423,25 @@ describe("Hash migration - 01 populate (old network)", function () {
 
       const address = await contract.getAddress();
       this.snapshot.blockHashProbe = { address, probes, blocks };
+    });
+  });
+
+  describe("Accounts", function () {
+    it("should read the same code, code hash, balance and nonce of every contract through the relay and the consensus node", async function () {
+      const addresses = contractAddresses(this.snapshot);
+      const reader = await ethers.getContractAt(
+        "LifecycleFactory",
+        this.snapshot.lifecycle.factory,
+      );
+      const { relay, consensusNode } = await readAccounts(reader, addresses);
+      const mismatches = [
+        ...findMismatches("account", relay, { consensusNode }),
+        ...codeMismatches(relay, addresses),
+      ];
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+
+      this.snapshot.accounts = relay;
     });
   });
 
