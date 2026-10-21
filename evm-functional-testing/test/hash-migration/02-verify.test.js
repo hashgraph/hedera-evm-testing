@@ -71,6 +71,16 @@ const {
   readTokenAccounts,
 } = require("./utils/hts-token");
 const { TINYBAR_TO_WEIBAR_COEF } = require("../../utils/constants");
+const {
+  SERIALS,
+  NEW_SERIAL,
+  metadataOf,
+  mintNfts,
+  transferNft,
+  readNftInfo,
+  readSerials,
+  readNftAccounts,
+} = require("./utils/hts-nft");
 const { rpc, logFilter, fieldMismatches } = require("./utils/history");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
@@ -759,6 +769,180 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
     it("should still refuse transfers from the frozen account", async function () {
       const { frozen, spender } = this.wallets;
       const status = await transfer(frozen, this.token, spender.address, 1);
+
+      expect(status, "transfer from the frozen account").to.equal(0);
+    });
+  });
+
+  describe("HTS NFT", function () {
+    before(async function () {
+      const { manager, accounts } = this.snapshot.htsFungible;
+
+      this.tokenManager = await ethers.getContractAt("TokenManager", manager);
+      this.nft = this.snapshot.htsNft.token;
+      this.wallets = Object.fromEntries(
+        Object.entries(accounts).map(([name, { privateKey }]) => [
+          name,
+          new ethers.Wallet(privateKey, ethers.provider),
+        ]),
+      );
+    });
+
+    it("should keep the NFT info and custom fee", async function () {
+      const { info } = this.snapshot.htsNft;
+      const actual = await readNftInfo(this.nft);
+      const mismatches = [
+        ...findMismatches("NFT info", info.relay, { relay: actual.relay }),
+        ...findMismatches("NFT info", info.consensusNode, {
+          consensusNode: actual.consensusNode,
+        }),
+      ];
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should keep the owner, approval and metadata of every serial", async function () {
+      const expected = this.snapshot.htsNft.serials;
+      const actual = await readSerials(this.tokenManager, this.nft, SERIALS);
+      const mismatches = findMismatches("serial", expected, actual);
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should keep the NFT balances, approvals for all, flags and associations", async function () {
+      const { holder, frozen, spender } = this.wallets;
+      const actual = await readNftAccounts(
+        this.tokenManager,
+        this.nft,
+        {
+          holder: holder.address,
+          frozen: frozen.address,
+          spender: spender.address,
+        },
+        spender.address,
+      );
+      const mismatches = findMismatches(
+        "NFT account",
+        this.snapshot.htsNft.accounts,
+        actual,
+      );
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should let the spender move serial #1 with its single approval, charging the holder the custom fee", async function () {
+      const { holder, spender } = this.wallets;
+      const manager = await this.tokenManager.getAddress();
+      const collectorBefore = await getAccountOnConsensusNode(manager);
+      const holderBefore = await getAccountOnConsensusNode(holder.address);
+
+      const status = await transferNft(
+        spender,
+        this.nft,
+        holder.address,
+        spender.address,
+        1,
+      );
+
+      const collectorAfter = await getAccountOnConsensusNode(manager);
+      const holderAfter = await getAccountOnConsensusNode(holder.address);
+      const fee = BigInt(FEE_TINYBARS) * TINYBAR_TO_WEIBAR_COEF;
+      const { relay, consensusNode } = await readSerials(
+        this.tokenManager,
+        this.nft,
+        [1],
+      );
+      const mismatches = findMismatches(
+        "serial",
+        { "#1 owner": spender.address },
+        { relay, consensusNode },
+      );
+
+      expect(status, "transferFrom status").to.equal(1);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(
+        collectorAfter.balance - collectorBefore.balance,
+        "fee collected",
+      ).to.equal(fee);
+      expect(
+        holderBefore.balance - holderAfter.balance,
+        "fee paid by the holder",
+      ).to.equal(fee);
+    });
+
+    it("should let the spender move serial #2 with its approval for all", async function () {
+      const { holder, spender } = this.wallets;
+      const status = await transferNft(
+        spender,
+        this.nft,
+        holder.address,
+        spender.address,
+        2,
+      );
+      const { relay, consensusNode } = await readSerials(
+        this.tokenManager,
+        this.nft,
+        [2],
+      );
+      const mismatches = findMismatches(
+        "serial",
+        { "#2 owner": spender.address },
+        { relay, consensusNode },
+      );
+
+      expect(status, "transferFrom status").to.equal(1);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it(`should mint serial #${NEW_SERIAL} with the old supply key`, async function () {
+      const minted = await mintNfts(this.tokenManager, this.nft, [NEW_SERIAL]);
+      const manager = await this.tokenManager.getAddress();
+      const { relay, consensusNode } = await readSerials(
+        this.tokenManager,
+        this.nft,
+        [NEW_SERIAL],
+      );
+      const expected = {
+        [`#${NEW_SERIAL} owner`]: manager,
+        [`#${NEW_SERIAL} metadata`]: metadataOf(NEW_SERIAL),
+      };
+      const mismatches = findMismatches("serial", expected, {
+        relay,
+        consensusNode,
+      });
+
+      expect(minted, "minted serials").to.deep.equal([NEW_SERIAL]);
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should let a new account associate with the old NFT and receive serial #4", async function () {
+      const wallet = await createTokenHolder(this.tokenManager, this.nft);
+      const tx = await this.tokenManager.payOutNft(this.nft, wallet.address, 4);
+      await tx.wait();
+
+      const { relay, consensusNode } = await readSerials(
+        this.tokenManager,
+        this.nft,
+        [4],
+      );
+      const mismatches = findMismatches(
+        "serial",
+        { "#4 owner": wallet.address },
+        { relay, consensusNode },
+      );
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should still refuse NFT transfers from the frozen account", async function () {
+      const { frozen, spender } = this.wallets;
+      const status = await transferNft(
+        frozen,
+        this.nft,
+        frozen.address,
+        spender.address,
+        3,
+      );
 
       expect(status, "transfer from the frozen account").to.equal(0);
     });

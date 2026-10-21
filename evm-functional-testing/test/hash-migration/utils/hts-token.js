@@ -89,16 +89,21 @@ async function approve(wallet, token, spender, amount) {
   return tx.wait();
 }
 
+/** Associates the wallet with the token and has the manager grant it KYC, so it can receive it. */
+async function allowToken(manager, wallet, token) {
+  await associate(wallet, token);
+
+  const tx = await manager.grantKyc(token, wallet.address);
+  await tx.wait();
+}
+
 /**
  * Creates a wallet, associates it with the token and has the manager grant it KYC, so it can
  * receive the token.
  */
 async function createTokenHolder(manager, token) {
   const wallet = await createWalletAccount();
-  await associate(wallet, token);
-
-  const tx = await manager.grantKyc(token, wallet.address);
-  await tx.wait();
+  await allowToken(manager, wallet, token);
 
   return wallet;
 }
@@ -136,13 +141,7 @@ async function readTokenInfo(token) {
   const symbol = await contract.symbol();
   const decimals = await contract.decimals();
   const totalSupply = await contract.totalSupply();
-
-  const info = await withClient((client) =>
-    new TokenInfoQuery()
-      .setTokenId(TokenId.fromSolidityAddress(token))
-      .execute(client),
-  );
-  const [fee] = info.customFees;
+  const consensusNode = await readTokenInfoOnConsensusNode(token);
 
   return {
     relay: {
@@ -151,24 +150,39 @@ async function readTokenInfo(token) {
       decimals: decimals.toString(),
       totalSupply: totalSupply.toString(),
     },
-    consensusNode: {
-      name: info.name,
-      symbol: info.symbol,
-      decimals: info.decimals.toString(),
-      totalSupply: info.totalSupply.toString(),
-      treasury: info.treasuryAccountId.toString(),
-      adminKey: info.adminKey.toString(),
-      kycKey: info.kycKey.toString(),
-      freezeKey: info.freezeKey.toString(),
-      supplyKey: info.supplyKey.toString(),
-      feeScheduleKey: info.feeScheduleKey.toString(),
-      defaultFreezeStatus: String(info.defaultFreezeStatus),
-      defaultKycStatus: String(info.defaultKycStatus),
-      customFeeCount: String(info.customFees.length),
-      customFeeAmount: fee.amount.toString(),
-      customFeeToken: String(fee.denominatingTokenId),
-      customFeeCollector: fee.feeCollectorAccountId.toString(),
-    },
+    consensusNode,
+  };
+}
+
+/**
+ * Token info any HTS token has on the consensus node: name, symbol, decimals, supply, treasury,
+ * keys, custom fee and default flags, as strings.
+ */
+async function readTokenInfoOnConsensusNode(token) {
+  const info = await withClient((client) =>
+    new TokenInfoQuery()
+      .setTokenId(TokenId.fromSolidityAddress(token))
+      .execute(client),
+  );
+  const [fee] = info.customFees;
+
+  return {
+    name: info.name,
+    symbol: info.symbol,
+    decimals: info.decimals.toString(),
+    totalSupply: info.totalSupply.toString(),
+    treasury: info.treasuryAccountId.toString(),
+    adminKey: info.adminKey.toString(),
+    kycKey: info.kycKey.toString(),
+    freezeKey: info.freezeKey.toString(),
+    supplyKey: info.supplyKey.toString(),
+    feeScheduleKey: info.feeScheduleKey.toString(),
+    defaultFreezeStatus: String(info.defaultFreezeStatus),
+    defaultKycStatus: String(info.defaultKycStatus),
+    customFeeCount: String(info.customFees.length),
+    customFeeAmount: fee.amount.toString(),
+    customFeeToken: String(fee.denominatingTokenId),
+    customFeeCollector: fee.feeCollectorAccountId.toString(),
   };
 }
 
@@ -179,31 +193,54 @@ async function readTokenInfo(token) {
  * @param {Record<string, string>} accounts name -> address
  */
 async function readTokenAccounts(manager, token, accounts, spender) {
-  const managerAddress = await manager.getAddress();
-  const addresses = Object.values(accounts);
-  const data = manager.interface.encodeFunctionData("accountStates", [
+  const states = await callManager(manager, "accountStates", [
     token,
-    addresses,
+    Object.values(accounts),
     spender,
   ]);
+
+  return byAccount(token, accounts, ACCOUNT_FIELDS, states);
+}
+
+/**
+ * Calls a TokenManager read function through the relay and on the consensus node.
+ *
+ * @returns {Promise<{ relay: import("ethers").Result, consensusNode: import("ethers").Result }>}
+ */
+async function callManager(manager, name, args) {
+  const managerAddress = await manager.getAddress();
+  const data = manager.interface.encodeFunctionData(name, args);
   const decode = (result) =>
-    manager.interface.decodeFunctionResult("accountStates", result);
+    manager.interface.decodeFunctionResult(name, result);
 
   const relayResult = await ethers.provider.call({ to: managerAddress, data });
   const consensusNodeResult = await callOnConsensusNode(managerAddress, data);
-  const relayStates = decode(relayResult);
-  const consensusNodeStates = decode(consensusNodeResult);
 
+  return {
+    relay: decode(relayResult),
+    consensusNode: decode(consensusNodeResult),
+  };
+}
+
+/**
+ * Turns per-account arrays (one per field, in `fields` order) into "<name> <field>" entries, and
+ * adds whether each account is associated with the token.
+ *
+ * @param {Record<string, string>} accounts name -> address
+ * @param {string[]} fields
+ * @param {{ relay: import("ethers").Result, consensusNode: import("ethers").Result }} states
+ */
+async function byAccount(token, accounts, fields, states) {
   const relay = {};
   const consensusNode = {};
 
   for (const [i, name] of Object.keys(accounts).entries()) {
     const address = accounts[name];
 
-    for (const [index, field] of ACCOUNT_FIELDS.entries()) {
-      relay[`${name} ${field}`] = relayStates[index][i].toString();
+    for (const [index, field] of fields.entries()) {
+      relay[`${name} ${field}`] = states.relay[index][i].toString();
       consensusNode[`${name} ${field}`] =
-        consensusNodeStates[index][i].toString();
+        states.consensusNode[index][i].toString();
     }
 
     const relayAssociated = await isAssociatedOnRelay(token, address);
@@ -246,12 +283,17 @@ module.exports = {
   UPDATED_ALLOWANCE,
   TRANSFERRED,
   FEE_TINYBARS,
+  HTS_GAS,
   deployTokenManager,
   createFungibleToken,
+  allowToken,
   createTokenHolder,
   setUpAccounts,
   transfer,
   approve,
   readTokenInfo,
+  readTokenInfoOnConsensusNode,
   readTokenAccounts,
+  callManager,
+  byAccount,
 };

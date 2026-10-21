@@ -93,6 +93,16 @@ const {
   readTokenInfo,
   readTokenAccounts,
 } = require("./utils/hts-token");
+const {
+  SERIALS,
+  metadataOf,
+  createNft,
+  mintNfts,
+  setUpNftAccounts,
+  readNftInfo,
+  readSerials,
+  readNftAccounts,
+} = require("./utils/hts-nft");
 const { findTransactions, recordHistory } = require("./utils/history");
 const { ONE_HBAR } = require("../../utils/constants");
 
@@ -604,6 +614,102 @@ describe("Hash migration - 01 populate (old network)", function () {
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
       this.snapshot.htsFungible.state = relay;
+    });
+  });
+
+  describe("HTS NFT", function () {
+    before(async function () {
+      const { manager, accounts } = this.snapshot.htsFungible;
+
+      this.tokenManager = await ethers.getContractAt("TokenManager", manager);
+      this.wallets = Object.fromEntries(
+        Object.entries(accounts).map(([name, { privateKey }]) => [
+          name,
+          new ethers.Wallet(privateKey, ethers.provider),
+        ]),
+      );
+    });
+
+    it(`should create an NFT with a fixed HBAR fee and mint ${SERIALS.length} serials`, async function () {
+      this.nft = await createNft(this.tokenManager);
+      const minted = await mintNfts(this.tokenManager, this.nft, SERIALS);
+
+      expect(minted, "minted serials").to.deep.equal(SERIALS);
+
+      const { relay, consensusNode } = await readNftInfo(this.nft);
+      const mismatches = findMismatches("NFT info", relay, { consensusNode });
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+
+      this.snapshot.htsNft = {
+        token: this.nft,
+        info: { relay, consensusNode },
+      };
+    });
+
+    it("should give serials to the holder and the frozen account, with single and for-all approvals to the spender", async function () {
+      this.timeout(300_000);
+
+      await setUpNftAccounts(this.tokenManager, this.nft, this.wallets);
+    });
+
+    it("should read the same owners, approvals and metadata of every serial through the relay and the consensus node", async function () {
+      const { holder, frozen, spender } = this.wallets;
+      const manager = await this.tokenManager.getAddress();
+      const { relay, consensusNode } = await readSerials(
+        this.tokenManager,
+        this.nft,
+        SERIALS,
+      );
+      const expected = {
+        "#1 owner": holder.address,
+        "#1 approved": spender.address,
+        "#2 owner": holder.address,
+        "#3 owner": frozen.address,
+        "#4 owner": manager,
+        ...Object.fromEntries(
+          SERIALS.map((serial) => [`#${serial} metadata`, metadataOf(serial)]),
+        ),
+      };
+      const mismatches = [
+        ...findMismatches("serial", relay, { consensusNode }),
+        ...findMismatches("serial", expected, { relay }),
+      ];
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+
+      this.snapshot.htsNft.serials = relay;
+    });
+
+    it("should read the same NFT balances, approvals for all, flags and associations through the relay and the consensus node", async function () {
+      const { holder, frozen, spender } = this.wallets;
+      const { relay, consensusNode } = await readNftAccounts(
+        this.tokenManager,
+        this.nft,
+        {
+          holder: holder.address,
+          frozen: frozen.address,
+          spender: spender.address,
+        },
+        spender.address,
+      );
+      const expected = {
+        "holder balance": "2",
+        "holder approvedForAll": "true",
+        "frozen balance": "1",
+        "frozen frozen": "true",
+        "spender balance": "0",
+        "holder associated": "true",
+        "spender associated": "true",
+      };
+      const mismatches = [
+        ...findMismatches("NFT account", relay, { consensusNode }),
+        ...findMismatches("NFT account", expected, { relay }),
+      ];
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+
+      this.snapshot.htsNft.accounts = relay;
     });
   });
 
