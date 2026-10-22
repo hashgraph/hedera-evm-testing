@@ -81,6 +81,14 @@ const {
   readSerials,
   readNftAccounts,
 } = require("./utils/hts-nft");
+const {
+  ercAccounts,
+  getterMismatches,
+  transfersTo,
+  useErc20,
+  useErc721,
+  useErc1155,
+} = require("./utils/erc-tokens");
 const { rpc, logFilter, fieldMismatches } = require("./utils/history");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
@@ -946,6 +954,65 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
 
       expect(status, "transfer from the frozen account").to.equal(0);
     });
+  });
+
+  describe("ERC tokens and events", function () {
+    before(async function () {
+      const { contracts } = this.snapshot.erc;
+      const erc20 = await ethers.getContractAt(
+        "MigrationERC20",
+        contracts.erc20,
+      );
+      const erc721 = await ethers.getContractAt(
+        "MigrationERC721",
+        contracts.erc721,
+      );
+      const erc1155 = await ethers.getContractAt(
+        "MigrationERC1155",
+        contracts.erc1155,
+      );
+
+      this.ercTokens = { erc20, erc721, erc1155 };
+    });
+
+    it("should keep every getter value of the three tokens", async function () {
+      const { getters } = this.snapshot.erc;
+      const mismatches = [];
+
+      for (const [name, expected] of Object.entries(getters)) {
+        const actual = await readGetters(
+          this.ercTokens[name],
+          Object.keys(expected),
+        );
+
+        mismatches.push(...findMismatches(`${name} getter`, expected, actual));
+      }
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should find the same Transfer events by event signature", async function () {
+      const { receiver } = await ercAccounts();
+      const { fromBlock, toBlock, logs } = this.snapshot.erc.transferLogs;
+      const actual = await transfersTo(receiver.address, fromBlock, toBlock);
+      const mismatches = fieldMismatches("Transfer logs", logs, actual);
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    for (const [name, use] of [
+      ["erc20", useErc20],
+      ["erc721", useErc721],
+      ["erc1155", useErc1155],
+    ]) {
+      it(`should mint, transfer and use approvals on the old ${name.toUpperCase()}`, async function () {
+        const contract = this.ercTokens[name];
+        const expected = await use(contract);
+        const mismatches = await getterMismatches(contract, expected, name);
+
+        expect(mismatches, mismatches.join("\n")).to.be.empty;
+      });
+    }
   });
 
   describe("History", function () {

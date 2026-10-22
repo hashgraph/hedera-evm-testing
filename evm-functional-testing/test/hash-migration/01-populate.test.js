@@ -103,6 +103,13 @@ const {
   readSerials,
   readNftAccounts,
 } = require("./utils/hts-nft");
+const {
+  ercAccounts,
+  setUpErcTokens,
+  expectedErcGetters,
+  getterMismatches,
+  transfersTo,
+} = require("./utils/erc-tokens");
 const { findTransactions, recordHistory } = require("./utils/history");
 const { ONE_HBAR } = require("../../utils/constants");
 
@@ -710,6 +717,63 @@ describe("Hash migration - 01 populate (old network)", function () {
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
       this.snapshot.htsNft.accounts = relay;
+    });
+  });
+
+  describe("ERC tokens and events", function () {
+    it("should deploy an ERC20, an ERC721 and an ERC1155 and mint, transfer and approve on each", async function () {
+      this.timeout(300_000);
+
+      const fromBlock = await ethers.provider.getBlockNumber();
+      this.ercTokens = await setUpErcTokens();
+
+      const contracts = {};
+
+      for (const [name, contract] of Object.entries(this.ercTokens)) {
+        contracts[name] = await contract.getAddress();
+      }
+
+      this.snapshot.erc = { contracts, fromBlock };
+    });
+
+    it("should read the same balances, allowances, owners, approvals and URIs through the relay and the consensus node", async function () {
+      const expected = await expectedErcGetters();
+      const mismatches = [];
+      const getters = {};
+
+      for (const [name, values] of Object.entries(expected)) {
+        const contract = this.ercTokens[name];
+        const contractMismatches = await getterMismatches(
+          contract,
+          values,
+          name,
+        );
+
+        mismatches.push(...contractMismatches);
+        getters[name] = expectedGetterResults(contract.interface, values);
+      }
+
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+
+      this.snapshot.erc.getters = getters;
+    });
+
+    it("should find the Transfer events to the receiver from several contracts by event signature", async function () {
+      const { receiver } = await ercAccounts();
+      const { contracts, fromBlock } = this.snapshot.erc;
+      const toBlock = await ethers.provider.getBlockNumber();
+      const logs = await transfersTo(receiver.address, fromBlock, toBlock);
+      const emitters = new Set(logs.map((log) => log.address.toLowerCase()));
+
+      expect(
+        [...emitters],
+        "Transfer events to the receiver should come from the ERC20 and the ERC721",
+      ).to.have.members([
+        contracts.erc20.toLowerCase(),
+        contracts.erc721.toLowerCase(),
+      ]);
+
+      this.snapshot.erc.transferLogs = { fromBlock, toBlock, logs };
     });
   });
 

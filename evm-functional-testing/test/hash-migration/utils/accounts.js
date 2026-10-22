@@ -127,6 +127,7 @@ function contractAddresses(snapshot) {
     ...Object.values(children).map((child) => child.address),
     ...Object.values(adminKeys).map((contract) => contract.address),
     snapshot.htsFungible.manager,
+    ...Object.values(snapshot.erc.contracts),
   ];
 }
 
