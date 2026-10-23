@@ -177,6 +177,22 @@ function findMismatches(kind, expected, actualBySource) {
   return mismatches;
 }
 
+/**
+ * Reads the given getters through the relay and on the consensus node and names every value that
+ * differs from `values`.
+ *
+ * @param {import("ethers").Contract} contract
+ * @param {Record<string, unknown>} values keyed by getterKey
+ * @param {string} label e.g. "erc20"
+ * @returns {Promise<string[]>}
+ */
+async function getterMismatches(contract, values, label) {
+  const expected = expectedGetterResults(contract.interface, values);
+  const actual = await readGetters(contract, Object.keys(expected));
+
+  return findMismatches(`${label} getter`, expected, actual);
+}
+
 module.exports = {
   getterKey,
   expectedGetterResults,
@@ -186,4 +202,5 @@ module.exports = {
   dataSlots,
   readSlots,
   findMismatches,
+  getterMismatches,
 };

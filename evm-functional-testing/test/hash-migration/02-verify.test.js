@@ -12,9 +12,12 @@ const {
   readGetters,
   readSlots,
   findMismatches,
+  getterKey,
+  getterMismatches,
 } = require("./utils/storage");
 const {
   UPDATED_VALUES,
+  SETTERS,
   writeValues,
   expectedGetters,
   expectTransientNotKept,
@@ -83,12 +86,22 @@ const {
 } = require("./utils/hts-nft");
 const {
   ercAccounts,
-  getterMismatches,
   transfersTo,
   useErc20,
   useErc721,
   useErc1155,
 } = require("./utils/erc-tokens");
+const {
+  SDK_UNSIGNED_VALUES,
+  SDK_CHILD_ID,
+  SDK_ERC20_TRANSFERRED,
+  SDK_HTS_TRANSFERRED,
+  executeWithSdk,
+  createChildWithSdk,
+  transferTokenWithSdk,
+  associateWithSdk,
+} = require("./utils/sdk-entry");
+const { createWalletAccount } = require("./utils/wallet-account");
 const { rpc, logFilter, fieldMismatches } = require("./utils/history");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
@@ -1013,6 +1026,143 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         expect(mismatches, mismatches.join("\n")).to.be.empty;
       });
     }
+  });
+
+  // A sample of the post-upgrade writes the ValueStorage, Contract lifecycle, ERC and HTS sections
+  // send through the relay, sent here straight to the consensus node through the Hiero SDK
+  describe("SDK entry point", function () {
+    it("should write storage through the SDK", async function () {
+      const valueStorage = await ethers.getContractAt(
+        "ValueStorage",
+        this.snapshot.valueStorage.address,
+      );
+      const args = SETTERS.setUnsigned.map((name) => SDK_UNSIGNED_VALUES[name]);
+
+      const status = await executeWithSdk(valueStorage, "setUnsigned", args);
+      const mismatches = await getterMismatches(
+        valueStorage,
+        SDK_UNSIGNED_VALUES,
+        "ValueStorage",
+      );
+
+      expect(status, "setUnsigned status").to.equal("SUCCESS");
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should create a contract through the SDK at the address the factory's nonce gives", async function () {
+      const factory = await ethers.getContractAt(
+        "LifecycleFactory",
+        this.snapshot.lifecycle.factory,
+      );
+
+      const { status, expected } = await createChildWithSdk(factory);
+      const ids = await idOf(factory, expected);
+
+      expect(status, "create status").to.equal("SUCCESS");
+      expect(ids.relay, `id of the child at ${expected} via relay`).to.equal(
+        SDK_CHILD_ID,
+      );
+      expect(
+        ids.consensusNode,
+        `id of the child at ${expected} via consensus node`,
+      ).to.equal(SDK_CHILD_ID);
+    });
+
+    it("should transfer the old ERC20 through the SDK", async function () {
+      const { owner, receiver } = await ercAccounts();
+      const erc20 = await ethers.getContractAt(
+        "MigrationERC20",
+        this.snapshot.erc.contracts.erc20,
+      );
+      const ownerBefore = await erc20.balanceOf(owner.address);
+      const receiverBefore = await erc20.balanceOf(receiver.address);
+
+      const status = await executeWithSdk(erc20, "transfer", [
+        receiver.address,
+        SDK_ERC20_TRANSFERRED,
+      ]);
+      const expected = {
+        [getterKey("balanceOf", [owner.address])]:
+          ownerBefore - SDK_ERC20_TRANSFERRED,
+        [getterKey("balanceOf", [receiver.address])]:
+          receiverBefore + SDK_ERC20_TRANSFERRED,
+      };
+      const mismatches = await getterMismatches(erc20, expected, "erc20");
+
+      expect(status, "transfer status").to.equal("SUCCESS");
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
+
+    it("should transfer the old HTS token natively through the SDK and charge its custom fee", async function () {
+      const { manager, token, accounts } = this.snapshot.htsFungible;
+      const { holder, spender } = accounts;
+      const tokenManager = await ethers.getContractAt("TokenManager", manager);
+      const addresses = { holder: holder.address, spender: spender.address };
+      const before = await readTokenAccounts(
+        tokenManager,
+        token,
+        addresses,
+        spender.address,
+      );
+      const collectorBefore = await getAccountOnConsensusNode(manager);
+
+      const status = await transferTokenWithSdk(
+        token,
+        holder.privateKey,
+        spender.address,
+        SDK_HTS_TRANSFERRED,
+      );
+
+      const collectorAfter = await getAccountOnConsensusNode(manager);
+      const after = await readTokenAccounts(
+        tokenManager,
+        token,
+        addresses,
+        spender.address,
+      );
+      const expected = {
+        "holder balance": String(
+          Number(before.relay["holder balance"]) - SDK_HTS_TRANSFERRED,
+        ),
+        "spender balance": String(
+          Number(before.relay["spender balance"]) + SDK_HTS_TRANSFERRED,
+        ),
+      };
+      const mismatches = findMismatches("token account", expected, after);
+
+      expect(status, "transfer status").to.equal("SUCCESS");
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+      expect(
+        collectorAfter.balance - collectorBefore.balance,
+        "fee collected",
+      ).to.equal(BigInt(FEE_TINYBARS) * TINYBAR_TO_WEIBAR_COEF);
+    });
+
+    it("should associate a new account with the old NFT through the SDK", async function () {
+      const { manager, accounts } = this.snapshot.htsFungible;
+      const tokenManager = await ethers.getContractAt("TokenManager", manager);
+      const wallet = await createWalletAccount();
+
+      const status = await associateWithSdk(
+        wallet.privateKey,
+        this.snapshot.htsNft.token,
+      );
+
+      const { relay, consensusNode } = await readNftAccounts(
+        tokenManager,
+        this.snapshot.htsNft.token,
+        { newAccount: wallet.address },
+        accounts.spender.address,
+      );
+      const mismatches = findMismatches(
+        "NFT account",
+        { "newAccount associated": "true" },
+        { relay, consensusNode },
+      );
+
+      expect(status, "associate status").to.equal("SUCCESS");
+      expect(mismatches, mismatches.join("\n")).to.be.empty;
+    });
   });
 
   describe("History", function () {

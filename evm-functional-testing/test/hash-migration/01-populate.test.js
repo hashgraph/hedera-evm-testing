@@ -14,6 +14,7 @@ const {
   readGetters,
   readSlots,
   findMismatches,
+  getterMismatches,
 } = require("./utils/storage");
 const {
   ORIGINAL_VALUES,
@@ -107,7 +108,6 @@ const {
   ercAccounts,
   setUpErcTokens,
   expectedErcGetters,
-  getterMismatches,
   transfersTo,
 } = require("./utils/erc-tokens");
 const { findTransactions, recordHistory } = require("./utils/history");

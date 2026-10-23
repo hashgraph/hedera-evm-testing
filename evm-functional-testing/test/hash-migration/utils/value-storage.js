@@ -220,6 +220,7 @@ async function expectTransientNotKept(contract) {
 module.exports = {
   ORIGINAL_VALUES,
   UPDATED_VALUES,
+  SETTERS,
   deployValueStorage,
   writeValues,
   expectedGetters,

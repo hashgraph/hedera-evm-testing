@@ -3,16 +3,21 @@
 const {
   ContractByteCodeQuery,
   ContractCallQuery,
+  ContractExecuteTransaction,
   ContractId,
   Hbar,
 } = require("@hiero-ledger/sdk");
 const { ethers } = require("hardhat");
 const Utils = require("../../../utils/utils");
-const { TINYBAR_TO_WEIBAR_COEF } = require("../../../utils/constants");
+const {
+  TINYBAR_TO_WEIBAR_COEF,
+  GAS_LIMIT_1_000_000,
+} = require("../../../utils/constants");
 
-const QUERY_GAS = 1_000_000;
+// Gas for SDK contract queries and transactions
+const SDK_GAS = GAS_LIMIT_1_000_000.gasLimit;
 
-// Reads that go straight to the consensus node through the Hiero SDK. The relay answers
+// Calls that go straight to the consensus node through the Hiero SDK. The relay answers
 // eth_call and eth_getStorageAt from the mirror node's copy of the state, so only these
 // reads see the consensus node's own (re-hashed) state.
 async function withClient(run) {
@@ -36,12 +41,32 @@ function callOnConsensusNode(address, data) {
   return withClient(async (client) => {
     const result = await new ContractCallQuery()
       .setContractId(ContractId.fromEvmAddress(0, 0, address))
-      .setGas(QUERY_GAS)
+      .setGas(SDK_GAS)
       .setFunctionParameters(Buffer.from(data.slice(2), "hex"))
       .setQueryPayment(new Hbar(1))
       .execute(client);
 
     return ethers.hexlify(result.asBytes());
+  });
+}
+
+/**
+ * Sends a contract call as a transaction straight to the consensus node
+ * (ContractExecuteTransaction), paid and signed by the operator: no relay or mirror node involved.
+ *
+ * @param {string} address contract EVM address
+ * @param {string} data ABI-encoded call data
+ * @returns {Promise<import("@hiero-ledger/sdk").TransactionRecord>}
+ */
+function executeOnConsensusNode(address, data) {
+  return withClient(async (client) => {
+    const response = await new ContractExecuteTransaction()
+      .setContractId(ContractId.fromEvmAddress(0, 0, address))
+      .setGas(SDK_GAS)
+      .setFunctionParameters(Buffer.from(data.slice(2), "hex"))
+      .execute(client);
+
+    return response.getRecord(client);
   });
 }
 
@@ -83,6 +108,7 @@ function getAccountOnConsensusNode(address) {
 module.exports = {
   withClient,
   callOnConsensusNode,
+  executeOnConsensusNode,
   getCodeOnConsensusNode,
   getAccountOnConsensusNode,
 };

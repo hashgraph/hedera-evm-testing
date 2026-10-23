@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 const { ethers } = require("hardhat");
-const {
-  getterKey,
-  expectedGetterResults,
-  readGetters,
-  findMismatches,
-} = require("./storage");
+const { getterKey } = require("./storage");
 
 // ERC20: minted to the owner, part sent to the receiver, part approved for the receiver
 const ERC20_MINTED = 1_000n;
@@ -218,22 +213,6 @@ async function useErc1155(erc1155) {
 }
 
 /**
- * Reads the given getters through the relay and on the consensus node and names every value that
- * differs from `values`.
- *
- * @param {import("ethers").Contract} contract
- * @param {Record<string, unknown>} values keyed by getterKey
- * @param {string} label e.g. "erc20"
- * @returns {Promise<string[]>}
- */
-async function getterMismatches(contract, values, label) {
-  const expected = expectedGetterResults(contract.interface, values);
-  const actual = await readGetters(contract, Object.keys(expected));
-
-  return findMismatches(`${label} getter`, expected, actual);
-}
-
-/**
  * Transfer events to the receiver in the given blocks: one log search by event signature and
  * indexed recipient, across every contract.
  */
@@ -252,7 +231,6 @@ module.exports = {
   ercAccounts,
   setUpErcTokens,
   expectedErcGetters,
-  getterMismatches,
   transfersTo,
   useErc20,
   useErc721,
