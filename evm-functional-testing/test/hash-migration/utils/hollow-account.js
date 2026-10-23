@@ -3,6 +3,7 @@
 const { KeyList, PrivateKey } = require("@hiero-ledger/sdk");
 const { ethers } = require("hardhat");
 const { ONE_HBAR, GAS_LIMIT_1_000_000 } = require("../../../utils/constants");
+const { waitForReceipt } = require("./network");
 
 // A hollow account has no key until it signs its first transaction
 const HOLLOW_KEY = new KeyList().toString();
@@ -22,7 +23,7 @@ async function createHollowAccount() {
     value: ONE_HBAR,
     ...GAS_LIMIT_1_000_000,
   });
-  await tx.wait();
+  await waitForReceipt(tx);
 
   return wallet;
 }

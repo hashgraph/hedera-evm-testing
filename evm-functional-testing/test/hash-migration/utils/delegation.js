@@ -14,6 +14,7 @@ const {
   GAS_LIMIT_5_000_000,
   GAS_LIMIT_1_000_000,
 } = require("../../../utils/constants");
+const { waitForReceipt } = require("./network");
 
 // Stored in the delegated account's own storage (slot 0) through StoreAndEmit, by populate and by verify
 const ORIGINAL_STORED_VALUE = 42n;
@@ -69,7 +70,7 @@ async function storeThroughDelegation(target, address, value) {
   const account = target.attach(address);
   const tx = await account.storeAndEmit(value, GAS_LIMIT_1_000_000);
 
-  return tx.wait();
+  return waitForReceipt(tx);
 }
 
 /**

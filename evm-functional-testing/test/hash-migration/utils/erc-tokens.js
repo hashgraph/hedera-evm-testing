@@ -6,6 +6,7 @@ const {
   GAS_LIMIT_1_000_000,
   GAS_LIMIT_5_000_000,
 } = require("../../../utils/constants");
+const { waitForReceipt } = require("./network");
 
 // ERC20: minted to the owner, part sent to the receiver, part approved for the receiver
 const ERC20_MINTED = 1_000n;
@@ -49,7 +50,7 @@ async function deploy(name) {
 async function send(txPromise) {
   const tx = await txPromise;
 
-  return tx.wait();
+  return waitForReceipt(tx);
 }
 
 /**

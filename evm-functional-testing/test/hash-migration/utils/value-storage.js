@@ -7,6 +7,7 @@ const {
   GAS_LIMIT_5_000_000,
   GAS_LIMIT_1_000_000,
 } = require("../../../utils/constants");
+const { waitForReceipt } = require("./network");
 
 const IMMUTABLE_VALUE = 0xbeefn;
 
@@ -152,7 +153,7 @@ async function writeValues(contract, values) {
       ...getters.map((name) => values[name]),
       GAS_LIMIT_1_000_000,
     );
-    await tx.wait();
+    await waitForReceipt(tx);
   }
 }
 
@@ -200,7 +201,7 @@ async function usedSlots(contract, values) {
 async function expectTransientNotKept(contract) {
   const value = 0x77n;
   const tx = await contract.writeAndReadTransient(value, GAS_LIMIT_1_000_000);
-  const receipt = await tx.wait();
+  const receipt = await waitForReceipt(tx);
   const [readInSameTx] = receipt.logs
     .map((log) => contract.interface.parseLog(log))
     .find((event) => event?.name === "TransientReadBack").args;

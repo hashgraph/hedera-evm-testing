@@ -7,6 +7,7 @@ const { MirrorNode } = require("../../../utils/mirror-node");
 const { createEcdsaAliasedAccount } = require("../../hip-1340/utils/sdk");
 const { withClient, getAccountOnConsensusNode } = require("./consensus-node");
 const { TRANSFER_GAS } = require("./blocks");
+const { waitForReceipt } = require("./network");
 
 // Transactions the account sends in populate, so its nonce is above zero
 const SENT_TRANSFERS = 3;
@@ -63,7 +64,7 @@ async function sendTransfer(wallet, nonce) {
     ...overrides,
   });
 
-  return tx.wait();
+  return waitForReceipt(tx);
 }
 
 /**

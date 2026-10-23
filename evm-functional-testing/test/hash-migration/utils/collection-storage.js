@@ -6,6 +6,7 @@ const {
   GAS_LIMIT_1_000_000,
   GAS_LIMIT_5_000_000,
 } = require("../../../utils/constants");
+const { waitForReceipt } = require("./network");
 
 const A = "0x" + "a1".repeat(20);
 const B = "0x" + "b2".repeat(20);
@@ -131,7 +132,7 @@ async function writeCollections(contract, values) {
 
   for (const write of writes) {
     const tx = await write();
-    await tx.wait();
+    await waitForReceipt(tx);
   }
 }
 
@@ -142,10 +143,10 @@ async function writeCollections(contract, values) {
  */
 async function popAndDelete(contract) {
   const popTx = await contract.popPoppedArray(GAS_LIMIT_1_000_000);
-  await popTx.wait();
+  await waitForReceipt(popTx);
 
   const deleteTx = await contract.deleteDeletedArray(GAS_LIMIT_1_000_000);
-  await deleteTx.wait();
+  await waitForReceipt(deleteTx);
 }
 
 /**

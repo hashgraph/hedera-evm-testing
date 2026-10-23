@@ -6,6 +6,7 @@ const Utils = require("../../../utils/utils");
 const Constants = require("../../../utils/constants");
 const { withClient, callOnConsensusNode } = require("./consensus-node");
 const { walletOverrides, createWalletAccount } = require("./wallet-account");
+const { waitForReceipt } = require("./network");
 
 const ERC20 =
   "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol:IERC20Metadata";
@@ -41,7 +42,7 @@ async function createFungibleToken(manager) {
     value: Utils.createTokenCost,
     ...Constants.GAS_LIMIT_1_000_000,
   });
-  const receipt = await tx.wait();
+  const receipt = await waitForReceipt(tx);
   const event = receipt.logs
     .map((log) => manager.interface.parseLog(log))
     .find((parsed) => parsed?.name === "TokenCreated");
@@ -64,7 +65,7 @@ async function associate(wallet, token) {
   const overrides = await walletOverrides(HTS_GAS);
   const tx = await hrc719.associate(overrides);
 
-  return tx.wait();
+  return waitForReceipt(tx);
 }
 
 /**
@@ -76,7 +77,7 @@ async function transfer(wallet, token, receiver, amount) {
   const contract = await erc20(token, wallet);
   const overrides = await walletOverrides(HTS_GAS);
   const tx = await contract.transfer(receiver, amount, overrides);
-  const receipt = await tx.wait().catch((error) => error.receipt);
+  const receipt = await waitForReceipt(tx, { allowRevert: true });
 
   return receipt.status;
 }
@@ -86,7 +87,7 @@ async function approve(wallet, token, spender, amount) {
   const overrides = await walletOverrides(HTS_GAS);
   const tx = await contract.approve(spender, amount, overrides);
 
-  return tx.wait();
+  return waitForReceipt(tx);
 }
 
 /** Associates the wallet with the token and has the manager grant it KYC, so it can receive it. */
@@ -98,7 +99,7 @@ async function allowToken(manager, wallet, token) {
     wallet.address,
     Constants.GAS_LIMIT_1_000_000,
   );
-  await tx.wait();
+  await waitForReceipt(tx);
 }
 
 /**
@@ -130,7 +131,7 @@ async function setUpAccounts(manager, token) {
       PAID_OUT,
       Constants.GAS_LIMIT_1_000_000,
     );
-    await tx.wait();
+    await waitForReceipt(tx);
   }
 
   const freezeTx = await manager.freeze(
@@ -138,7 +139,7 @@ async function setUpAccounts(manager, token) {
     frozen.address,
     Constants.GAS_LIMIT_1_000_000,
   );
-  await freezeTx.wait();
+  await waitForReceipt(freezeTx);
   await approve(holder, token, spender.address, ALLOWANCE);
 
   return { holder, frozen, spender };

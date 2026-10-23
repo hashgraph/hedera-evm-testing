@@ -3,6 +3,7 @@
 const { ethers } = require("hardhat");
 const { getterKey, mappingSlot } = require("./storage");
 const { GAS_LIMIT_5_000_000 } = require("../../../utils/constants");
+const { waitForReceipt } = require("./network");
 
 const ENTRY_COUNT = 3_000;
 // ~22k gas per new slot, so 500 entries (~11M gas) fit under Hedera's 15M gas per transaction
@@ -42,7 +43,7 @@ async function writeEntries(contract, salt, { first, count }) {
   for (let key = first; key < first + count; key += BATCH_SIZE) {
     const batch = Math.min(BATCH_SIZE, first + count - key);
     const tx = await contract.write(key, batch, salt, WRITE_GAS);
-    await tx.wait();
+    await waitForReceipt(tx);
   }
 }
 

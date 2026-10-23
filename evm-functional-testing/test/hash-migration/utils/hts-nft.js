@@ -14,6 +14,7 @@ const {
   callManager,
   byAccount,
 } = require("./hts-token");
+const { waitForReceipt } = require("./network");
 
 const ERC721 = "@openzeppelin/contracts/token/ERC721/IERC721.sol:IERC721";
 
@@ -38,7 +39,7 @@ async function createNft(manager) {
     value: Utils.createTokenCost,
     ...Constants.GAS_LIMIT_1_000_000,
   });
-  const receipt = await tx.wait();
+  const receipt = await waitForReceipt(tx);
   const event = receipt.logs
     .map((log) => manager.interface.parseLog(log))
     .find((parsed) => parsed?.name === "TokenCreated");
@@ -57,7 +58,7 @@ async function mintNfts(manager, nft, serials) {
     ethers.toUtf8Bytes(metadataOf(serial)),
   );
   const tx = await manager.mintNfts(nft, metadata, MINT_GAS);
-  const receipt = await tx.wait();
+  const receipt = await waitForReceipt(tx);
   const event = receipt.logs
     .map((log) => manager.interface.parseLog(log))
     .find((parsed) => parsed?.name === "NftsMinted");
@@ -79,7 +80,7 @@ async function transferNft(wallet, nft, from, to, serial) {
   const contract = await erc721(nft, wallet);
   const overrides = await walletOverrides(HTS_GAS);
   const tx = await contract.transferFrom(from, to, serial, overrides);
-  const receipt = await tx.wait().catch((error) => error.receipt);
+  const receipt = await waitForReceipt(tx, { allowRevert: true });
 
   return receipt.status;
 }
@@ -108,7 +109,7 @@ async function setUpNftAccounts(manager, nft, wallets) {
       serial,
       Constants.GAS_LIMIT_1_000_000,
     );
-    await tx.wait();
+    await waitForReceipt(tx);
   }
 
   const freezeTx = await manager.freeze(
@@ -116,7 +117,7 @@ async function setUpNftAccounts(manager, nft, wallets) {
     frozen.address,
     Constants.GAS_LIMIT_1_000_000,
   );
-  await freezeTx.wait();
+  await waitForReceipt(freezeTx);
 
   const contract = await erc721(nft, holder);
   const approveOverrides = await walletOverrides(HTS_GAS);
@@ -125,7 +126,7 @@ async function setUpNftAccounts(manager, nft, wallets) {
     1,
     approveOverrides,
   );
-  await approveTx.wait();
+  await waitForReceipt(approveTx);
 
   const forAllOverrides = await walletOverrides(HTS_GAS);
   const forAllTx = await contract.setApprovalForAll(
@@ -133,7 +134,7 @@ async function setUpNftAccounts(manager, nft, wallets) {
     true,
     forAllOverrides,
   );
-  await forAllTx.wait();
+  await waitForReceipt(forAllTx);
 }
 
 /**

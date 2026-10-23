@@ -7,6 +7,7 @@ const {
   GAS_LIMIT_5_000_000,
   GAS_LIMIT_1_000_000,
 } = require("../../../utils/constants");
+const { waitForReceipt } = require("./network");
 
 // k in blockhash(block.number - k): recent blocks, both edges of the 256-block window, and one past it
 const OFFSETS = [1, 2, 10, 255, 256, 257];
@@ -38,7 +39,7 @@ function eventArgs(contract, receipt, name) {
  */
 async function runProbe(contract) {
   const tx = await contract.probe(OFFSETS, GAS_LIMIT_1_000_000);
-  const receipt = await tx.wait();
+  const receipt = await waitForReceipt(tx);
   const args = eventArgs(contract, receipt, "Probed");
   const number = Number(args.number);
 
@@ -78,7 +79,7 @@ async function reportedHashes(blockNumber) {
  */
 async function readHashesInTransaction(contract, blockNumbers) {
   const tx = await contract.readHashes(blockNumbers, GAS_LIMIT_1_000_000);
-  const receipt = await tx.wait();
+  const receipt = await waitForReceipt(tx);
   const args = eventArgs(contract, receipt, "HashesRead");
 
   return {

@@ -2,6 +2,7 @@
 
 const { ethers } = require("hardhat");
 const Async = require("../../../utils/async");
+const { waitForReceipt } = require("./network");
 
 // A record file (block) closes every 2s, and only if it holds a transaction, so an idle network
 // makes no blocks. One transfer per period makes one block.
@@ -9,8 +10,6 @@ const BLOCK_PERIOD_MS = 2_100;
 const TRANSFER_GAS = 30_000;
 // Fail instead of waiting for the test timeout when the chain stops moving
 const STALL_TIMEOUT_MS = 60_000;
-// A transfer's receipt normally arrives in seconds; stop waiting after 2 minutes so a stalled network can't hang the test
-const RECEIPT_TIMEOUT_MS = 120_000;
 
 /**
  * Sends a zero-value self-transfer every block period until the network reaches `targetBlock`.
@@ -44,7 +43,7 @@ async function generateBlocksUntil(targetBlock) {
         nonce: nonce++,
         gasLimit: TRANSFER_GAS,
       })
-      .then((tx) => tx.wait(1, RECEIPT_TIMEOUT_MS));
+      .then((tx) => waitForReceipt(tx));
     transfers.push(
       transfer.catch(() => {
         transferFailed = true;

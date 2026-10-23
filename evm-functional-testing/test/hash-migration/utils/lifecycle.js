@@ -9,6 +9,7 @@ const {
   GAS_LIMIT_1_000_000,
   GAS_LIMIT_5_000_000,
 } = require("../../../utils/constants");
+const { waitForReceipt } = require("./network");
 
 // Children created by populate and by verify. Each CREATE2 child needs its own salt.
 const ORIGINAL_CHILDREN = {
@@ -49,7 +50,7 @@ async function createChild(factory, { id }) {
   const expected = ethers.getCreateAddress({ from: factoryAddress, nonce });
 
   const tx = await factory.create(id, GAS_LIMIT_1_000_000);
-  const receipt = await tx.wait();
+  const receipt = await waitForReceipt(tx);
 
   return { address: childFrom(factory, receipt), expected };
 }
@@ -85,7 +86,7 @@ async function create2Child(factory, child) {
   const predicted = await predictCreate2(factory, child);
 
   const tx = await factory.create2(child.id, child.salt, GAS_LIMIT_1_000_000);
-  const receipt = await tx.wait();
+  const receipt = await waitForReceipt(tx);
 
   return { address: childFrom(factory, receipt), predicted };
 }
@@ -98,7 +99,7 @@ async function create2Child(factory, child) {
 async function create2Again(factory, { id, salt }) {
   // Reverts and uses up all the gas it was given, so the gas limit is set explicitly
   const tx = await factory.create2(id, salt, GAS_LIMIT_1_000_000);
-  const receipt = await tx.wait().catch((error) => error.receipt);
+  const receipt = await waitForReceipt(tx, { allowRevert: true });
 
   return receipt.status;
 }
@@ -130,12 +131,12 @@ async function destroyChild(factory, child, recipient) {
     value: ONE_HBAR,
     ...GAS_LIMIT_1_000_000,
   });
-  await funding.wait();
+  await waitForReceipt(funding);
 
   const before = await readAccount(recipient);
   const contract = await ethers.getContractAt("Child", address);
   const tx = await contract.destroy(recipient, GAS_LIMIT_1_000_000);
-  await tx.wait();
+  await waitForReceipt(tx);
 
   const destroyed = await readAccount(address);
   const after = await readAccount(recipient);
