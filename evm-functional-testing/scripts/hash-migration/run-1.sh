@@ -55,8 +55,9 @@ log() {
   echo "=== $(date -u +%T) $*"
 }
 
+# `command` runs the real solo program, not this function
 solo() {
-  "${SOLO_COMMAND[@]}" "$@"
+  command "${SOLO_COMMAND[@]}" "$@"
 }
 
 checksum() {
