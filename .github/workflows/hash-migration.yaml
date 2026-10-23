@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Populates an old network, upgrades its consensus node in place, and verifies that EVM state and
-# block hashes survived the upgrade (evm-functional-testing/test/hash-migration).
+# block hashes survived the upgrade (evm-functional-testing/test/hash-migration). Every phase is a
+# step of evm-functional-testing/scripts/hash-migration/run-1.sh, which also runs locally.
 name: Hash migration
 on:
   workflow_dispatch:
@@ -9,17 +10,17 @@ on:
         description: Consensus node version to populate on
         default: v0.78.0-rc.9
       consensus-node-to:
-        description: Consensus node version to upgrade to (released; used when consensus-node-to-ref is empty)
+        description: Consensus node version to upgrade to (not used while CONSENSUS_NODE_TO_REF is pinned)
         default: v0.79.0-alpha.2
-      consensus-node-to-ref:
-        description: Consensus node git ref to build from source and upgrade to instead (branch, tag or commit)
-        default: 347b6512cb8637aa8ff992174078b90587a06729
       mirror-node:
         description: Mirror node version
-        default: 0.163.1
+        default: 0.165.0
       relay:
         description: Relay version
         default: 0.79.0
+      solo:
+        description: Solo version
+        default: 0.92.0
   schedule:
     - cron: '0 3 * * *'
   pull_request:
@@ -31,6 +32,7 @@ on:
       - '.github/workflows/hash-migration.yaml'
       - 'evm-functional-testing/test/hash-migration/**'
       - 'evm-functional-testing/contracts/hash-migration/**'
+      - 'evm-functional-testing/scripts/hash-migration/**'
       - 'evm-functional-testing/local/**'
 
 defaults:
@@ -46,17 +48,14 @@ env:
   # Inputs are empty on pull_request and schedule runs, so the defaults are repeated here
   CONSENSUS_NODE_FROM: ${{ inputs.consensus-node-from || 'v0.78.0-rc.9' }}
   CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to || 'v0.79.0-alpha.2' }}
-  # Head of hiero-consensus-node PR #27588 (SHA-384 -> SHA-256 default digest), until a release has it.
-  # A manual run with an empty ref upgrades to the released CONSENSUS_NODE_TO instead.
-  CONSENSUS_NODE_TO_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.consensus-node-to-ref || (github.event_name != 'workflow_dispatch' && '347b6512cb8637aa8ff992174078b90587a06729') || '' }}
+  # For testing until a release has the SHA-256 switch: upgrade to hiero-consensus-node PR #27588
+  # (default digest SHA-384 -> SHA-256) built from source, instead of CONSENSUS_NODE_TO. Remove this
+  # line to upgrade to the CONSENSUS_NODE_TO release.
+  CONSENSUS_NODE_TO_REF: 347b6512cb8637aa8ff992174078b90587a06729
   CONSENSUS_NODE_BUILD: ${{ github.workspace }}/hiero-consensus-node/hedera-node/data
-  MIRROR_NODE_VERSION: ${{ inputs.mirror-node || '0.163.1' }}
+  MIRROR_NODE_VERSION: ${{ inputs.mirror-node || '0.165.0' }}
   RELAY_RELEASE: ${{ inputs.relay || '0.79.0' }}
-  SOLO_VERSION: 0.91.0
-  SOLO_CLUSTER_NAME: solo-hash-migration
-  SOLO_NAMESPACE: solo-ns-hedera
-  SOLO_DEPLOYMENT: solo-deployment-hedera
-  SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup-ns-hedera
+  SOLO_VERSION: ${{ inputs.solo || '0.92.0' }}
   RESULTS_DIR: ${{ github.workspace }}/hash-migration-results
 
 jobs:
@@ -140,133 +139,29 @@ jobs:
           GRADLE_EXEC: ionice -c 2 -n 2 nice -n 19 ./gradlew
 
       - name: Deploy the old network
-        run: |
-          kind create cluster -n "${SOLO_CLUSTER_NAME}"
-          solo cluster-ref config connect --cluster-ref "kind-${SOLO_CLUSTER_NAME}" --context "kind-${SOLO_CLUSTER_NAME}"
-          solo deployment config create -n "${SOLO_NAMESPACE}" --deployment "${SOLO_DEPLOYMENT}"
-          solo deployment cluster attach --deployment "${SOLO_DEPLOYMENT}" --cluster-ref "kind-${SOLO_CLUSTER_NAME}" --num-consensus-nodes 1
-          # consensus node: a released version, upgraded in place later
-          solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}"
-          solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}"
-          solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${LOCAL}/application.properties" --consensus-node-version "${CONSENSUS_NODE_FROM}"
-          solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --consensus-node-version "${CONSENSUS_NODE_FROM}"
-          solo consensus node start --deployment "${SOLO_DEPLOYMENT}"
-          # mirror node
-          solo mirror node add --enable-ingress --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${LOCAL}/mn-values.yaml" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref "kind-${SOLO_CLUSTER_NAME}"
-          # relay
-          solo relay node add --relay-release "${RELAY_RELEASE}" --deployment "${SOLO_DEPLOYMENT}" --values-file "${LOCAL}/relay-values.yaml"
-          # accounts pre-setup
-          for key in "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1}" "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2}" "${TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3}"; do
-            solo ledger account create --deployment "${SOLO_DEPLOYMENT}" --hbar-amount "${TEST_ACCOUNT_HBAR_AMOUNT}" --private-key --set-alias --ecdsa-private-key "${key}"
-          done
-        env:
-          LOCAL: evm-testing/evm-functional-testing/local
-          # alias f70febf7420398c3892ce79fdc393c1a5487ad27
-          TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1: 3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68
-          # alias dbe82db504ca6701fbe59e638ceaddbdb691067b
-          TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_2: 3030020100300706052b8104000a04220420748634984b480c75456a68ea88f31609cd3091e012e2834948a6da317b727c04
-          # alias 84b4d82e6ed64102d0faa6c29bf4e9f541db442f
-          TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_3: 3030020100300706052b8104000a042204203bcb2fbd18610f44eda2bfd58df63d053e2a6b165617a2ef5e5cca079e0c588a
-          TEST_ACCOUNT_HBAR_AMOUNT: 1000000000
-
-      - name: Write the network readiness check
-        # Waits until the mirror node can simulate a call and a transaction executes, up to 10
-        # minutes each: a fresh mirror node and an upgraded consensus node both need time
-        run: |
-          cat > wait-for-network.js <<'EOF'
-          const { ethers } = require("hardhat");
-
-          const LIMIT_MS = 10 * 60_000;
-          const RETRY_MS = 5_000;
-
-          async function retryUntil(name, run) {
-            const started = Date.now();
-
-            for (;;) {
-              try {
-                await run();
-                console.log(`${name} after ${Math.round((Date.now() - started) / 1_000)}s`);
-                return;
-              } catch (error) {
-                if (Date.now() - started > LIMIT_MS) {
-                  throw new Error(`${name}: not within 10 minutes: ${error.shortMessage ?? error.message}`);
-                }
-
-                await new Promise((resolve) => setTimeout(resolve, RETRY_MS));
-              }
-            }
-          }
-
-          async function main() {
-            const [, signer] = await ethers.getSigners();
-
-            await retryUntil("mirror node simulates a call", () =>
-              ethers.provider.estimateGas({ from: signer.address, data: "0x6000" }),
-            );
-            await retryUntil("network executes a transaction", async () => {
-              const tx = await signer.sendTransaction({ to: signer.address, value: 0, gasLimit: 30_000 });
-              await tx.wait(1, 90_000);
-            });
-          }
-
-          main().catch((error) => {
-            console.error(error.message);
-            process.exit(1);
-          });
-          EOF
-        working-directory: evm-testing/evm-functional-testing
-
-      - name: Wait for the old network
-        run: |
-          kubectl wait pods --all -n "${SOLO_NAMESPACE}" --for=condition=Ready --field-selector=status.phase!=Succeeded --timeout=10m
-          npx hardhat run --network solo wait-for-network.js
+        run: scripts/hash-migration/run-1.sh deploy
         working-directory: evm-testing/evm-functional-testing
 
       - name: Populate the old network
-        run: npx hardhat test --network solo --bail test/hash-migration/01-populate.test.js 2>&1 | tee "${RESULTS_DIR}/populate.log"
+        run: scripts/hash-migration/run-1.sh populate
         working-directory: evm-testing/evm-functional-testing
 
       - name: Upgrade the consensus node
-        run: |
-          if [[ -n "${CONSENSUS_NODE_TO_REF}" ]]; then
-            target=(--local-build-path "${CONSENSUS_NODE_BUILD}")
-          else
-            target=(--upgrade-version "${CONSENSUS_NODE_TO}")
-          fi
-
-          solo consensus network upgrade --deployment "${SOLO_DEPLOYMENT}" "${target[@]}" --force --quiet-mode 2>&1 | tee "${RESULTS_DIR}/upgrade.log"
-
-      - name: Check the consensus node runs the new build
-        if: env.CONSENSUS_NODE_TO_REF != ''
-        run: |
-          expected=$(sha256sum "${CONSENSUS_NODE_BUILD}/apps/HederaNode.jar" | cut -d' ' -f1)
-          actual=$(kubectl exec -n "${SOLO_NAMESPACE}" network-node1-0 -c root-container -- sha256sum "${CONSENSUS_JAR}" | cut -d' ' -f1)
-          echo "built ${expected}, running ${actual}"
-          [[ "${actual}" == "${expected}" ]]
-        env:
-          CONSENSUS_JAR: /opt/hgcapp/services-hedera/HapiApp2.0/data/apps/HederaNode.jar
-
-      - name: Wait for the upgraded network
-        run: npx hardhat run --network solo wait-for-network.js
+        run: scripts/hash-migration/run-1.sh upgrade
         working-directory: evm-testing/evm-functional-testing
+        env:
+          CONSENSUS_NODE_TO_BUILD: ${{ env.CONSENSUS_NODE_TO_REF != '' && env.CONSENSUS_NODE_BUILD || '' }}
+          # A source build is the SHA-256 switch: its state must be hashed with SHA-256
+          EXPECT_STATE_HASH_BITS: ${{ env.CONSENSUS_NODE_TO_REF != '' && '256' || '' }}
 
       - name: Verify the upgraded network
-        run: npx hardhat test --network solo test/hash-migration/02-verify.test.js 2>&1 | tee "${RESULTS_DIR}/verify.log"
+        run: scripts/hash-migration/run-1.sh verify
         working-directory: evm-testing/evm-functional-testing
 
-      - name: Collect the snapshot and pod logs
+      - name: Collect the snapshot and logs
         if: always()
-        run: |
-          cp evm-testing/evm-functional-testing/hash-migration-snapshot.json "${RESULTS_DIR}/" || true
-          mkdir -p "${RESULTS_DIR}/pods"
-          kubectl get pods -A -o wide > "${RESULTS_DIR}/pods/pods.txt" 2>&1 || true
-          for pod in $(kubectl get pods -n "${SOLO_NAMESPACE}" -o name 2>/dev/null); do
-            name=${pod#pod/}
-            kubectl logs -n "${SOLO_NAMESPACE}" "${pod}" --all-containers --timestamps > "${RESULTS_DIR}/pods/${name}.log" 2>&1 || true
-            kubectl logs -n "${SOLO_NAMESPACE}" "${pod}" --all-containers --timestamps --previous > "${RESULTS_DIR}/pods/${name}.previous.log" 2>/dev/null || rm -f "${RESULTS_DIR}/pods/${name}.previous.log"
-          done
-          # The consensus node writes its own logs (swirlds.log, hgcaa.log) to files, not to stdout
-          kubectl exec -n "${SOLO_NAMESPACE}" network-node1-0 -c root-container -- tar -C /opt/hgcapp/services-hedera/HapiApp2.0 -czf - output > "${RESULTS_DIR}/consensus-node-output.tgz" 2>/dev/null || true
+        run: scripts/hash-migration/run-1.sh collect
+        working-directory: evm-testing/evm-functional-testing
 
       - name: Upload the results
         if: always()
@@ -278,4 +173,5 @@ jobs:
 
       - name: Stop solo
         if: always()
-        run: kind delete cluster -n "${SOLO_CLUSTER_NAME}"
+        run: scripts/hash-migration/run-1.sh destroy
+        working-directory: evm-testing/evm-functional-testing
