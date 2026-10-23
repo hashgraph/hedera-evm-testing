@@ -9,8 +9,11 @@ on:
         description: Consensus node version to populate on
         default: v0.78.0-rc.9
       consensus-node-to:
-        description: Consensus node version to upgrade to
+        description: Consensus node version to upgrade to (released; used when consensus-node-to-ref is empty)
         default: v0.79.0-alpha.2
+      consensus-node-to-ref:
+        description: Consensus node git ref to build from source and upgrade to instead (branch, tag or commit)
+        default: 347b6512cb8637aa8ff992174078b90587a06729
       mirror-node:
         description: Mirror node version
         default: 0.163.1
@@ -43,6 +46,10 @@ env:
   # Inputs are empty on pull_request and schedule runs, so the defaults are repeated here
   CONSENSUS_NODE_FROM: ${{ inputs.consensus-node-from || 'v0.78.0-rc.9' }}
   CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to || 'v0.79.0-alpha.2' }}
+  # Head of hiero-consensus-node PR #27588 (SHA-384 -> SHA-256 default digest), until a release has it.
+  # A manual run with an empty ref upgrades to the released CONSENSUS_NODE_TO instead.
+  CONSENSUS_NODE_TO_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.consensus-node-to-ref || (github.event_name != 'workflow_dispatch' && '347b6512cb8637aa8ff992174078b90587a06729') || '' }}
+  CONSENSUS_NODE_BUILD: ${{ github.workspace }}/hiero-consensus-node/hedera-node/data
   MIRROR_NODE_VERSION: ${{ inputs.mirror-node || '0.163.1' }}
   RELAY_RELEASE: ${{ inputs.relay || '0.79.0' }}
   SOLO_VERSION: 0.91.0
@@ -54,7 +61,7 @@ env:
 
 jobs:
   hash-migration:
-    name: Hash migration (run 1, ${{ inputs.consensus-node-from || 'v0.78.0-rc.9' }} -> ${{ inputs.consensus-node-to || 'v0.79.0-alpha.2' }})
+    name: Hash migration (run 1)
     runs-on: smart-contracts-linux-medium
     timeout-minutes: 150
     steps:
@@ -99,6 +106,38 @@ jobs:
           kubectl_version: v1.32.5
           verbosity: 3
           wait: 120s
+
+      - name: Setup Java
+        if: env.CONSENSUS_NODE_TO_REF != ''
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00  # v4.7.1
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Setup Gradle
+        if: env.CONSENSUS_NODE_TO_REF != ''
+        uses: step-security/gradle-actions/setup-gradle@c2d874d5f9d267a85a1b5829c6b5a569e33e05c8 # v5.0.0
+        with:
+          cache-read-only: false
+
+      - name: Checkout the new consensus node
+        if: env.CONSENSUS_NODE_TO_REF != ''
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: hiero-consensus-node
+          repository: hiero-ledger/hiero-consensus-node
+          ref: ${{ env.CONSENSUS_NODE_TO_REF }}
+          fetch-depth: 0
+
+      - name: Build the new consensus node
+        if: env.CONSENSUS_NODE_TO_REF != ''
+        working-directory: hiero-consensus-node
+        run: |
+          ${GRADLE_EXEC} assemble
+          sha256sum "${CONSENSUS_NODE_BUILD}/apps/HederaNode.jar" | tee "${RESULTS_DIR}/consensus-node-build.txt"
+          git log -1 --format='%H %s' | tee -a "${RESULTS_DIR}/consensus-node-build.txt"
+        env:
+          GRADLE_EXEC: ionice -c 2 -n 2 nice -n 19 ./gradlew
 
       - name: Deploy the old network
         run: |
@@ -188,7 +227,24 @@ jobs:
         working-directory: evm-testing/evm-functional-testing
 
       - name: Upgrade the consensus node
-        run: solo consensus network upgrade --deployment "${SOLO_DEPLOYMENT}" --upgrade-version "${CONSENSUS_NODE_TO}" --force --quiet-mode 2>&1 | tee "${RESULTS_DIR}/upgrade.log"
+        run: |
+          if [[ -n "${CONSENSUS_NODE_TO_REF}" ]]; then
+            target=(--local-build-path "${CONSENSUS_NODE_BUILD}")
+          else
+            target=(--upgrade-version "${CONSENSUS_NODE_TO}")
+          fi
+
+          solo consensus network upgrade --deployment "${SOLO_DEPLOYMENT}" "${target[@]}" --force --quiet-mode 2>&1 | tee "${RESULTS_DIR}/upgrade.log"
+
+      - name: Check the consensus node runs the new build
+        if: env.CONSENSUS_NODE_TO_REF != ''
+        run: |
+          expected=$(sha256sum "${CONSENSUS_NODE_BUILD}/apps/HederaNode.jar" | cut -d' ' -f1)
+          actual=$(kubectl exec -n "${SOLO_NAMESPACE}" network-node1-0 -c root-container -- sha256sum "${CONSENSUS_JAR}" | cut -d' ' -f1)
+          echo "built ${expected}, running ${actual}"
+          [[ "${actual}" == "${expected}" ]]
+        env:
+          CONSENSUS_JAR: /opt/hgcapp/services-hedera/HapiApp2.0/data/apps/HederaNode.jar
 
       - name: Wait for the upgraded network
         run: npx hardhat run --network solo wait-for-network.js
@@ -209,6 +265,8 @@ jobs:
             kubectl logs -n "${SOLO_NAMESPACE}" "${pod}" --all-containers --timestamps > "${RESULTS_DIR}/pods/${name}.log" 2>&1 || true
             kubectl logs -n "${SOLO_NAMESPACE}" "${pod}" --all-containers --timestamps --previous > "${RESULTS_DIR}/pods/${name}.previous.log" 2>/dev/null || rm -f "${RESULTS_DIR}/pods/${name}.previous.log"
           done
+          # The consensus node writes its own logs (swirlds.log, hgcaa.log) to files, not to stdout
+          kubectl exec -n "${SOLO_NAMESPACE}" network-node1-0 -c root-container -- tar -C /opt/hgcapp/services-hedera/HapiApp2.0 -czf - output > "${RESULTS_DIR}/consensus-node-output.tgz" 2>/dev/null || true
 
       - name: Upload the results
         if: always()
