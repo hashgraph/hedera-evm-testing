@@ -2,7 +2,10 @@
 
 const { ethers } = require("hardhat");
 const { getterKey, arrayDataSlot, mappingSlot } = require("./storage");
-const { GAS_LIMIT_1_000_000 } = require("../../../utils/constants");
+const {
+  GAS_LIMIT_1_000_000,
+  GAS_LIMIT_5_000_000,
+} = require("../../../utils/constants");
 
 const A = "0x" + "a1".repeat(20);
 const B = "0x" + "b2".repeat(20);
@@ -79,7 +82,7 @@ const UPDATED_COLLECTIONS = {
 
 async function deployCollectionStorage() {
   const factory = await ethers.getContractFactory("CollectionStorage");
-  const contract = await factory.deploy();
+  const contract = await factory.deploy(GAS_LIMIT_5_000_000);
   await contract.waitForDeployment();
 
   return contract;

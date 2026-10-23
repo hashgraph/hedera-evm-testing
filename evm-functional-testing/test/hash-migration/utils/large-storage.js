@@ -2,6 +2,7 @@
 
 const { ethers } = require("hardhat");
 const { getterKey, mappingSlot } = require("./storage");
+const { GAS_LIMIT_5_000_000 } = require("../../../utils/constants");
 
 const ENTRY_COUNT = 3_000;
 // ~22k gas per new slot, so 500 entries (~11M gas) fit under Hedera's 15M gas per transaction
@@ -24,7 +25,7 @@ function valueOf(key, salt) {
 
 async function deployLargeStorage() {
   const factory = await ethers.getContractFactory("LargeStorage");
-  const contract = await factory.deploy();
+  const contract = await factory.deploy(GAS_LIMIT_5_000_000);
   await contract.waitForDeployment();
 
   return contract;

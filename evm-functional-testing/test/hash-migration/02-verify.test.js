@@ -73,7 +73,10 @@ const {
   readTokenInfo,
   readTokenAccounts,
 } = require("./utils/hts-token");
-const { TINYBAR_TO_WEIBAR_COEF } = require("../../utils/constants");
+const {
+  TINYBAR_TO_WEIBAR_COEF,
+  GAS_LIMIT_1_000_000,
+} = require("../../utils/constants");
 const {
   SERIALS,
   NEW_SERIAL,
@@ -765,6 +768,7 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
         this.token,
         wallet.address,
         PAID_OUT,
+        GAS_LIMIT_1_000_000,
       );
       await tx.wait();
 
@@ -938,7 +942,12 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
 
     it("should let a new account associate with the old NFT and receive serial #4", async function () {
       const wallet = await createTokenHolder(this.tokenManager, this.nft);
-      const tx = await this.tokenManager.payOutNft(this.nft, wallet.address, 4);
+      const tx = await this.tokenManager.payOutNft(
+        this.nft,
+        wallet.address,
+        4,
+        GAS_LIMIT_1_000_000,
+      );
       await tx.wait();
 
       const { relay, consensusNode } = await readSerials(

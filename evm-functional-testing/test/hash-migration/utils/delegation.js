@@ -10,6 +10,10 @@ const {
 } = require("../../hip-1340/utils/sdk");
 const { delegationIndicatorFor } = require("../../hip-1340/utils/web3");
 const { withClient } = require("./consensus-node");
+const {
+  GAS_LIMIT_5_000_000,
+  GAS_LIMIT_1_000_000,
+} = require("../../../utils/constants");
 
 // Stored in the delegated account's own storage (slot 0) through StoreAndEmit, by populate and by verify
 const ORIGINAL_STORED_VALUE = 42n;
@@ -18,7 +22,7 @@ const UPDATED_STORED_VALUE = 43n;
 /** StoreAndEmit (hip-1340): storeAndEmit(value) writes slot 0 and emits the value. */
 async function deployDelegationTarget() {
   const factory = await ethers.getContractFactory("StoreAndEmit");
-  const contract = await factory.deploy();
+  const contract = await factory.deploy(GAS_LIMIT_5_000_000);
   await contract.waitForDeployment();
 
   return contract;
@@ -63,7 +67,7 @@ async function createDelegatedAccount(targetAddress) {
  */
 async function storeThroughDelegation(target, address, value) {
   const account = target.attach(address);
-  const tx = await account.storeAndEmit(value);
+  const tx = await account.storeAndEmit(value, GAS_LIMIT_1_000_000);
 
   return tx.wait();
 }

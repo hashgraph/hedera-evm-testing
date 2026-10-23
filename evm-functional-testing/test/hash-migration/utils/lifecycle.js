@@ -4,7 +4,11 @@ const hre = require("hardhat");
 const { ethers } = hre;
 const { callOnConsensusNode } = require("./consensus-node");
 const { readAccount } = require("./accounts");
-const { ONE_HBAR, GAS_LIMIT_1_000_000 } = require("../../../utils/constants");
+const {
+  ONE_HBAR,
+  GAS_LIMIT_1_000_000,
+  GAS_LIMIT_5_000_000,
+} = require("../../../utils/constants");
 
 // Children created by populate and by verify. Each CREATE2 child needs its own salt.
 const ORIGINAL_CHILDREN = {
@@ -20,7 +24,7 @@ const UPDATED_CHILDREN = {
 
 async function deployLifecycleFactory() {
   const factory = await ethers.getContractFactory("LifecycleFactory");
-  const contract = await factory.deploy();
+  const contract = await factory.deploy(GAS_LIMIT_5_000_000);
   await contract.waitForDeployment();
 
   return contract;
@@ -44,7 +48,7 @@ async function createChild(factory, { id }) {
   const nonce = await ethers.provider.getTransactionCount(factoryAddress);
   const expected = ethers.getCreateAddress({ from: factoryAddress, nonce });
 
-  const tx = await factory.create(id);
+  const tx = await factory.create(id, GAS_LIMIT_1_000_000);
   const receipt = await tx.wait();
 
   return { address: childFrom(factory, receipt), expected };
@@ -80,7 +84,7 @@ async function predictCreate2(factory, { id, salt }) {
 async function create2Child(factory, child) {
   const predicted = await predictCreate2(factory, child);
 
-  const tx = await factory.create2(child.id, child.salt);
+  const tx = await factory.create2(child.id, child.salt, GAS_LIMIT_1_000_000);
   const receipt = await tx.wait();
 
   return { address: childFrom(factory, receipt), predicted };
@@ -124,12 +128,13 @@ async function destroyChild(factory, child, recipient) {
   const funding = await signer.sendTransaction({
     to: address,
     value: ONE_HBAR,
+    ...GAS_LIMIT_1_000_000,
   });
   await funding.wait();
 
   const before = await readAccount(recipient);
   const contract = await ethers.getContractAt("Child", address);
-  const tx = await contract.destroy(recipient);
+  const tx = await contract.destroy(recipient, GAS_LIMIT_1_000_000);
   await tx.wait();
 
   const destroyed = await readAccount(address);

@@ -3,6 +3,10 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { expectedGetterResults, readGetters, dataSlots } = require("./storage");
+const {
+  GAS_LIMIT_5_000_000,
+  GAS_LIMIT_1_000_000,
+} = require("../../../utils/constants");
 
 const IMMUTABLE_VALUE = 0xbeefn;
 
@@ -130,7 +134,7 @@ const SETTERS = {
 
 async function deployValueStorage() {
   const factory = await ethers.getContractFactory("ValueStorage");
-  const contract = await factory.deploy(IMMUTABLE_VALUE);
+  const contract = await factory.deploy(IMMUTABLE_VALUE, GAS_LIMIT_5_000_000);
   await contract.waitForDeployment();
 
   return contract;
@@ -144,7 +148,10 @@ async function deployValueStorage() {
  */
 async function writeValues(contract, values) {
   for (const [setter, getters] of Object.entries(SETTERS)) {
-    const tx = await contract[setter](...getters.map((name) => values[name]));
+    const tx = await contract[setter](
+      ...getters.map((name) => values[name]),
+      GAS_LIMIT_1_000_000,
+    );
     await tx.wait();
   }
 }
@@ -192,7 +199,7 @@ async function usedSlots(contract, values) {
  */
 async function expectTransientNotKept(contract) {
   const value = 0x77n;
-  const tx = await contract.writeAndReadTransient(value);
+  const tx = await contract.writeAndReadTransient(value, GAS_LIMIT_1_000_000);
   const receipt = await tx.wait();
   const [readInSameTx] = receipt.logs
     .map((log) => contract.interface.parseLog(log))

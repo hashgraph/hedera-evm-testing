@@ -2,6 +2,10 @@
 
 const { ethers } = require("hardhat");
 const { getterKey } = require("./storage");
+const {
+  GAS_LIMIT_1_000_000,
+  GAS_LIMIT_5_000_000,
+} = require("../../../utils/constants");
 
 // ERC20: minted to the owner, part sent to the receiver, part approved for the receiver
 const ERC20_MINTED = 1_000n;
@@ -36,7 +40,7 @@ async function ercAccounts() {
 
 async function deploy(name) {
   const factory = await ethers.getContractFactory(name);
-  const contract = await factory.deploy();
+  const contract = await factory.deploy(GAS_LIMIT_5_000_000);
   await contract.waitForDeployment();
 
   return contract;
@@ -57,20 +61,40 @@ async function setUpErcTokens() {
   const { owner, receiver } = await ercAccounts();
 
   const erc20 = await deploy("MigrationERC20");
-  await send(erc20.mint(owner.address, ERC20_MINTED));
-  await send(erc20.transfer(receiver.address, ERC20_TRANSFERRED));
-  await send(erc20.approve(receiver.address, ERC20_ALLOWANCE));
+  await send(erc20.mint(owner.address, ERC20_MINTED, GAS_LIMIT_1_000_000));
+  await send(
+    erc20.transfer(receiver.address, ERC20_TRANSFERRED, GAS_LIMIT_1_000_000),
+  );
+  await send(
+    erc20.approve(receiver.address, ERC20_ALLOWANCE, GAS_LIMIT_1_000_000),
+  );
 
   const erc721 = await deploy("MigrationERC721");
   for (const id of ERC721_IDS) {
-    await send(erc721.mint(owner.address, id));
+    await send(erc721.mint(owner.address, id, GAS_LIMIT_1_000_000));
   }
-  await send(erc721.transferFrom(owner.address, receiver.address, 2));
-  await send(erc721.approve(receiver.address, 1));
-  await send(erc721.setApprovalForAll(receiver.address, true));
+  await send(
+    erc721.transferFrom(
+      owner.address,
+      receiver.address,
+      2,
+      GAS_LIMIT_1_000_000,
+    ),
+  );
+  await send(erc721.approve(receiver.address, 1, GAS_LIMIT_1_000_000));
+  await send(
+    erc721.setApprovalForAll(receiver.address, true, GAS_LIMIT_1_000_000),
+  );
 
   const erc1155 = await deploy("MigrationERC1155");
-  await send(erc1155.mintBatch(owner.address, ERC1155_IDS, ERC1155_MINTED));
+  await send(
+    erc1155.mintBatch(
+      owner.address,
+      ERC1155_IDS,
+      ERC1155_MINTED,
+      GAS_LIMIT_1_000_000,
+    ),
+  );
   await send(
     erc1155.safeTransferFrom(
       owner.address,
@@ -78,6 +102,7 @@ async function setUpErcTokens() {
       ERC1155_SINGLE.id,
       ERC1155_SINGLE.amount,
       "0x",
+      GAS_LIMIT_1_000_000,
     ),
   );
   await send(
@@ -87,9 +112,12 @@ async function setUpErcTokens() {
       ERC1155_BATCH.ids,
       ERC1155_BATCH.amounts,
       "0x",
+      GAS_LIMIT_1_000_000,
     ),
   );
-  await send(erc1155.setApprovalForAll(receiver.address, true));
+  await send(
+    erc1155.setApprovalForAll(receiver.address, true, GAS_LIMIT_1_000_000),
+  );
 
   return { erc20, erc721, erc1155 };
 }
@@ -141,11 +169,16 @@ async function expectedErcGetters() {
 async function useErc20(erc20) {
   const { owner, receiver } = await ercAccounts();
 
-  await send(erc20.mint(owner.address, ERC20_NEW_MINT));
+  await send(erc20.mint(owner.address, ERC20_NEW_MINT, GAS_LIMIT_1_000_000));
   await send(
     erc20
       .connect(receiver)
-      .transferFrom(owner.address, receiver.address, ERC20_ALLOWANCE),
+      .transferFrom(
+        owner.address,
+        receiver.address,
+        ERC20_ALLOWANCE,
+        GAS_LIMIT_1_000_000,
+      ),
   );
 
   return {
@@ -166,9 +199,23 @@ async function useErc721(erc721) {
   const { owner, receiver } = await ercAccounts();
   const asReceiver = erc721.connect(receiver);
 
-  await send(erc721.mint(owner.address, ERC721_NEW_ID));
-  await send(asReceiver.transferFrom(owner.address, receiver.address, 1));
-  await send(asReceiver.transferFrom(owner.address, receiver.address, 3));
+  await send(erc721.mint(owner.address, ERC721_NEW_ID, GAS_LIMIT_1_000_000));
+  await send(
+    asReceiver.transferFrom(
+      owner.address,
+      receiver.address,
+      1,
+      GAS_LIMIT_1_000_000,
+    ),
+  );
+  await send(
+    asReceiver.transferFrom(
+      owner.address,
+      receiver.address,
+      3,
+      GAS_LIMIT_1_000_000,
+    ),
+  );
 
   return {
     [getterKey("ownerOf", [1])]: receiver.address,
@@ -188,7 +235,12 @@ async function useErc1155(erc1155) {
   const { owner, receiver } = await ercAccounts();
 
   await send(
-    erc1155.mintBatch(owner.address, [ERC1155_NEW.id], [ERC1155_NEW.amount]),
+    erc1155.mintBatch(
+      owner.address,
+      [ERC1155_NEW.id],
+      [ERC1155_NEW.amount],
+      GAS_LIMIT_1_000_000,
+    ),
   );
   await send(
     erc1155
@@ -199,6 +251,7 @@ async function useErc1155(erc1155) {
         ERC1155_PULLED.id,
         ERC1155_PULLED.amount,
         "0x",
+        GAS_LIMIT_1_000_000,
       ),
   );
 

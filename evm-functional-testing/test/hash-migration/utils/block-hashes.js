@@ -3,6 +3,10 @@
 const { ethers } = require("hardhat");
 const { MirrorNode } = require("../../../utils/mirror-node");
 const { expectHash32 } = require("./hashes");
+const {
+  GAS_LIMIT_5_000_000,
+  GAS_LIMIT_1_000_000,
+} = require("../../../utils/constants");
 
 // k in blockhash(block.number - k): recent blocks, both edges of the 256-block window, and one past it
 const OFFSETS = [1, 2, 10, 255, 256, 257];
@@ -14,7 +18,7 @@ const FIRST_PROBE_BLOCK = 300;
 
 async function deployBlockHashProbe() {
   const factory = await ethers.getContractFactory("BlockHashProbe");
-  const contract = await factory.deploy();
+  const contract = await factory.deploy(GAS_LIMIT_5_000_000);
   await contract.waitForDeployment();
 
   return contract;
@@ -33,7 +37,7 @@ function eventArgs(contract, receipt, name) {
  *   hashes: Record<number, string>, currentHash: string, nextHash: string }>}
  */
 async function runProbe(contract) {
-  const tx = await contract.probe(OFFSETS);
+  const tx = await contract.probe(OFFSETS, GAS_LIMIT_1_000_000);
   const receipt = await tx.wait();
   const args = eventArgs(contract, receipt, "Probed");
   const number = Number(args.number);
@@ -73,7 +77,7 @@ async function reportedHashes(blockNumber) {
  * @returns {Promise<{ number: number, hashes: Record<number, string> }>}
  */
 async function readHashesInTransaction(contract, blockNumbers) {
-  const tx = await contract.readHashes(blockNumbers);
+  const tx = await contract.readHashes(blockNumbers, GAS_LIMIT_1_000_000);
   const receipt = await tx.wait();
   const args = eventArgs(contract, receipt, "HashesRead");
 

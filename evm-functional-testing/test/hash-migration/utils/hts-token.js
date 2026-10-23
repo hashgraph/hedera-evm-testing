@@ -25,7 +25,7 @@ const HTS_GAS = Constants.GAS_LIMIT_1_000_000.gasLimit;
 
 async function deployTokenManager() {
   const factory = await ethers.getContractFactory("TokenManager");
-  const contract = await factory.deploy();
+  const contract = await factory.deploy(Constants.GAS_LIMIT_5_000_000);
   await contract.waitForDeployment();
 
   return contract;
@@ -93,7 +93,11 @@ async function approve(wallet, token, spender, amount) {
 async function allowToken(manager, wallet, token) {
   await associate(wallet, token);
 
-  const tx = await manager.grantKyc(token, wallet.address);
+  const tx = await manager.grantKyc(
+    token,
+    wallet.address,
+    Constants.GAS_LIMIT_1_000_000,
+  );
   await tx.wait();
 }
 
@@ -120,11 +124,20 @@ async function setUpAccounts(manager, token) {
   const spender = await createTokenHolder(manager, token);
 
   for (const wallet of [holder, frozen]) {
-    const tx = await manager.payOut(token, wallet.address, PAID_OUT);
+    const tx = await manager.payOut(
+      token,
+      wallet.address,
+      PAID_OUT,
+      Constants.GAS_LIMIT_1_000_000,
+    );
     await tx.wait();
   }
 
-  const freezeTx = await manager.freeze(token, frozen.address);
+  const freezeTx = await manager.freeze(
+    token,
+    frozen.address,
+    Constants.GAS_LIMIT_1_000_000,
+  );
   await freezeTx.wait();
   await approve(holder, token, spender.address, ALLOWANCE);
 

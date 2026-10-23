@@ -102,11 +102,20 @@ async function setUpNftAccounts(manager, nft, wallets) {
     [holder, 2],
     [frozen, 3],
   ]) {
-    const tx = await manager.payOutNft(nft, wallet.address, serial);
+    const tx = await manager.payOutNft(
+      nft,
+      wallet.address,
+      serial,
+      Constants.GAS_LIMIT_1_000_000,
+    );
     await tx.wait();
   }
 
-  const freezeTx = await manager.freeze(nft, frozen.address);
+  const freezeTx = await manager.freeze(
+    nft,
+    frozen.address,
+    Constants.GAS_LIMIT_1_000_000,
+  );
   await freezeTx.wait();
 
   const contract = await erc721(nft, holder);
