@@ -112,11 +112,15 @@ const {
 } = require("./utils/erc-tokens");
 const { findTransactions, recordHistory } = require("./utils/history");
 const { ONE_HBAR } = require("../../utils/constants");
+const { retryRelayReads } = require("./utils/network");
 
 // Phase 1 of the SHA-384 -> SHA-256 migration test: runs on the old network and records
 // everything 02-verify.test.js compares after the consensus node upgrade.
 describe("Hash migration - 01 populate (old network)", function () {
   before(async function () {
+    // Retry relay reads that get no answer (not transactions) for every test in this file
+    retryRelayReads();
+
     this.snapshot = {};
 
     // A freshly started mirror node can fail its first EVM simulation while it initialises, so

@@ -11,6 +11,7 @@ const Utils = require("../../../utils/utils");
 const Async = require("../../../utils/async");
 const { MirrorNode } = require("../../../utils/mirror-node");
 const { withClient, executeOnConsensusNode } = require("./consensus-node");
+const { readMirrorNode } = require("./network");
 
 // Written by setUnsigned through the SDK after the upgrade: each differs from UPDATED_VALUES
 const SDK_UNSIGNED_VALUES = {
@@ -43,7 +44,10 @@ async function waitForMirrorNode(record) {
 
   await Async.waitForCondition(
     `mirror node transaction at ${timestamp}`,
-    () => new MirrorNode().getTransactionByTimestamp(timestamp),
+    () =>
+      readMirrorNode(() =>
+        new MirrorNode().getTransactionByTimestamp(timestamp),
+      ),
     (result) => result?.transactions?.length > 0,
     MIRROR_NODE_STEP_MS,
     MIRROR_NODE_ATTEMPTS,

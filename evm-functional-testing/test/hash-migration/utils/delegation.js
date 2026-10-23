@@ -14,7 +14,7 @@ const {
   GAS_LIMIT_5_000_000,
   GAS_LIMIT_1_000_000,
 } = require("../../../utils/constants");
-const { waitForReceipt } = require("./network");
+const { waitForReceipt, readMirrorNode } = require("./network");
 
 // Stored in the delegated account's own storage (slot 0) through StoreAndEmit, by populate and by verify
 const ORIGINAL_STORED_VALUE = 42n;
@@ -47,7 +47,8 @@ async function createDelegatedAccount(targetAddress) {
 
   await Async.waitForCondition(
     `mirror node account ${accountId}`,
-    () => new MirrorNode().getAccount(accountId.toString()),
+    () =>
+      readMirrorNode(() => new MirrorNode().getAccount(accountId.toString())),
     (result) => result?.account != null,
     1_000,
     30,

@@ -7,7 +7,7 @@ const {
   GAS_LIMIT_5_000_000,
   GAS_LIMIT_1_000_000,
 } = require("../../../utils/constants");
-const { waitForReceipt } = require("./network");
+const { waitForReceipt, readMirrorNode } = require("./network");
 
 // k in blockhash(block.number - k): recent blocks, both edges of the 256-block window, and one past it
 const OFFSETS = [1, 2, 10, 255, 256, 257];
@@ -64,7 +64,9 @@ async function runProbe(contract) {
  */
 async function reportedHashes(blockNumber) {
   const relayBlock = await ethers.provider.getBlock(blockNumber);
-  const mirrorNodeBlock = await new MirrorNode().getBlock(blockNumber);
+  const mirrorNodeBlock = await readMirrorNode(() =>
+    new MirrorNode().getBlock(blockNumber),
+  );
 
   return {
     relay: relayBlock.hash,
@@ -164,11 +166,11 @@ async function checkProbe(probe) {
  */
 async function findUpgradeBlock(afterBlock) {
   const mirrorNode = new MirrorNode();
-  const before = await mirrorNode.getBlock(afterBlock);
+  const before = await readMirrorNode(() => mirrorNode.getBlock(afterBlock));
   const oldVersion = before.hapi_version;
 
   for (let n = afterBlock + 1; ; n++) {
-    const block = await mirrorNode.getBlock(n);
+    const block = await readMirrorNode(() => mirrorNode.getBlock(n));
 
     if (block.number === undefined) {
       throw new Error(
@@ -195,8 +197,10 @@ async function parentChainMismatches(from, to) {
   for (let n = from + 1; n <= to; n++) {
     const relayParent = await ethers.provider.getBlock(n - 1);
     const relayBlock = await ethers.provider.getBlock(n);
-    const mirrorNodeParent = await mirrorNode.getBlock(n - 1);
-    const mirrorNodeBlock = await mirrorNode.getBlock(n);
+    const mirrorNodeParent = await readMirrorNode(() =>
+      mirrorNode.getBlock(n - 1),
+    );
+    const mirrorNodeBlock = await readMirrorNode(() => mirrorNode.getBlock(n));
 
     if (relayBlock.parentHash !== relayParent.hash) {
       mismatches.push(

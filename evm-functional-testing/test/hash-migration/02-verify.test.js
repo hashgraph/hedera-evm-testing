@@ -106,12 +106,15 @@ const {
 } = require("./utils/sdk-entry");
 const { createWalletAccount } = require("./utils/wallet-account");
 const { rpc, logFilter, fieldMismatches } = require("./utils/history");
-const { waitForReceipt } = require("./utils/network");
+const { waitForReceipt, retryRelayReads } = require("./utils/network");
 
 // Phase 3 of the SHA-384 -> SHA-256 migration test: runs on the upgraded network and compares
 // it with the snapshot written by 01-populate.test.js.
 describe("Hash migration - 02 verify (upgraded network)", function () {
   before(async function () {
+    // Retry relay reads that get no answer (not transactions) for every test in this file
+    retryRelayReads();
+
     this.snapshot = readSnapshot();
   });
 

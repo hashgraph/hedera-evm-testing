@@ -7,7 +7,7 @@ const { MirrorNode } = require("../../../utils/mirror-node");
 const { createEcdsaAliasedAccount } = require("../../hip-1340/utils/sdk");
 const { withClient, getAccountOnConsensusNode } = require("./consensus-node");
 const { TRANSFER_GAS } = require("./blocks");
-const { waitForReceipt } = require("./network");
+const { waitForReceipt, readMirrorNode } = require("./network");
 
 // Transactions the account sends in populate, so its nonce is above zero
 const SENT_TRANSFERS = 3;
@@ -26,7 +26,7 @@ async function createWalletAccount() {
 
   await Async.waitForCondition(
     `mirror node account ${wallet.address}`,
-    () => new MirrorNode().getAccount(wallet.address),
+    () => readMirrorNode(() => new MirrorNode().getAccount(wallet.address)),
     (result) => result?.account != null,
     1_000,
     30,
