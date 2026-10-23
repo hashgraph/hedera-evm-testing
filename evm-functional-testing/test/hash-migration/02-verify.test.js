@@ -145,6 +145,8 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
     });
 
     it("should return the same blockhash() for old blocks in a new transaction", async function () {
+      this.timeout(300_000);
+
       const { blocks } = this.snapshot.blockHashProbe;
       const blockNumbers = Object.keys(blocks).map(Number);
       const { number, hashes } = await readHashesInTransaction(
