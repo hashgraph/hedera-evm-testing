@@ -32,87 +32,76 @@ jobs:
     runs-on: smart-contracts-linux-medium
     strategy:
       fail-fast: false
+      # Every shard pays the same fixed cost (runner setup, consensus-node build, solo
+      # deployment) before its first test runs, so the suites are grouped per feature area and
+      # network configuration rather than one suite per shard.
+      #
+      # Network configurations:
+      #   default        -> consensus node with local/application.properties
+      #                     (contracts.codeDelegations.enabled=true for EIP-7702) and the relay
+      #                     with local/relay-values.yaml (TX_TYPE_4_ENABLED=true, as the relay
+      #                     otherwise rejects the type 4 transactions the HIP-1340 suites
+      #                     submit; USE_ASYNC_TX_PROCESSING=false so a failed
+      #                     eth_sendRawTransaction surfaces its error). Used by every shard
+      #                     that sets no app_properties/relay_values.
+      #   zero-gas-price -> see the ETH validation (zero gas price) shard.
       matrix:
         include:
-          - shard: HIP-1215
-            test_args: "test/hip-1215/*.test.js"
-          - shard: HIP-632
-            test_args: "test/hip-632/hip-632.test.js"
-          - shard: HTS transfer events
-            test_args: "test/hts/transfer-events/transfer-events.test.js"
-          - shard: HIP-1340 baseline
-            test_args: "test/hip-1340/hip1340-baseline.test.js"
-          # The HIP-1340 suites (except baseline) submit EIP-7702 type 4 transactions through
-          # the relay, which rejects them unless deployed with TX_TYPE_4_ENABLED=true
-          # (relay_values -> relay-values.yaml). The consensus-node side is covered by
-          # contracts.codeDelegations.enabled=true in the default application.properties.
-          - shard: HIP-1340 EIP-7702 (solo)
-            test_args: "test/hip-1340/hip1340-hts-delegation-noop-value.test.js"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
-          - shard: HIP-1340 EIP-7702 Ethereum Specific (solo) - delegation setup
-            test_args: "test/hip-1340/hip1340-delegation-setup.test.js --grep 'Ethereum Specific tests'"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
-          - shard: HIP-1340 EIP-7702 Ethereum Specific (solo) - delegated execution
-            test_args: "test/hip-1340/hip1340-delegated-execution.test.js --grep 'Ethereum Specific tests'"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
-          - shard: HIP-1340 EIP-7702 Ethereum Specific (solo) - token and account creation
-            test_args: "test/hip-1340/hip1340-token-and-account-creation.test.js --grep 'Ethereum Specific tests'"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
-          - shard: HIP-1340 Hiero
-            test_args: "test/hip-1340/hip1340-hiero.test.js"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
-          - shard: HIP-1340 SDK tests
-            test_args: "test/hip-1340/hip1340-sdk.test.js"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
-          - shard: HIP-1340 Atomic Batch
-            test_args: "test/hip-1340/hip1340-sdk-atomic-batch.test.js"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
-          - shard: ETH validation tests
-            test_args: "test/eth-validation/eth-tx-stale-key.test.js"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
-          # The eth-validation suite runs end-to-end at zero gas price on Hedera:
+          # The parametrised delegation-setup matrix is the longest suite in the repo and bounds
+          # the workflow's wall-clock time, so it gets a shard of its own.
+          - shard: HIP-1340 EIP-7702 delegation setup
+            test_args: "test/hip-1340/hip1340-delegation-setup.test.js"
+
+          # The remaining HIP-1340 suites. The three "Ethereum Specific tests" files
+          # (delegation setup, delegated execution, token and account creation) only hold tests
+          # under a top-level describe carrying that phrase, so no --grep is needed here to run
+          # them in full; the filter only matters for the Hardhat/Geth jobs below, which glob
+          # hip1340-*.test.js and must leave the Hiero-specific suites out.
+          - shard: HIP-1340 execution, Hiero, SDK
+            test_args: >-
+              test/hip-1340/hip1340-baseline.test.js
+              test/hip-1340/hip1340-delegated-execution.test.js
+              test/hip-1340/hip1340-token-and-account-creation.test.js
+              test/hip-1340/hip1340-hts-delegation-noop-value.test.js
+              test/hip-1340/hip1340-hiero.test.js
+              test/hip-1340/hip1340-sdk.test.js
+              test/hip-1340/hip1340-sdk-atomic-batch.test.js
+
+          # The system-contract suites.
+          - shard: HIP-1215, HIP-632, HTS transfer events
+            test_args: >-
+              test/hip-1215/*.test.js
+              test/hip-632/hip-632.test.js
+              test/hts/transfer-events/transfer-events.test.js
+
+          # The two ETH validation suites that need the default, fee-charging network, kept as
+          # their own shard, apart from the HIP-1340 shards and from the zero-gas-price shard
+          # below. self-relay-gas-sdk asserts how much gas an EthereumTransaction is charged;
+          # with fees.simpleFeesAreFree=true the consensus node skips gas charging entirely and
+          # the suite skips itself, so it must NOT run on the zero-gas-price network.
+          - shard: ETH validation (default fees)
+            test_args: >-
+              test/eth-validation/eth-tx-stale-key.test.js
+              test/eth-validation/self-relay-gas-sdk.test.js
+
+          # The remaining eth-validation suites run end-to-end at zero gas price on Hedera, on a
+          # network configuration of their own:
           #   profile          -> EVM_TESTING_PROFILE on the run step (read by hardhat.config.js)
           #   app_properties   -> consensus node started with zero-fees.properties
           #                       (fees.simpleFeesAreFree=true) so zero-gas-price txs incur no fee
           #   relay_values     -> relay deployed with the paymaster wildcard whitelist so its
           #                       precheck accepts a below-minimum gas price (gas allowance
           #                       kept at 0, so nothing is relay-subsidized)
-          - shard: ETH Validation deployment
-            test_args: "test/eth-validation/deployment.test.js"
+          - shard: ETH validation (zero gas price)
+            test_args: >-
+              test/eth-validation/deployment.test.js
+              test/eth-validation/create-create2.test.js
+              test/eth-validation/call-semantics.test.js
+              test/eth-validation/call-edge-cases.test.js
+              test/eth-validation/zero-gas-price.test.js
             profile: "zero-gas-price"
             app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
             relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
-          - shard: ETH Validation CREATE/CREATE2
-            test_args: "test/eth-validation/create-create2.test.js"
-            profile: "zero-gas-price"
-            app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
-          - shard: ETH Validation call semantics
-            test_args: "test/eth-validation/call-semantics.test.js"
-            profile: "zero-gas-price"
-            app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
-          - shard: ETH Validation call edge cases
-            test_args: "test/eth-validation/call-edge-cases.test.js"
-            profile: "zero-gas-price"
-            app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
-          - shard: ETH Validation zero gas price
-            test_args: "test/eth-validation/zero-gas-price.test.js"
-            profile: "zero-gas-price"
-            app_properties: "evm-testing/evm-functional-testing/local/zero-fees.properties"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-zero-gas-values.yaml"
-          # The one eth-validation shard that must NOT run in zero-gas-price mode: it asserts how
-          # much gas an EthereumTransaction is charged, and with fees.simpleFeesAreFree=true the
-          # consensus node skips gas charging entirely (the suite skips itself if it finds that
-          # mode on). So no profile and no app_properties override -> the node gets the
-          # default local/application.properties and charges real fees. The suite drives the
-          # consensus node over the SDK; the relay only serves its contract deployment, and
-          # relay-values.yaml is used for USE_ASYNC_TX_PROCESSING=false so a failed deployment
-          # surfaces its error.
-          - shard: ETH Validation self-relay gas (SDK)
-            test_args: "test/eth-validation/self-relay-gas-sdk.test.js"
-            relay_values: "evm-testing/evm-functional-testing/local/relay-values.yaml"
     steps:
 
       - name: Harden Runner
@@ -201,9 +190,9 @@ jobs:
           SOLO_DEPLOYMENT: solo-deployment-hedera
           SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup-ns-hedera
           MIRROR_NODE_VALUES_PATH: "evm-testing/evm-functional-testing/local/mn-values.yaml"
-          # Empty when the shard sets no relay_values -> relay deployed with default config.
+          # Shards that set no relay_values get the default network's relay-values.yaml.
           RELAY_VALUES_PATH: ${{ matrix.relay_values || 'evm-testing/evm-functional-testing/local/relay-values.yaml' }}
-          # eth-validation zero-gas shards override this with zero-fees.properties.
+          # The zero-gas-price shard overrides this with zero-fees.properties.
           APP_PROPERTIES_PATH: ${{ matrix.app_properties || 'evm-testing/evm-functional-testing/local/application.properties' }}
           # alias f70febf7420398c3892ce79fdc393c1a5487ad27
           TEST_ACCOUNT_ECDSA_PRIVATE_KEY_DER_1: 3030020100300706052b8104000a04220420de78ff4e5e77ec2bf28ef7b446d4bec66e06d39b6e6967864b2bf3d6153f3e68
@@ -218,7 +207,7 @@ jobs:
         run: npx hardhat test ${{ matrix.test_args }} --network solo
         working-directory: evm-testing/evm-functional-testing
         env:
-          # Empty for non-eth-validation shards -> hardhat.config.js falls back to "auto".
+          # Empty unless the shard sets a profile -> hardhat.config.js falls back to "auto".
           EVM_TESTING_PROFILE: ${{ matrix.profile }}
 
       - name: Stop solo
