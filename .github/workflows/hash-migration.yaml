@@ -14,7 +14,7 @@ on:
         default: v0.79.0-alpha.2
       mirror-node:
         description: Mirror node version
-        default: 0.165.0
+        default: 0.165.1
       relay:
         description: Relay version
         default: 0.79.0
@@ -51,9 +51,9 @@ env:
   # For testing until a release has the SHA-256 switch: upgrade to hiero-consensus-node PR #27588
   # (default digest SHA-384 -> SHA-256) built from source, instead of CONSENSUS_NODE_TO. Remove this
   # line to upgrade to the CONSENSUS_NODE_TO release.
-  CONSENSUS_NODE_TO_REF: 347b6512cb8637aa8ff992174078b90587a06729
+  CONSENSUS_NODE_TO_REF: f772754d455b470c98253553a102b5ddd4962a6d
   CONSENSUS_NODE_BUILD: ${{ github.workspace }}/hiero-consensus-node/hedera-node/data
-  MIRROR_NODE_VERSION: ${{ inputs.mirror-node || '0.165.0' }}
+  MIRROR_NODE_VERSION: ${{ inputs.mirror-node || '0.165.1' }}
   RELAY_RELEASE: ${{ inputs.relay || '0.79.0' }}
   SOLO_VERSION: ${{ inputs.solo || '0.92.0' }}
   RESULTS_DIR: ${{ github.workspace }}/hash-migration-results

@@ -19,7 +19,7 @@ CONSENSUS_NODE_TO="${CONSENSUS_NODE_TO:-v0.79.0-alpha.2}"
 CONSENSUS_NODE_TO_BUILD="${CONSENSUS_NODE_TO_BUILD:-}"
 # When set, the upgraded consensus node must hash its state with this many bits (256 = SHA-256)
 EXPECT_STATE_HASH_BITS="${EXPECT_STATE_HASH_BITS:-}"
-MIRROR_NODE_VERSION="${MIRROR_NODE_VERSION:-0.165.0}"
+MIRROR_NODE_VERSION="${MIRROR_NODE_VERSION:-0.165.1}"
 RELAY_RELEASE="${RELAY_RELEASE:-0.79.0}"
 
 ######################### Config files #########################
