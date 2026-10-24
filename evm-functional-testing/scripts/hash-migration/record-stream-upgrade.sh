@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Record stream upgrade variant of the hash migration test (test/hash-migration): deploys a
 # network on an old consensus node, populates it, upgrades the consensus node in place and verifies
-# that EVM state and block hashes survived. Record files only, before and after the upgrade: the
-# mirror node reads them from the bucket, no Block Node.
+# that EVM state and block hashes survived. The mirror node reads record files from the bucket
+# before and after the upgrade, no Block Node.
 #
 # Usage: scripts/hash-migration/record-stream-upgrade.sh <phase>
 #   phase: deploy | populate | upgrade | verify | collect | destroy | all
@@ -28,6 +28,10 @@ RELAY_RELEASE="${RELAY_RELEASE:-0.79.0}"
 APP_PROPERTIES_PATH="${APP_PROPERTIES_PATH:-${ROOT}/local/application.properties}"
 MIRROR_NODE_VALUES_PATH="${MIRROR_NODE_VALUES_PATH:-${ROOT}/local/mn-values.yaml}"
 RELAY_VALUES_PATH="${RELAY_VALUES_PATH:-${ROOT}/local/relay-values.yaml}"
+# Added to APP_PROPERTIES_PATH. BOTH (the consensus node's default, Solo's template sets RECORDS)
+# also builds blocks, as networks do from 0.79 until the block stream cutover; FILE: no Block Node
+BLOCK_STREAM_MODE="${BLOCK_STREAM_MODE:-BOTH}"
+BLOCK_STREAM_WRITER_MODE="${BLOCK_STREAM_WRITER_MODE:-FILE}"
 
 ######################### Solo #########################
 # e.g. SOLO="npx -y @hashgraph/solo@0.92.0" when solo is not installed globally
@@ -70,6 +74,20 @@ checksum() {
   fi
 }
 
+# Fails unless the consensus node runs with blockStream.<key> = <expected>
+check_block_stream_setting() {
+  local key=$1 expected=$2 actual
+
+  actual=$(kubectl exec -n "${SOLO_NAMESPACE}" "${CONSENSUS_POD}" -c root-container -- sh -c "grep -ho 'blockStream.${key} = [A-Z_]*' ${CONSENSUS_HOME}/output/hgcaa*.log | tail -1" | sed 's/.* = //')
+  log "blockStream.${key} = ${actual} (expected ${expected})"
+  [[ "${actual}" == "${expected}" ]]
+}
+
+check_stream_mode() {
+  check_block_stream_setting streamMode "${BLOCK_STREAM_MODE}"
+  check_block_stream_setting writerMode "${BLOCK_STREAM_WRITER_MODE}"
+}
+
 # Waits until every pod is ready, the mirror node simulates a call and a transaction executes
 wait_for_network() {
   kubectl wait pods --all -n "${SOLO_NAMESPACE}" --for=condition=Ready --field-selector=status.phase!=Succeeded --timeout=10m
@@ -86,7 +104,14 @@ deploy() {
   # consensus node: a released version, upgraded in place later
   solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}"
   solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}"
-  solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --consensus-node-version "${CONSENSUS_NODE_FROM}"
+  mkdir -p "${RESULTS_DIR}"
+  {
+    cat "${APP_PROPERTIES_PATH}"
+    echo
+    echo "blockStream.streamMode=${BLOCK_STREAM_MODE}"
+    echo "blockStream.writerMode=${BLOCK_STREAM_WRITER_MODE}"
+  } > "${RESULTS_DIR}/application.properties"
+  solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${RESULTS_DIR}/application.properties" --consensus-node-version "${CONSENSUS_NODE_FROM}"
   solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --consensus-node-version "${CONSENSUS_NODE_FROM}"
   solo consensus node start --deployment "${SOLO_DEPLOYMENT}"
 
@@ -100,6 +125,7 @@ deploy() {
 
   log "deploy: waiting for the network"
   wait_for_network
+  check_stream_mode
 }
 
 populate() {
@@ -151,6 +177,7 @@ upgrade() {
 
   log "upgrade: waiting for the upgraded network"
   wait_for_network
+  check_stream_mode
 
   if [[ -n "${EXPECT_STATE_HASH_BITS}" ]]; then
     check_state_hash
