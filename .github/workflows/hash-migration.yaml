@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Populates an old network, upgrades its consensus node in place, and verifies that EVM state and
 # block hashes survived the upgrade (evm-functional-testing/test/hash-migration). Every phase is a
-# step of evm-functional-testing/scripts/hash-migration/run-1.sh, which also runs locally.
+# step of a script in evm-functional-testing/scripts/hash-migration, which also runs locally.
 name: Hash migration
 on:
   workflow_dispatch:
@@ -45,22 +45,23 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Inputs are empty on pull_request and schedule runs, so the defaults are repeated here
-  CONSENSUS_NODE_FROM: ${{ inputs.consensus-node-from || 'v0.78.0-rc.9' }}
-  CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to || 'v0.79.0-alpha.2' }}
+  # Empty on pull_request and schedule runs (no inputs): the script then uses its own defaults
+  CONSENSUS_NODE_FROM: ${{ inputs.consensus-node-from }}
+  CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to }}
   # For testing until a release has the SHA-256 switch: upgrade to hiero-consensus-node PR #27588
   # (default digest SHA-384 -> SHA-256) built from source, instead of CONSENSUS_NODE_TO. Remove this
   # line to upgrade to the CONSENSUS_NODE_TO release.
   CONSENSUS_NODE_TO_REF: f772754d455b470c98253553a102b5ddd4962a6d
   CONSENSUS_NODE_BUILD: ${{ github.workspace }}/hiero-consensus-node/hedera-node/data
-  MIRROR_NODE_VERSION: ${{ inputs.mirror-node || '0.165.1' }}
-  RELAY_RELEASE: ${{ inputs.relay || '0.79.0' }}
+  MIRROR_NODE_VERSION: ${{ inputs.mirror-node }}
+  RELAY_RELEASE: ${{ inputs.relay }}
+  # Installed by this workflow, not by the script, so its default is kept here
   SOLO_VERSION: ${{ inputs.solo || '0.92.0' }}
   RESULTS_DIR: ${{ github.workspace }}/hash-migration-results
 
 jobs:
   hash-migration:
-    name: Hash migration (run 1)
+    name: Hash migration (record stream upgrade)
     runs-on: smart-contracts-linux-medium
     timeout-minutes: 150
     steps:
@@ -100,11 +101,8 @@ jobs:
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
         with:
           install_only: true
-          node_image: kindest/node:v1.32.5@sha256:e3b2327e3a5ab8c76f5ece68936e4cafaa82edf58486b769727ab0b3b97a5b0d
           version: v0.29.0
           kubectl_version: v1.32.5
-          verbosity: 3
-          wait: 120s
 
       - name: Setup Java
         if: env.CONSENSUS_NODE_TO_REF != ''
@@ -131,23 +129,20 @@ jobs:
       - name: Build the new consensus node
         if: env.CONSENSUS_NODE_TO_REF != ''
         working-directory: hiero-consensus-node
-        run: |
-          ${GRADLE_EXEC} assemble
-          sha256sum "${CONSENSUS_NODE_BUILD}/apps/HederaNode.jar" | tee "${RESULTS_DIR}/consensus-node-build.txt"
-          git log -1 --format='%H %s' | tee -a "${RESULTS_DIR}/consensus-node-build.txt"
+        run: ${GRADLE_EXEC} assemble
         env:
           GRADLE_EXEC: ionice -c 2 -n 2 nice -n 19 ./gradlew
 
       - name: Deploy the old network
-        run: scripts/hash-migration/run-1.sh deploy
+        run: scripts/hash-migration/record-stream-upgrade.sh deploy
         working-directory: evm-testing/evm-functional-testing
 
       - name: Populate the old network
-        run: scripts/hash-migration/run-1.sh populate
+        run: scripts/hash-migration/record-stream-upgrade.sh populate
         working-directory: evm-testing/evm-functional-testing
 
       - name: Upgrade the consensus node
-        run: scripts/hash-migration/run-1.sh upgrade
+        run: scripts/hash-migration/record-stream-upgrade.sh upgrade
         working-directory: evm-testing/evm-functional-testing
         env:
           CONSENSUS_NODE_TO_BUILD: ${{ env.CONSENSUS_NODE_TO_REF != '' && env.CONSENSUS_NODE_BUILD || '' }}
@@ -155,12 +150,12 @@ jobs:
           EXPECT_STATE_HASH_BITS: ${{ env.CONSENSUS_NODE_TO_REF != '' && '256' || '' }}
 
       - name: Verify the upgraded network
-        run: scripts/hash-migration/run-1.sh verify
+        run: scripts/hash-migration/record-stream-upgrade.sh verify
         working-directory: evm-testing/evm-functional-testing
 
       - name: Collect the snapshot and logs
         if: always()
-        run: scripts/hash-migration/run-1.sh collect
+        run: scripts/hash-migration/record-stream-upgrade.sh collect
         working-directory: evm-testing/evm-functional-testing
 
       - name: Upload the results
@@ -173,5 +168,5 @@ jobs:
 
       - name: Stop solo
         if: always()
-        run: scripts/hash-migration/run-1.sh destroy
+        run: scripts/hash-migration/record-stream-upgrade.sh destroy
         working-directory: evm-testing/evm-functional-testing

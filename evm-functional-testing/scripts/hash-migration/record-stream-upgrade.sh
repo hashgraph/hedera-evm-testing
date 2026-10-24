@@ -1,10 +1,12 @@
 #!/bin/bash
 # SPDX-License-Identifier: Apache-2.0
-# Run 1 of the hash migration test (test/hash-migration): deploys a network on an old consensus
-# node, populates it, upgrades the consensus node in place and verifies that EVM state and block
-# hashes survived. Record files only: the mirror node reads them from the bucket, no Block Node.
+# Record stream upgrade variant of the hash migration test (test/hash-migration): deploys a
+# network on an old consensus node, populates it, upgrades the consensus node in place and verifies
+# that EVM state and block hashes survived. Record files only, before and after the upgrade: the
+# mirror node reads them from the bucket, no Block Node.
 #
-# Usage: scripts/hash-migration/run-1.sh <deploy|populate|upgrade|verify|collect|destroy|all>
+# Usage: scripts/hash-migration/record-stream-upgrade.sh <phase>
+#   phase: deploy | populate | upgrade | verify | collect | destroy | all
 # Needs solo, kind, kubectl and the npm dependencies. Every setting below can be overridden with
 # an environment variable of the same name.
 set -euo pipefail
