@@ -1,0 +1,172 @@
+# SPDX-License-Identifier: Apache-2.0
+# Populates an old network, upgrades its consensus node in place, and verifies that EVM state and
+# block hashes survived the upgrade (evm-functional-testing/test/hash-migration). Every phase is a
+# step of a script in evm-functional-testing/scripts/hash-migration, which also runs locally.
+name: Hash migration
+on:
+  workflow_dispatch:
+    inputs:
+      consensus-node-from:
+        description: Consensus node version to populate on
+        default: v0.78.0-rc.9
+      consensus-node-to:
+        description: Consensus node version to upgrade to (not used while CONSENSUS_NODE_TO_REF is pinned)
+        default: v0.79.0-alpha.2
+      mirror-node:
+        description: Mirror node version
+        default: 0.165.1
+      relay:
+        description: Relay version
+        default: 0.79.0
+      solo:
+        description: Solo version
+        default: 0.92.0
+  schedule:
+    - cron: '0 3 * * *'
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - '.github/workflows/hash-migration.yaml'
+      - 'evm-functional-testing/test/hash-migration/**'
+      - 'evm-functional-testing/contracts/hash-migration/**'
+      - 'evm-functional-testing/scripts/hash-migration/**'
+      - 'evm-functional-testing/local/**'
+
+defaults:
+  run:
+    shell: bash
+permissions:
+  contents: read
+concurrency:
+  group: hash-migration-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Empty on pull_request and schedule runs (no inputs): the script then uses its own defaults
+  CONSENSUS_NODE_FROM: ${{ inputs.consensus-node-from }}
+  CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to }}
+  # For testing until a release has the SHA-256 switch: upgrade to hiero-consensus-node PR #27588
+  # (default digest SHA-384 -> SHA-256) built from source, instead of CONSENSUS_NODE_TO. Remove this
+  # line to upgrade to the CONSENSUS_NODE_TO release.
+  CONSENSUS_NODE_TO_REF: f772754d455b470c98253553a102b5ddd4962a6d
+  CONSENSUS_NODE_BUILD: ${{ github.workspace }}/hiero-consensus-node/hedera-node/data
+  MIRROR_NODE_VERSION: ${{ inputs.mirror-node }}
+  RELAY_RELEASE: ${{ inputs.relay }}
+  # Installed by this workflow, not by the script, so its default is kept here
+  SOLO_VERSION: ${{ inputs.solo || '0.92.0' }}
+  RESULTS_DIR: ${{ github.workspace }}/hash-migration-results
+
+jobs:
+  hash-migration:
+    name: Hash migration (record stream upgrade)
+    runs-on: smart-contracts-linux-medium
+    timeout-minutes: 150
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+
+      - name: Print runner specs
+        run: |
+          mkdir -p "${RESULTS_DIR}"
+          {
+            grep -m1 "model name" /proc/cpuinfo
+            echo "CPUs: $(nproc)"
+            free -h
+            df -h /
+          } | tee "${RESULTS_DIR}/runner-specs.txt"
+
+      - name: Setup NodeJS Environment
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: evm-testing
+
+      - name: Install npm testing dependencies
+        run: npm ci
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Install Solo
+        run: npm install --global "@hashgraph/solo@${SOLO_VERSION}"
+
+      - name: Setup Kind
+        uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
+        with:
+          install_only: true
+          version: v0.29.0
+          kubectl_version: v1.32.5
+
+      - name: Setup Java
+        if: env.CONSENSUS_NODE_TO_REF != ''
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00  # v4.7.1
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Setup Gradle
+        if: env.CONSENSUS_NODE_TO_REF != ''
+        uses: step-security/gradle-actions/setup-gradle@c2d874d5f9d267a85a1b5829c6b5a569e33e05c8 # v5.0.0
+        with:
+          cache-read-only: false
+
+      - name: Checkout the new consensus node
+        if: env.CONSENSUS_NODE_TO_REF != ''
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: hiero-consensus-node
+          repository: hiero-ledger/hiero-consensus-node
+          ref: ${{ env.CONSENSUS_NODE_TO_REF }}
+          fetch-depth: 0
+
+      - name: Build the new consensus node
+        if: env.CONSENSUS_NODE_TO_REF != ''
+        working-directory: hiero-consensus-node
+        run: ${GRADLE_EXEC} assemble
+        env:
+          GRADLE_EXEC: ionice -c 2 -n 2 nice -n 19 ./gradlew
+
+      - name: Deploy the old network
+        run: scripts/hash-migration/record-stream-upgrade.sh deploy
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Populate the old network
+        run: scripts/hash-migration/record-stream-upgrade.sh populate
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Upgrade the consensus node
+        run: scripts/hash-migration/record-stream-upgrade.sh upgrade
+        working-directory: evm-testing/evm-functional-testing
+        env:
+          CONSENSUS_NODE_TO_BUILD: ${{ env.CONSENSUS_NODE_TO_REF != '' && env.CONSENSUS_NODE_BUILD || '' }}
+          # A source build is the SHA-256 switch: its state must be hashed with SHA-256
+          EXPECT_STATE_HASH_BITS: ${{ env.CONSENSUS_NODE_TO_REF != '' && '256' || '' }}
+
+      - name: Verify the upgraded network
+        run: scripts/hash-migration/record-stream-upgrade.sh verify
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Collect the snapshot and logs
+        if: always()
+        run: scripts/hash-migration/record-stream-upgrade.sh collect
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hash-migration-results
+          path: ${{ env.RESULTS_DIR }}
+          if-no-files-found: ignore
+
+      - name: Stop solo
+        if: always()
+        run: scripts/hash-migration/record-stream-upgrade.sh destroy
+        working-directory: evm-testing/evm-functional-testing
