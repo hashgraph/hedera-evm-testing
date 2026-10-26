@@ -158,28 +158,40 @@ async function checkProbe(probe) {
 }
 
 /**
- * First block made by a different consensus node version than `afterBlock`, found through the
- * mirror node's hapi_version of each block.
+ * The consensus node version and hash size of a mirror node block, e.g. "0.79.0, 384-bit hash".
+ *
+ * @param {{ hapi_version: string, hash: string }} block
+ * @returns {string}
+ */
+function describeBlock(block) {
+  return `${block.hapi_version}, ${(block.hash.length - 2) * 4}-bit hash`;
+}
+
+/**
+ * First block after `afterBlock` made by a different consensus node version (an upgrade) or with a
+ * different hash size (the block stream cutover: SHA-384 record files -> SHA-256 blocks).
  *
  * @param {number} afterBlock a block made before the upgrade
- * @returns {Promise<{ number: number, oldVersion: string, newVersion: string }>}
+ * @returns {Promise<{ number: number, before: string, after: string }>}
  */
 async function findUpgradeBlock(afterBlock) {
   const mirrorNode = new MirrorNode();
-  const before = await readMirrorNode(() => mirrorNode.getBlock(afterBlock));
-  const oldVersion = before.hapi_version;
+  const first = await readMirrorNode(() => mirrorNode.getBlock(afterBlock));
+  const before = describeBlock(first);
 
   for (let n = afterBlock + 1; ; n++) {
     const block = await readMirrorNode(() => mirrorNode.getBlock(n));
 
     if (block.number === undefined) {
       throw new Error(
-        `No block after ${afterBlock} was made by a version other than ${oldVersion}: was the consensus node upgraded?`,
+        `No block after ${afterBlock} has a version or hash size other than ${before}: was the consensus node upgraded?`,
       );
     }
 
-    if (block.hapi_version !== oldVersion) {
-      return { number: n, oldVersion, newVersion: block.hapi_version };
+    const after = describeBlock(block);
+
+    if (after !== before) {
+      return { number: n, before, after };
     }
   }
 }

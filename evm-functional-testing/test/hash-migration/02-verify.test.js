@@ -223,7 +223,7 @@ describe("Hash migration - 02 verify (upgraded network)", function () {
 
       expect(
         mismatches,
-        `upgrade at block ${u} (${upgrade.oldVersion} -> ${upgrade.newVersion}):\n${mismatches.join("\n")}`,
+        `upgrade at block ${u} (${upgrade.before} -> ${upgrade.after}):\n${mismatches.join("\n")}`,
       ).to.be.empty;
     });
 
