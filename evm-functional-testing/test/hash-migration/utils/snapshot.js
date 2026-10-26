@@ -56,7 +56,23 @@ function readSnapshot() {
 }
 
 /**
- * Whether any test in the suite or its nested suites failed.
+ * The suite's before/after hooks. Mocha has no public accessor, so this reads its internal fields.
+ *
+ * @param {import("mocha").Suite} suite
+ * @returns {import("mocha").Hook[]}
+ */
+function hooksOf(suite) {
+  return [
+    ...suite._beforeAll,
+    ...suite._beforeEach,
+    ...suite._afterEach,
+    ...suite._afterAll,
+  ];
+}
+
+/**
+ * Whether any test or hook in the suite or its nested suites failed. A failed hook skips the
+ * suite's tests, which then have no state at all.
  *
  * @param {import("mocha").Suite} suite
  * @returns {boolean}
@@ -64,6 +80,7 @@ function readSnapshot() {
 function suiteFailed(suite) {
   return (
     suite.tests.some((test) => test.state === "failed") ||
+    hooksOf(suite).some((hook) => hook.state === "failed") ||
     suite.suites.some(suiteFailed)
   );
 }
