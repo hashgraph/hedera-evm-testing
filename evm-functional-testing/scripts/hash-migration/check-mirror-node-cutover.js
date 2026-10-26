@@ -94,8 +94,14 @@ async function main() {
     }
   });
 
+  if (cutover > 0) {
+    console.log(
+      `mirror node: blocks ${from + 1}-${blocks[cutover].number - 1} have SHA-384 hashes`,
+    );
+  }
+
   console.log(
-    `mirror node: blocks ${from + 1}-${blocks[cutover].number - 1} have SHA-384 hashes, blocks ${blocks[cutover].number}-${blocks.at(-1).number} have SHA-256 hashes`,
+    `mirror node: blocks ${blocks[cutover].number}-${blocks.at(-1).number} have SHA-256 hashes`,
   );
 }
 

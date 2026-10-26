@@ -86,7 +86,7 @@ async function transferNft(wallet, nft, from, to, serial) {
 }
 
 /**
- * Lets the 7a holder, frozen and spender accounts hold the NFT, then: #1 and #2 to the holder, #3 to
+ * Lets the holder, frozen and spender accounts hold the NFT, then: #1 and #2 to the holder, #3 to
  * the frozen account (then frozen); the holder approves the spender for #1 and for all its NFTs.
  *
  * @param {{ holder: import("ethers").Wallet, frozen: import("ethers").Wallet, spender: import("ethers").Wallet }} wallets

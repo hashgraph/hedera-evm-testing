@@ -94,14 +94,13 @@ async function readHashesInTransaction(contract, blockNumbers) {
 
 /**
  * Compares a BLOCKHASH result with the hash the relay and the mirror node report for that block.
- * Also fails if either reported hash is not 32 bytes.
+ * Also fails if the relay hash is not 32 bytes.
  *
  * @returns {Promise<string | null>} a mismatch description, or null if all three agree
  */
 async function compareWithReported(blockNumber, hash, context) {
   const reported = await reportedHashes(blockNumber);
   expectHash32(reported.relay, `relay hash of block ${blockNumber}`);
-  expectHash32(reported.mirrorNode, `mirror node hash of block ${blockNumber}`);
 
   if (
     hash !== ethers.ZeroHash &&
@@ -184,7 +183,7 @@ async function findUpgradeBlock(afterBlock) {
 
     if (block.number === undefined) {
       throw new Error(
-        `No block after ${afterBlock} has a version or hash size other than ${before}: was the consensus node upgraded?`,
+        `Blocks ${afterBlock}-${n - 1} all have ${before} and the mirror node has no block ${n}: was the consensus node upgraded, or is the mirror node behind?`,
       );
     }
 

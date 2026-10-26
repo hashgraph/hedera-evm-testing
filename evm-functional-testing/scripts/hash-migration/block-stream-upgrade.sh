@@ -204,7 +204,7 @@ deploy() {
 
 # Number of the latest block the mirror node imported
 latest_block() {
-  curl -sf "${MIRROR_NODE_URL}/api/v1/blocks?limit=1&order=desc" | node -e 'process.stdin.on("data", (data) => console.log(JSON.parse(data).blocks[0].number))'
+  curl -sf "${MIRROR_NODE_URL}/api/v1/blocks?limit=1&order=desc" | node -p 'JSON.parse(require("fs").readFileSync(0)).blocks[0].number'
 }
 
 # Writes the RSA roster (the consensus node's gossip key) the Block Node verifies the blocks signed
@@ -318,7 +318,7 @@ seed_block_node() {
 wait_for_block_node_streaming() {
   local deadline=$(( SECONDS + 300 ))
 
-  until consensus_node sh -c "cat ${CONSENSUS_HOME}/output/block-node-comms.log ${CONSENSUS_HOME}/output/hgcaa.log 2> /dev/null | awk -v since='${SEEDED_AT}' '\$0 >= since' | grep -q 'available for streaming (wantedBlock'"; do
+  until consensus_node sh -c "cat ${CONSENSUS_HOME}/output/block-node-comms.log ${CONSENSUS_HOME}/output/hgcaa*.log 2> /dev/null | awk -v since='${SEEDED_AT}' '\$0 >= since' | grep -q 'available for streaming (wantedBlock'"; do
     if (( SECONDS > deadline )); then
       log "upgrade: the consensus node did not stream to the Block Node within 5 minutes"
       return 1

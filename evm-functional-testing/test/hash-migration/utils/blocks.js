@@ -4,8 +4,8 @@ const { ethers } = require("hardhat");
 const Async = require("../../../utils/async");
 const { waitForReceipt } = require("./network");
 
-// A record file (block) closes every 2s, and only if it holds a transaction, so an idle network
-// makes no blocks. One transfer per period makes one block.
+// A block (a record file before the block stream cutover) closes every 2s, and an idle network may
+// make none. One transfer per period makes one block.
 const BLOCK_PERIOD_MS = 2_100;
 const TRANSFER_GAS = 30_000;
 // Fail instead of waiting for the test timeout when the chain stops moving
