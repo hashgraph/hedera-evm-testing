@@ -55,8 +55,10 @@ env:
   CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to }}
   # For testing until a release has the SHA-256 switch: upgrade to hiero-consensus-node PR #27588
   # (default digest SHA-384 -> SHA-256) built from source, instead of CONSENSUS_NODE_TO. Remove this
-  # line to upgrade to the CONSENSUS_NODE_TO release. The block stream upgrade always runs this build.
+  # line to upgrade to the CONSENSUS_NODE_TO release.
   CONSENSUS_NODE_TO_REF: f772754d455b470c98253553a102b5ddd4962a6d
+  # The block stream upgrade always runs a consensus node built from source at this commit or tag
+  BLOCK_STREAM_CONSENSUS_NODE_REF: f772754d455b470c98253553a102b5ddd4962a6d
   CONSENSUS_NODE_BUILD: ${{ github.workspace }}/hiero-consensus-node/hedera-node/data
   MIRROR_NODE_VERSION: ${{ inputs.mirror-node }}
   RELAY_RELEASE: ${{ inputs.relay }}
@@ -238,7 +240,7 @@ jobs:
         with:
           path: hiero-consensus-node
           repository: hiero-ledger/hiero-consensus-node
-          ref: ${{ env.CONSENSUS_NODE_TO_REF }}
+          ref: ${{ env.BLOCK_STREAM_CONSENSUS_NODE_REF }}
           fetch-depth: 0
 
       - name: Build the consensus node

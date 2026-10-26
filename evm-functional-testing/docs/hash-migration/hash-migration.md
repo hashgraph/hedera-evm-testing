@@ -78,7 +78,10 @@ The workflow `.github/workflows/hash-migration.yaml` runs both variants as two j
 - **On pull requests** that change the workflow, `test/hash-migration`, `contracts/hash-migration`, `scripts/hash-migration` or `local`, with the scripts' default versions.
 - **Manually** (`workflow_dispatch`), with inputs for the versions of the consensus node to start from, the mirror nodes, the Block Node, the relay and Solo. An empty input uses the script's default.
 
-Until a consensus node release hashes with SHA-256, both jobs build the consensus node from source at the commit in `CONSENSUS_NODE_TO_REF`. That commit is pinned and changed by hand. The `consensus-node-to` input is not used while it is set.
+Both jobs can build the consensus node from source, each at a commit pinned in the workflow and changed by hand:
+
+- `CONSENSUS_NODE_TO_REF`: the record stream upgrade's target, until a consensus node release hashes with SHA-256. The `consensus-node-to` input is not used while it is set; removing it upgrades to that release instead.
+- `BLOCK_STREAM_CONSENSUS_NODE_REF`: the consensus node the block stream upgrade runs. That variant always runs a build, so this pin is always set.
 
 Each job uploads its results folder as an artifact, also when it fails: the snapshot, the populate, upgrade and verify logs, the logs of every pod, and the consensus node's own log files (`consensus-node-output.tgz`).
 
@@ -89,12 +92,12 @@ Each job uploads its results folder as an artifact, also when it fails: the snap
 - Docker with enough CPU and memory for a Kind cluster with a consensus node, a mirror node, a relay and, for the block stream variant, a Block Node. On machines with few cores the network answers slowly, which makes reads time out.
 - [Solo](https://solo.hiero.org/docs/simple-solo-setup/quickstart/#install-solo-cli), `kind`, `kubectl`, Node.js and the npm dependencies (`npm ci`)
 - For the block stream variant also `python3`, `openssl` and `curl`.
-- A consensus node built from source, while no release hashes with SHA-256:
+- A consensus node built from source: always for the block stream variant, and for the record stream variant while no release hashes with SHA-256:
 
 ```sh
 git clone https://github.com/hiero-ledger/hiero-consensus-node
 cd hiero-consensus-node
-git checkout <CONSENSUS_NODE_TO_REF from the workflow>
+git checkout <CONSENSUS_NODE_TO_REF or BLOCK_STREAM_CONSENSUS_NODE_REF from the workflow>
 ./gradlew assemble
 export CONSENSUS_NODE_BUILD="$PWD/hedera-node/data"
 ```
