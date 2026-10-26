@@ -75,7 +75,7 @@ Every value is read through the relay, and where possible also through the mirro
 
 The workflow `.github/workflows/hash-migration.yaml` runs both variants as two jobs:
 
-- **On pull requests** that change the workflow, `test/hash-migration`, `contracts/hash-migration`, `scripts/hash-migration` or `local`, with the scripts' default versions.
+- **On pull requests** that change the workflow, `test/hash-migration`, `contracts/hash-migration`, `scripts/hash-migration`, `local` or the shared code and config the suite uses (listed in the workflow's `paths`), with the scripts' default versions.
 - **Manually** (`workflow_dispatch`), with inputs for the versions of the consensus node to start from, the mirror nodes, the Block Node, the relay and Solo. An empty input uses the script's default.
 
 Both jobs can build the consensus node from source, each at a commit pinned in the workflow and changed by hand:
