@@ -75,7 +75,7 @@ env:
 
 jobs:
   hash-migration:
-    name: Hash migration (record stream upgrade)
+    name: Record stream upgrade
     runs-on: smart-contracts-linux-medium
     timeout-minutes: 150
     steps:
@@ -184,7 +184,7 @@ jobs:
         working-directory: evm-testing/evm-functional-testing
 
   block-stream-upgrade:
-    name: Hash migration (block stream upgrade)
+    name: Block stream upgrade
     runs-on: smart-contracts-linux-medium
     timeout-minutes: 150
     env:
