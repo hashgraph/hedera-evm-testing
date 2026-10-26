@@ -26,6 +26,7 @@ The folder contains:
 - [HIP-1340 Code Delegation](docs/hip-1340/hip-1340.md)
 - [HTS Transfer events](docs/hts/transfer-events.md)
 - [EIP-2930 Access List](docs/hts/transfer-events.md)
+- [Hash migration (SHA-384 to SHA-256)](docs/hash-migration/hash-migration.md)
 
 ## Run tests
 
