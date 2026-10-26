@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       consensus-node-from:
-        description: Consensus node version to populate on
+        description: Consensus node version the record stream upgrade starts from
         default: v0.78.1
       consensus-node-to:
-        description: Consensus node version to upgrade to (not used while CONSENSUS_NODE_TO_REF is pinned)
+        description: Consensus node version the record stream upgrade upgrades to (not used while CONSENSUS_NODE_TO_REF is pinned)
         default: v0.79.0-alpha.2
       mirror-node:
-        description: Mirror node version
+        description: Mirror node version of the record stream upgrade
         default: 0.165.1
       block-stream-mirror-node:
         description: Mirror node version of the block stream upgrade
