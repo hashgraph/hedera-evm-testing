@@ -42,7 +42,7 @@ Besides the tests, the scripts stop the run when the network is not in the expec
 - **Both variants:** `streamMode` and `writerMode` the consensus node runs with, read from its log.
 - **Record stream upgrade:**
   - the running consensus node jar is the built one, when upgrading to a source build
-  - the latest state root hash has `EXPECT_STATE_HASH_BITS` bits, when set
+  - the latest state root hash has 256 bits (`EXPECT_STATE_HASH_BITS`)
 - **Block stream upgrade:**
   - the state root hash has 256 bits, before and after the cutover
   - the network published its ledger id (TSS)
@@ -105,8 +105,7 @@ From `evm-functional-testing`:
 
 ```sh
 # Record stream upgrade: released consensus node -> the SHA-256 build
-CONSENSUS_NODE_TO_BUILD="$CONSENSUS_NODE_BUILD" EXPECT_STATE_HASH_BITS=256 \
-  scripts/hash-migration/record-stream-upgrade.sh all
+CONSENSUS_NODE_TO_BUILD="$CONSENSUS_NODE_BUILD" scripts/hash-migration/record-stream-upgrade.sh all
 scripts/hash-migration/record-stream-upgrade.sh destroy
 
 # Block stream upgrade: the SHA-256 build, cut over to the block stream
@@ -127,7 +126,7 @@ Every setting is an environment variable with a default at the top of the script
 | `CONSENSUS_NODE_FROM`     | record stream | Released consensus node to deploy and populate                  |
 | `CONSENSUS_NODE_TO`       | record stream | Released consensus node to upgrade to                           |
 | `CONSENSUS_NODE_TO_BUILD` | record stream | Consensus node build to upgrade to instead (`hedera-node/data`) |
-| `EXPECT_STATE_HASH_BITS`  | record stream | State root hash size the upgraded node must have, e.g. `256`    |
+| `EXPECT_STATE_HASH_BITS`  | record stream | State root hash size the upgraded node must have, default `256` |
 | `CONSENSUS_NODE_BUILD`    | block stream  | Consensus node build to run (`hedera-node/data`), required      |
 | `BLOCK_NODE_VERSION`      | block stream  | Block Node chart version                                        |
 | `MIRROR_NODE_VERSION`     | both          | Mirror node version                                             |

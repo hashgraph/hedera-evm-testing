@@ -151,8 +151,6 @@ jobs:
         working-directory: evm-testing/evm-functional-testing
         env:
           CONSENSUS_NODE_TO_BUILD: ${{ env.CONSENSUS_NODE_TO_REF != '' && env.CONSENSUS_NODE_BUILD || '' }}
-          # A source build is the SHA-256 switch: its state must be hashed with SHA-256
-          EXPECT_STATE_HASH_BITS: ${{ env.CONSENSUS_NODE_TO_REF != '' && '256' || '' }}
 
       - name: Verify the upgraded network
         run: scripts/hash-migration/record-stream-upgrade.sh verify

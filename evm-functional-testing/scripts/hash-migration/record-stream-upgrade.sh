@@ -19,8 +19,8 @@ CONSENSUS_NODE_FROM="${CONSENSUS_NODE_FROM:-v0.78.1}"
 # CONSENSUS_NODE_TO_BUILD is set (its hedera-node/data folder, after ./gradlew assemble)
 CONSENSUS_NODE_TO="${CONSENSUS_NODE_TO:-v0.79.0-alpha.2}"
 CONSENSUS_NODE_TO_BUILD="${CONSENSUS_NODE_TO_BUILD:-}"
-# When set, the upgraded consensus node must hash its state with this many bits (256 = SHA-256)
-EXPECT_STATE_HASH_BITS="${EXPECT_STATE_HASH_BITS:-}"
+# The upgraded consensus node must hash its state with this many bits (256 = SHA-256)
+EXPECT_STATE_HASH_BITS="${EXPECT_STATE_HASH_BITS:-256}"
 MIRROR_NODE_VERSION="${MIRROR_NODE_VERSION:-0.165.1}"
 RELAY_RELEASE="${RELAY_RELEASE:-0.79.0}"
 
@@ -178,10 +178,7 @@ upgrade() {
   log "upgrade: waiting for the upgraded network"
   wait_for_network
   check_stream_mode
-
-  if [[ -n "${EXPECT_STATE_HASH_BITS}" ]]; then
-    check_state_hash
-  fi
+  check_state_hash
 }
 
 verify() {
