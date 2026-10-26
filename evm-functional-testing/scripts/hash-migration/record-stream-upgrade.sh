@@ -14,7 +14,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
 ######################### Versions #########################
-CONSENSUS_NODE_FROM="${CONSENSUS_NODE_FROM:-v0.78.0-rc.9}"
+CONSENSUS_NODE_FROM="${CONSENSUS_NODE_FROM:-v0.78.1}"
 # Upgrade target: a released version, or a consensus node built from source when
 # CONSENSUS_NODE_TO_BUILD is set (its hedera-node/data folder, after ./gradlew assemble)
 CONSENSUS_NODE_TO="${CONSENSUS_NODE_TO:-v0.79.0-alpha.2}"

@@ -9,7 +9,7 @@ on:
     inputs:
       consensus-node-from:
         description: Consensus node version to populate on
-        default: v0.78.0-rc.9
+        default: v0.78.1
       consensus-node-to:
         description: Consensus node version to upgrade to (not used while CONSENSUS_NODE_TO_REF is pinned)
         default: v0.79.0-alpha.2
@@ -28,8 +28,6 @@ on:
       solo:
         description: Solo version
         default: 0.92.0
-  schedule:
-    - cron: '0 3 * * *'
   pull_request:
     types:
       - opened
@@ -52,7 +50,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Empty on pull_request and schedule runs (no inputs): the script then uses its own defaults
+  # Empty on pull_request runs (no inputs): the script then uses its own defaults
   CONSENSUS_NODE_FROM: ${{ inputs.consensus-node-from }}
   CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to }}
   # For testing until a release has the SHA-256 switch: upgrade to hiero-consensus-node PR #27588
@@ -183,7 +181,7 @@ jobs:
     runs-on: smart-contracts-linux-medium
     timeout-minutes: 150
     env:
-      # Empty on pull_request and schedule runs (no inputs): the script then uses its own defaults
+      # Empty on pull_request runs (no inputs): the script then uses its own defaults
       MIRROR_NODE_VERSION: ${{ inputs.block-stream-mirror-node }}
       BLOCK_NODE_VERSION: ${{ inputs.block-node }}
     steps:
