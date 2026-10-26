@@ -183,6 +183,12 @@ describe("Hash migration - 01 populate (old network)", function () {
 
       expect(mismatches, mismatches.join("\n")).to.be.empty;
 
+      const empty = Object.entries(relay)
+        .filter(([, value]) => BigInt(value) === 0n)
+        .map(([slot]) => slot);
+      expect(empty, `slots expected to hold data are empty: ${empty}`).to.be
+        .empty;
+
       this.snapshot.valueStorage.slots = relay;
     });
 
