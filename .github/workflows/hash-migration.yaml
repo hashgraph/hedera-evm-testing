@@ -255,8 +255,16 @@ jobs:
         run: scripts/hash-migration/block-stream-upgrade.sh deploy
         working-directory: evm-testing/evm-functional-testing
 
+      - name: Populate the network
+        run: scripts/hash-migration/block-stream-upgrade.sh populate
+        working-directory: evm-testing/evm-functional-testing
+
       - name: Add the Block Node and cut over to the block stream
         run: scripts/hash-migration/block-stream-upgrade.sh upgrade
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Verify the network after the cutover
+        run: scripts/hash-migration/block-stream-upgrade.sh verify
         working-directory: evm-testing/evm-functional-testing
 
       - name: Collect the snapshot and logs
