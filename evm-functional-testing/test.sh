@@ -14,6 +14,9 @@ WORK_DIR="$(pwd)"
 # Available profiles: default | spec | zero-gas-price (see set_profile() below).
 PROFILE="${EVM_TESTING_PROFILE:-default}"
 
+######################### Zscaler config #########################
+ZSCALER_CERT_PATH="${HOME}/zscaler-root-ca.pem"
+
 ######################### CN configs #########################
 LOCAL_CN_BUILD=true
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
@@ -85,10 +88,24 @@ check_k8s_context() {
   fi
 }
 
+# Installs the Zscaler root CA into every kind node (if the cert file exists), so images can be pulled behind the proxy.
+add_zscaler_cert() {
+  if [ ! -f "${ZSCALER_CERT_PATH}" ]; then
+    return 0
+  fi
+  echo "Adding Zscaler cert ${ZSCALER_CERT_PATH} to kind nodes"
+  for node in $(kind get nodes -n "${SOLO_CLUSTER_NAME}"); do
+    docker cp "${ZSCALER_CERT_PATH}" "${node}:/usr/local/share/ca-certificates/zscaler-root-ca.crt"
+    docker exec "${node}" update-ca-certificates
+    docker exec "${node}" systemctl restart containerd
+  done
+}
+
 # solo -> required solo, kubectl, kind
 solo_start() {
   # base setup
   kind create cluster -n "${SOLO_CLUSTER_NAME}" || true
+  add_zscaler_cert
 
   # Solo deploy
   check_k8s_context
