@@ -11,14 +11,15 @@ function rpc(method, params) {
 }
 
 /**
- * Hashes of every transaction `sender` sent in blocks fromBlock..toBlock, in block order.
+ * Hashes of every transaction the senders sent in blocks fromBlock..toBlock, in block order.
  *
- * @param {string} sender
+ * @param {string[]} senders
  * @param {number} fromBlock
  * @param {number} toBlock
  * @returns {Promise<string[]>}
  */
-async function findTransactions(sender, fromBlock, toBlock) {
+async function findTransactions(senders, fromBlock, toBlock) {
+  const wanted = new Set(senders.map((sender) => sender.toLowerCase()));
   const found = [];
 
   for (let first = fromBlock; first <= toBlock; first += RELAY_BATCH) {
@@ -35,8 +36,8 @@ async function findTransactions(sender, fromBlock, toBlock) {
     );
 
     for (const block of blocks) {
-      const sent = block.transactions.filter(
-        (tx) => tx.from.toLowerCase() === sender.toLowerCase(),
+      const sent = block.transactions.filter((tx) =>
+        wanted.has(tx.from.toLowerCase()),
       );
       found.push(...sent.map((tx) => tx.hash));
     }

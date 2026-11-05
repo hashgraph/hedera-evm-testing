@@ -843,21 +843,33 @@ describe("Hash migration - 01 populate (old network)", function () {
       this.timeout(600_000);
 
       const [signer] = await ethers.getSigners();
+      const { nonceAccount } = this.snapshot.lifecycle;
+      const htsAccounts = Object.values(this.snapshot.htsFungible.accounts);
+      // Signer 1 only generates blocks, so its transfers are left out
+      const senders = [
+        signer.address,
+        nonceAccount.address,
+        ...htsAccounts.map(({ address }) => address),
+      ];
       const fromBlock = this.snapshot.startBlock.number;
       const toBlock = await ethers.provider.getBlockNumber();
-      const txHashes = await findTransactions(
-        signer.address,
-        fromBlock,
-        toBlock,
+
+      const txHashes = await findTransactions(senders, fromBlock, toBlock);
+      const history = await recordHistory(txHashes, fromBlock, toBlock);
+
+      const recorded = new Set(
+        Object.values(history.transactions).map(({ transaction }) =>
+          transaction.from.toLowerCase(),
+        ),
+      );
+      const silent = senders.filter(
+        (sender) => !recorded.has(sender.toLowerCase()),
       );
 
       expect(
-        txHashes,
-        `no transactions from ${signer.address} in blocks ${fromBlock}-${toBlock}`,
-      ).to.not.be.empty;
-
-      const history = await recordHistory(txHashes, fromBlock, toBlock);
-
+        silent,
+        `no transactions from ${silent} in blocks ${fromBlock}-${toBlock}`,
+      ).to.be.empty;
       expect(
         Object.keys(history.logsByAddress),
         "no populate transaction emitted a log",
