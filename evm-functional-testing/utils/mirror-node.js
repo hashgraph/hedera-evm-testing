@@ -31,8 +31,16 @@ class MirrorNode {
     }
 
     /**
+     * @param {number | string} numberOrHash block number, or block hash (32 or 48 bytes)
+     * @returns
+     */
+    getBlock(numberOrHash) {
+        return this.#fetch(`blocks/${numberOrHash}`);
+    }
+
+    /**
      * @param {string} idOrEvmAddress
-     * @returns 
+     * @returns
      */
     getToken(idOrEvmAddress) {
         return this.#fetch(`tokens/${idOrEvmAddress}`);
