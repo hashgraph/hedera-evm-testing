@@ -11,17 +11,20 @@ on:
         description: Consensus node version the record stream upgrade starts from
         default: v0.78.1
       consensus-node-to:
-        description: Consensus node version the record stream upgrade upgrades to (not used while CONSENSUS_NODE_TO_REF is pinned)
-        default: v0.79.0-alpha.2
+        description: Consensus node version the record stream upgrade upgrades to
+        default: v0.79.2
       mirror-node:
         description: Mirror node version of the record stream upgrade
         default: 0.165.1
+      block-stream-consensus-node:
+        description: Consensus node version of the block stream upgrade
+        default: v0.79.2
       block-stream-mirror-node:
         description: Mirror node version of the block stream upgrade
-        default: 0.165.0-rc1
+        default: 0.166.2
       block-node:
         description: Block Node version of the block stream upgrade
-        default: v0.45.0-rc2
+        default: v0.47.0
       relay:
         description: Relay version
         default: 0.79.0
@@ -60,13 +63,6 @@ env:
   # Empty on pull_request runs (no inputs): the script then uses its own defaults
   CONSENSUS_NODE_FROM: ${{ inputs.consensus-node-from }}
   CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to }}
-  # For testing until a release has the SHA-256 switch: upgrade to hiero-consensus-node PR #27588
-  # (default digest SHA-384 -> SHA-256) built from source, instead of CONSENSUS_NODE_TO. Remove this
-  # line to upgrade to the CONSENSUS_NODE_TO release.
-  CONSENSUS_NODE_TO_REF: f772754d455b470c98253553a102b5ddd4962a6d
-  # The block stream upgrade always runs a consensus node built from source at this commit or tag
-  BLOCK_STREAM_CONSENSUS_NODE_REF: f772754d455b470c98253553a102b5ddd4962a6d
-  CONSENSUS_NODE_BUILD: ${{ github.workspace }}/hiero-consensus-node/hedera-node/data
   MIRROR_NODE_VERSION: ${{ inputs.mirror-node }}
   RELAY_RELEASE: ${{ inputs.relay }}
   # Installed by this workflow, not by the script, so its default is kept here
@@ -118,35 +114,6 @@ jobs:
           version: v0.29.0
           kubectl_version: v1.32.5
 
-      - name: Setup Java
-        if: env.CONSENSUS_NODE_TO_REF != ''
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
-        with:
-          distribution: temurin
-          java-version: 25
-
-      - name: Setup Gradle
-        if: env.CONSENSUS_NODE_TO_REF != ''
-        uses: step-security/gradle-actions/setup-gradle@c2d874d5f9d267a85a1b5829c6b5a569e33e05c8 # v5.0.0
-        with:
-          cache-read-only: false
-
-      - name: Checkout the new consensus node
-        if: env.CONSENSUS_NODE_TO_REF != ''
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          path: hiero-consensus-node
-          repository: hiero-ledger/hiero-consensus-node
-          ref: ${{ env.CONSENSUS_NODE_TO_REF }}
-          fetch-depth: 0
-
-      - name: Build the new consensus node
-        if: env.CONSENSUS_NODE_TO_REF != ''
-        working-directory: hiero-consensus-node
-        run: ${GRADLE_EXEC} assemble
-        env:
-          GRADLE_EXEC: ionice -c 2 -n 2 nice -n 19 ./gradlew
-
       - name: Deploy the old network
         run: scripts/hash-migration/record-stream-upgrade.sh deploy
         working-directory: evm-testing/evm-functional-testing
@@ -158,8 +125,6 @@ jobs:
       - name: Upgrade the consensus node
         run: scripts/hash-migration/record-stream-upgrade.sh upgrade
         working-directory: evm-testing/evm-functional-testing
-        env:
-          CONSENSUS_NODE_TO_BUILD: ${{ env.CONSENSUS_NODE_TO_REF != '' && env.CONSENSUS_NODE_BUILD || '' }}
 
       - name: Verify the upgraded network
         run: scripts/hash-migration/record-stream-upgrade.sh verify
@@ -189,6 +154,7 @@ jobs:
     timeout-minutes: 150
     env:
       # Empty on pull_request runs (no inputs): the script then uses its own defaults
+      CONSENSUS_NODE_VERSION: ${{ inputs.block-stream-consensus-node }}
       MIRROR_NODE_VERSION: ${{ inputs.block-stream-mirror-node }}
       BLOCK_NODE_VERSION: ${{ inputs.block-node }}
     steps:
@@ -230,31 +196,6 @@ jobs:
           install_only: true
           version: v0.29.0
           kubectl_version: v1.32.5
-
-      - name: Setup Java
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
-        with:
-          distribution: temurin
-          java-version: 25
-
-      - name: Setup Gradle
-        uses: step-security/gradle-actions/setup-gradle@c2d874d5f9d267a85a1b5829c6b5a569e33e05c8 # v5.0.0
-        with:
-          cache-read-only: false
-
-      - name: Checkout the consensus node
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          path: hiero-consensus-node
-          repository: hiero-ledger/hiero-consensus-node
-          ref: ${{ env.BLOCK_STREAM_CONSENSUS_NODE_REF }}
-          fetch-depth: 0
-
-      - name: Build the consensus node
-        working-directory: hiero-consensus-node
-        run: ${GRADLE_EXEC} assemble
-        env:
-          GRADLE_EXEC: ionice -c 2 -n 2 nice -n 19 ./gradlew
 
       - name: Deploy the network
         run: scripts/hash-migration/block-stream-upgrade.sh deploy

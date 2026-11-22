@@ -17,7 +17,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 CONSENSUS_NODE_FROM="${CONSENSUS_NODE_FROM:-v0.78.1}"
 # Upgrade target: a released version, or a consensus node built from source when
 # CONSENSUS_NODE_TO_BUILD is set (its hedera-node/data folder, after ./gradlew assemble)
-CONSENSUS_NODE_TO="${CONSENSUS_NODE_TO:-v0.79.0-alpha.2}"
+CONSENSUS_NODE_TO="${CONSENSUS_NODE_TO:-v0.79.2}"
 CONSENSUS_NODE_TO_BUILD="${CONSENSUS_NODE_TO_BUILD:-}"
 # The upgraded consensus node must hash its state with this many bits (256 = SHA-256)
 EXPECT_STATE_HASH_BITS="${EXPECT_STATE_HASH_BITS:-256}"

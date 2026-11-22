@@ -17,12 +17,11 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 RECORD_STREAM_UPGRADE="${ROOT}/scripts/hash-migration/record-stream-upgrade.sh"
 
 ######################### Versions #########################
-# No release hashes with SHA-256 yet: the consensus node is built from source (its
-# hedera-node/data folder, after ./gradlew assemble) and runs from genesis, before and after the cutover
-CONSENSUS_NODE_BUILD="${CONSENSUS_NODE_BUILD:-}"
-# The Block Node and mirror node must hash with SHA-256 and use the consensus node's TSS library (3.15)
-BLOCK_NODE_VERSION="${BLOCK_NODE_VERSION:-v0.45.0-rc2}"
-MIRROR_NODE_VERSION="${MIRROR_NODE_VERSION:-0.165.0-rc1}"
+# Hashes with SHA-256 and runs from genesis, before and after the cutover
+CONSENSUS_NODE_VERSION="${CONSENSUS_NODE_VERSION:-v0.79.2}"
+# The Block Node and mirror node must hash with SHA-256 and use a TSS library compatible with the consensus node's
+BLOCK_NODE_VERSION="${BLOCK_NODE_VERSION:-v0.47.0}"
+MIRROR_NODE_VERSION="${MIRROR_NODE_VERSION:-0.166.2}"
 RELAY_RELEASE="${RELAY_RELEASE:-0.79.0}"
 
 ######################### Config files #########################
@@ -159,11 +158,7 @@ wait_for_ledger_id() {
 }
 
 deploy() {
-  local version
-
-  [[ -n "${CONSENSUS_NODE_BUILD}" ]] || { echo "CONSENSUS_NODE_BUILD must be set"; return 1; }
-  version="v$(cat "${CONSENSUS_NODE_BUILD}/../../version.txt")"
-  log "deploy: consensus node build ${version}, mirror node ${MIRROR_NODE_VERSION}, relay ${RELAY_RELEASE}"
+  log "deploy: consensus node ${CONSENSUS_NODE_VERSION}, mirror node ${MIRROR_NODE_VERSION}, relay ${RELAY_RELEASE}"
   kind create cluster -n "${SOLO_CLUSTER_NAME}"
   solo cluster-ref config connect --cluster-ref "kind-${SOLO_CLUSTER_NAME}" --context "kind-${SOLO_CLUSTER_NAME}"
   solo deployment config create -n "${SOLO_NAMESPACE}" --deployment "${SOLO_DEPLOYMENT}"
@@ -180,8 +175,8 @@ deploy() {
     blockStream.streamWrappedRecordBlocks=true \
     blockStream.enableCutover=false \
     tss.forceMockSignatures=true
-  solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${RESULTS_DIR}/application.properties" --consensus-node-version "${version}"
-  solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_BUILD}" --consensus-node-version "${version}"
+  solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${RESULTS_DIR}/application.properties" --consensus-node-version "${CONSENSUS_NODE_VERSION}"
+  solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --consensus-node-version "${CONSENSUS_NODE_VERSION}"
   set_wraps_environment
   solo consensus node start --deployment "${SOLO_DEPLOYMENT}"
 
@@ -301,7 +296,7 @@ seed_block_node() {
   kubectl wait pod/"${BLOCK_NODE_POD}" -n "${SOLO_NAMESPACE}" --for=condition=Ready --timeout=5m
   deadline=$(( SECONDS + 300 ))
 
-  until kubectl logs -n "${SOLO_NAMESPACE}" "${BLOCK_NODE_POD}" | grep -q "Successfully updated TSS data"; do
+  until kubectl logs -n "${SOLO_NAMESPACE}" "${BLOCK_NODE_POD}" | grep -qi "updated TSS data"; do
     if (( SECONDS > deadline )); then
       log "upgrade: the Block Node did not load the TSS data within 5 minutes"
       return 1
@@ -349,7 +344,7 @@ cutover() {
   log "upgrade: block stream cutover (mirror node at block ${before})"
 
   # The cutover: no more record files, blocks only to the Block Node, real TSS signatures. The
-  # config version tells the consensus node to run the upgrade with the same build.
+  # config version tells the consensus node to run the upgrade with the same version.
   write_properties "${properties}" \
     hedera.config.version=1 \
     blockStream.streamMode=BLOCKS \
@@ -364,7 +359,7 @@ cutover() {
   kubectl label configmap network-node1-data-config-cm -n "${SOLO_NAMESPACE}" app.kubernetes.io/managed-by=Helm --overwrite
   kubectl annotate configmap network-node1-data-config-cm -n "${SOLO_NAMESPACE}" meta.helm.sh/release-name=solo-deployment "meta.helm.sh/release-namespace=${SOLO_NAMESPACE}" --overwrite
 
-  solo consensus network upgrade --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_BUILD}" --application-properties "${properties}" --skip-node-start --force --quiet-mode 2>&1 | tee "${RESULTS_DIR}/upgrade.log"
+  solo consensus network upgrade --deployment "${SOLO_DEPLOYMENT}" --upgrade-version "${CONSENSUS_NODE_VERSION}" --application-properties "${properties}" --skip-node-start --force --quiet-mode 2>&1 | tee "${RESULTS_DIR}/upgrade.log"
   reapply_properties "${properties}"
   solo consensus node start --deployment "${SOLO_DEPLOYMENT}"
 
