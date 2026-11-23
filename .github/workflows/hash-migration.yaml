@@ -24,7 +24,7 @@ on:
         default: 0.166.2
       block-node:
         description: Block Node version of the block stream upgrade
-        default: v0.47.0
+        default: v0.45.1
       relay:
         description: Relay version
         default: 0.79.0

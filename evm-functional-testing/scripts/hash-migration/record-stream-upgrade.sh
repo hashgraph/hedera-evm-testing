@@ -110,6 +110,9 @@ deploy() {
     echo
     echo "blockStream.streamMode=${BLOCK_STREAM_MODE}"
     echo "blockStream.writerMode=${BLOCK_STREAM_WRITER_MODE}"
+    # TSS off, the consensus node's default (Solo turns it on): 0.79 refuses to start on 0.78 hinTS state
+    echo "tss.hintsEnabled=false"
+    echo "tss.historyEnabled=false"
   } > "${RESULTS_DIR}/application.properties"
   solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${RESULTS_DIR}/application.properties" --consensus-node-version "${CONSENSUS_NODE_FROM}"
   solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --consensus-node-version "${CONSENSUS_NODE_FROM}"

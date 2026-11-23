@@ -68,7 +68,6 @@ def extract_from_block(data):
 
 def tss_data_json(pub, block_number):
     ledger_id = find_field(pub, 1)
-    wraps_key = find_field(pub, 2)
     contributions = []
     for fnum, wtype, val in iter_fields(pub):
         if fnum != 3 or wtype != 2:
@@ -88,11 +87,10 @@ def tss_data_json(pub, block_number):
             "weight": str(weight),
             "schnorrPublicKey": base64.b64encode(history_key).decode("ascii"),
         })
-    if not ledger_id or not wraps_key or not contributions:
-        raise ValueError("LedgerIdPublication is missing ledger id, WRAPS key, or node contributions")
+    if not ledger_id or not contributions:
+        raise ValueError("LedgerIdPublication is missing ledger id or node contributions")
     return {
         "ledgerId": base64.b64encode(ledger_id).decode("ascii"),
-        "wrapsVerificationKey": base64.b64encode(wraps_key).decode("ascii"),
         "currentRoster": {"rosterEntries": contributions},
         "validFromBlock": str(block_number),
     }
@@ -125,5 +123,5 @@ if __name__ == "__main__":
     main()
 
 # Copied without changes from hiero-ledger/hiero-consensus-node at commit
-# f772754d455b470c98253553a102b5ddd4962a6d, write_ledger_id_extractor in
-# hedera-node/test-clients/scripts/solo/e2e-block-stream-cutover/solo-078-to-079-cutover.sh
+# c6c5d524bf83bc9347c2a1618a301bdd237e2ae4, write_ledger_id_extractor in
+# hedera-node/test-clients/scripts/solo/e2e-block-stream-cutover/solo-three-stage-block-stream-cutover.sh

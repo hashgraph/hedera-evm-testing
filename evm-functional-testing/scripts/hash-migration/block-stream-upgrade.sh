@@ -19,8 +19,9 @@ RECORD_STREAM_UPGRADE="${ROOT}/scripts/hash-migration/record-stream-upgrade.sh"
 ######################### Versions #########################
 # Hashes with SHA-256 and runs from genesis, before and after the cutover
 CONSENSUS_NODE_VERSION="${CONSENSUS_NODE_VERSION:-v0.79.2}"
-# The Block Node and mirror node must hash with SHA-256 and use a TSS library compatible with the consensus node's
-BLOCK_NODE_VERSION="${BLOCK_NODE_VERSION:-v0.47.0}"
+# The Block Node and mirror node must hash with SHA-256 and use a TSS library compatible with the
+# consensus node's (Block Node: the consensus node team's pin for this version)
+BLOCK_NODE_VERSION="${BLOCK_NODE_VERSION:-v0.45.1}"
 MIRROR_NODE_VERSION="${MIRROR_NODE_VERSION:-0.166.2}"
 RELAY_RELEASE="${RELAY_RELEASE:-0.79.0}"
 
