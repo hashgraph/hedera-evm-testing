@@ -31,24 +31,14 @@ on:
       solo:
         description: Solo version
         default: 0.92.0
+  push:
+    branches:
+      - main
   pull_request:
     types:
       - opened
       - reopened
       - synchronize
-    paths:
-      - ".github/workflows/hash-migration.yaml"
-      - "evm-functional-testing/test/hash-migration/**"
-      - "evm-functional-testing/contracts/hash-migration/**"
-      - "evm-functional-testing/scripts/hash-migration/**"
-      - "evm-functional-testing/local/**"
-      - "evm-functional-testing/utils/**"
-      - "evm-functional-testing/test/hip-1340/utils/**"
-      - "evm-functional-testing/contracts/hip-1340/StoreAndEmit.sol"
-      - "evm-functional-testing/hardhat.config.js"
-      - "evm-functional-testing/package.json"
-      - "evm-functional-testing/package-lock.json"
-      - "evm-functional-testing/*.tgz"
 
 defaults:
   run:
@@ -57,10 +47,10 @@ permissions:
   contents: read
 concurrency:
   group: hash-migration-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  # Empty on pull_request runs (no inputs): the script then uses its own defaults
+  # Empty outside manual runs (no inputs): the script then uses its own defaults
   CONSENSUS_NODE_FROM: ${{ inputs.consensus-node-from }}
   CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to }}
   MIRROR_NODE_VERSION: ${{ inputs.mirror-node }}
@@ -153,7 +143,7 @@ jobs:
     runs-on: smart-contracts-linux-medium
     timeout-minutes: 150
     env:
-      # Empty on pull_request runs (no inputs): the script then uses its own defaults
+      # Empty outside manual runs (no inputs): the script then uses its own defaults
       CONSENSUS_NODE_VERSION: ${{ inputs.block-stream-consensus-node }}
       MIRROR_NODE_VERSION: ${{ inputs.block-stream-mirror-node }}
       BLOCK_NODE_VERSION: ${{ inputs.block-node }}
