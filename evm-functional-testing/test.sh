@@ -8,6 +8,11 @@ set -e
 
 WORK_DIR="$(pwd)"
 
+# Defaults come from .github/network-versions.env, shared with the CI workflows
+network_version() {
+  sed -n "s/^$1=//p" "${WORK_DIR}/../.github/network-versions.env"
+}
+
 ######################### Profile config #########################
 # Selects which predefined set of CN/MN/relay config files solo_start uses.
 # Precedence: `solo start --profile <name>` overrides $EVM_TESTING_PROFILE overrides "default".
@@ -20,17 +25,19 @@ ZSCALER_CERT_PATH="${HOME}/zscaler-root-ca.pem"
 ######################### CN configs #########################
 LOCAL_CN_BUILD=true
 CONSENSUS_NODE_DIR="../../hiero-consensus-node"
+# Used when LOCAL_CN_BUILD=false
+CONSENSUS_NODE_VERSION="$(network_version CONSENSUS_NODE_VERSION)"
 APP_PROPERTIES_PATH="local/application.properties"
 
 ######################### MN configs #########################
 LOCAL_MN_BUILD=false
 MIRROR_NODE_DIR="../../hiero-mirror-node"
-MIRROR_NODE_VERSION=0.163.1
+MIRROR_NODE_VERSION="$(network_version MIRROR_NODE_VERSION)"
 MIRROR_NODE_VALUES_PATH="local/mn-values.yaml"
 
 ######################### Relay configs #########################
 LOCAL_RELAY_BUILD=false
-RELAY_RELEASE=0.80.2-rc1
+RELAY_RELEASE="$(network_version RELAY_RELEASE)"
 RELAY_DIR="../../hiero-json-rpc-relay"
 RELAY_VALUES_PATH="local/relay-values.yaml"
 
@@ -116,15 +123,16 @@ solo_start() {
   # CN deploy
   solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}"
   solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}"
-  solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}"
   if [ "${LOCAL_CN_BUILD}" = true ] ; then
     # local CN build
+    solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}"
     cd "${CONSENSUS_NODE_DIR}"
     ./gradlew assemble
     cd "${WORK_DIR}"
     solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --local-build-path "${CONSENSUS_NODE_DIR}/hedera-node/data/"
   else
-    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}"
+    solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --consensus-node-version "${CONSENSUS_NODE_VERSION}"
+    solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --consensus-node-version "${CONSENSUS_NODE_VERSION}"
   fi
   solo consensus node start --deployment "${SOLO_DEPLOYMENT}"
 

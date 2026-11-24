@@ -9,6 +9,10 @@
 # Hardhat
 abi/
 
+# Hash migration snapshot and results (uploaded as CI artifacts)
+/hash-migration-snapshot.json
+/hash-migration-results/
+
 # Dotenv file
 /.env
 

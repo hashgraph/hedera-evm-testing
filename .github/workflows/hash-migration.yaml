@@ -1,0 +1,225 @@
+# SPDX-License-Identifier: Apache-2.0
+# Populates an old network, upgrades its consensus node in place, and verifies that EVM state and
+# block hashes survived the upgrade (evm-functional-testing/test/hash-migration): once with the
+# record stream, once with the block stream cutover. Every phase is a step of a script in
+# evm-functional-testing/scripts/hash-migration, which also runs locally.
+name: Hash migration
+on:
+  workflow_dispatch:
+    inputs:
+      consensus-node-from:
+        description: Consensus node version the record stream upgrade starts from
+        default: v0.78.1
+      consensus-node-to:
+        description: Consensus node version the record stream upgrade upgrades to
+        default: v0.79.2
+      mirror-node:
+        description: Mirror node version of the record stream upgrade
+        default: 0.165.1
+      # Empty: the block stream upgrade takes these from .github/network-versions.env
+      block-stream-consensus-node:
+        description: Consensus node version of the block stream upgrade (empty = network-versions.env)
+      block-stream-mirror-node:
+        description: Mirror node version of the block stream upgrade (empty = network-versions.env)
+      block-node:
+        description: Block Node version of the block stream upgrade (empty = network-versions.env)
+      relay:
+        description: Relay version (empty = each run's default)
+      solo:
+        description: Solo version (empty = each run's default)
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+defaults:
+  run:
+    shell: bash
+permissions:
+  contents: read
+concurrency:
+  group: hash-migration-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Empty outside manual runs (no inputs): the script then uses its own defaults
+  CONSENSUS_NODE_FROM: ${{ inputs.consensus-node-from }}
+  CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to }}
+  MIRROR_NODE_VERSION: ${{ inputs.mirror-node }}
+  RELAY_RELEASE: ${{ inputs.relay }}
+  RESULTS_DIR: ${{ github.workspace }}/hash-migration-results
+
+jobs:
+  hash-migration:
+    name: Record stream upgrade
+    runs-on: smart-contracts-linux-medium
+    timeout-minutes: 150
+    env:
+      # Pinned on purpose, like the versions in its script
+      SOLO_VERSION: ${{ inputs.solo || '0.92.0' }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+
+      - name: Print runner specs
+        run: |
+          mkdir -p "${RESULTS_DIR}"
+          {
+            grep -m1 "model name" /proc/cpuinfo
+            echo "CPUs: $(nproc)"
+            free -h
+            df -h /
+          } | tee "${RESULTS_DIR}/runner-specs.txt"
+
+      - name: Setup NodeJS Environment
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: evm-testing
+
+      - name: Install npm testing dependencies
+        run: npm ci
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Install Solo
+        run: npm install --global "@hashgraph/solo@${SOLO_VERSION}"
+
+      - name: Setup Kind
+        uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
+        with:
+          install_only: true
+          version: v0.29.0
+          kubectl_version: v1.32.5
+
+      - name: Deploy the old network
+        run: scripts/hash-migration/record-stream-upgrade.sh deploy
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Populate the old network
+        run: scripts/hash-migration/record-stream-upgrade.sh populate
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Upgrade the consensus node
+        run: scripts/hash-migration/record-stream-upgrade.sh upgrade
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Verify the upgraded network
+        run: scripts/hash-migration/record-stream-upgrade.sh verify
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Collect the snapshot and logs
+        if: always()
+        run: scripts/hash-migration/record-stream-upgrade.sh collect
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hash-migration-results
+          path: ${{ env.RESULTS_DIR }}
+          if-no-files-found: ignore
+
+      - name: Stop solo
+        if: always()
+        run: scripts/hash-migration/record-stream-upgrade.sh destroy
+        working-directory: evm-testing/evm-functional-testing
+
+  block-stream-upgrade:
+    name: Block stream upgrade
+    runs-on: smart-contracts-linux-medium
+    timeout-minutes: 150
+    env:
+      # Empty unless set on a manual run: the script then reads .github/network-versions.env
+      CONSENSUS_NODE_VERSION: ${{ inputs.block-stream-consensus-node }}
+      MIRROR_NODE_VERSION: ${{ inputs.block-stream-mirror-node }}
+      BLOCK_NODE_VERSION: ${{ inputs.block-node }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+
+      - name: Print runner specs
+        run: |
+          mkdir -p "${RESULTS_DIR}"
+          {
+            grep -m1 "model name" /proc/cpuinfo
+            echo "CPUs: $(nproc)"
+            free -h
+            df -h /
+          } | tee "${RESULTS_DIR}/runner-specs.txt"
+
+      - name: Setup NodeJS Environment
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: evm-testing
+
+      - name: Install npm testing dependencies
+        run: npm ci
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Read the network versions
+        id: versions
+        run: grep -vE '^[[:space:]]*(#|$)' evm-testing/.github/network-versions.env >> "${GITHUB_OUTPUT}"
+
+      - name: Install Solo
+        run: npm install --global "@hashgraph/solo@${SOLO_VERSION}"
+        env:
+          SOLO_VERSION: ${{ inputs.solo || steps.versions.outputs.SOLO_VERSION }}
+
+      - name: Setup Kind
+        uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
+        with:
+          install_only: true
+          version: ${{ steps.versions.outputs.KIND_VERSION }}
+          kubectl_version: ${{ steps.versions.outputs.KUBECTL_VERSION }}
+
+      - name: Deploy the network
+        run: scripts/hash-migration/block-stream-upgrade.sh deploy
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Populate the network
+        run: scripts/hash-migration/block-stream-upgrade.sh populate
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Add the Block Node and cut over to the block stream
+        run: scripts/hash-migration/block-stream-upgrade.sh upgrade
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Verify the network after the cutover
+        run: scripts/hash-migration/block-stream-upgrade.sh verify
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Collect the snapshot and logs
+        if: always()
+        run: scripts/hash-migration/block-stream-upgrade.sh collect
+        working-directory: evm-testing/evm-functional-testing
+
+      - name: Upload the results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hash-migration-results-block-stream
+          path: ${{ env.RESULTS_DIR }}
+          if-no-files-found: ignore
+
+      - name: Stop solo
+        if: always()
+        run: scripts/hash-migration/block-stream-upgrade.sh destroy
+        working-directory: evm-testing/evm-functional-testing
