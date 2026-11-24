@@ -75,13 +75,13 @@ Every value is read through the relay, and where possible also through the mirro
 
 The workflow `.github/workflows/hash-migration.yaml` runs both variants as two jobs:
 
-- **On pull requests** that change the workflow, `test/hash-migration`, `contracts/hash-migration`, `scripts/hash-migration`, `local` or the shared code and config the suite uses (listed in the workflow's `paths`), with the scripts' default versions.
-- **Manually** (`workflow_dispatch`), with inputs for the versions of the consensus node to start from, the mirror nodes, the Block Node, the relay and Solo. An empty input uses the script's default.
+- **On every pull request and every push to `main`**, with the default versions. A new commit on a pull request cancels its older run.
+- **Manually** (`workflow_dispatch`), with inputs for the versions of the consensus nodes, the mirror nodes, the Block Node, the relay and Solo. An empty input uses the default.
 
-Both jobs can build the consensus node from source, each at a commit pinned in the workflow and changed by hand:
+Both jobs run released versions:
 
-- `CONSENSUS_NODE_TO_REF`: the record stream upgrade's target, until a consensus node release hashes with SHA-256. The `consensus-node-to` input is not used while it is set; removing it upgrades to that release instead.
-- `BLOCK_STREAM_CONSENSUS_NODE_REF`: the consensus node the block stream upgrade runs. That variant always runs a build, so this pin is always set.
+- **Record stream upgrade:** its versions are pinned on purpose in `record-stream-upgrade.sh` (and Solo in the workflow), so the upgrade always starts from a network that hashes with SHA-384.
+- **Block stream upgrade:** its versions come from `.github/network-versions.env`, shared with the EVM functional testing workflow and `test.sh`.
 
 Each job uploads its results folder as an artifact, also when it fails: the snapshot, the populate, upgrade and verify logs, the logs of every pod, and the consensus node's own log files (`consensus-node-output.tgz`).
 
@@ -92,14 +92,14 @@ Each job uploads its results folder as an artifact, also when it fails: the snap
 - Docker with enough CPU and memory for a Kind cluster with a consensus node, a mirror node, a relay and, for the block stream variant, a Block Node. On machines with few cores the network answers slowly, which makes reads time out.
 - [Solo](https://solo.hiero.org/docs/simple-solo-setup/quickstart/#install-solo-cli), `kind`, `kubectl`, Node.js and the npm dependencies (`npm ci`)
 - For the block stream variant also `python3`, `openssl` and `curl`.
-- A consensus node built from source: always for the block stream variant, and for the record stream variant while no release hashes with SHA-256:
+- Optionally, a consensus node built from source, for the record stream variant to upgrade to instead of a release:
 
 ```sh
 git clone https://github.com/hiero-ledger/hiero-consensus-node
 cd hiero-consensus-node
-git checkout <CONSENSUS_NODE_TO_REF or BLOCK_STREAM_CONSENSUS_NODE_REF from the workflow>
+git checkout <commit>
 ./gradlew assemble
-export CONSENSUS_NODE_BUILD="$PWD/hedera-node/data"
+export CONSENSUS_NODE_TO_BUILD="$PWD/hedera-node/data"
 ```
 
 ### Run
@@ -107,11 +107,11 @@ export CONSENSUS_NODE_BUILD="$PWD/hedera-node/data"
 From `evm-functional-testing`:
 
 ```sh
-# Record stream upgrade: released consensus node -> the SHA-256 build
-CONSENSUS_NODE_TO_BUILD="$CONSENSUS_NODE_BUILD" scripts/hash-migration/record-stream-upgrade.sh all
+# Record stream upgrade: SHA-384 release -> SHA-256 release (or the build in CONSENSUS_NODE_TO_BUILD)
+scripts/hash-migration/record-stream-upgrade.sh all
 scripts/hash-migration/record-stream-upgrade.sh destroy
 
-# Block stream upgrade: the SHA-256 build, cut over to the block stream
+# Block stream upgrade: SHA-256 release, cut over to the block stream
 scripts/hash-migration/block-stream-upgrade.sh all
 scripts/hash-migration/block-stream-upgrade.sh destroy
 ```
@@ -122,7 +122,7 @@ While a network is up, the relay is on `localhost:37546` (the `solo` Hardhat net
 
 ### Settings
 
-Every setting is an environment variable with a default at the top of the script. The version defaults live only there.
+Every setting is an environment variable with a default at the top of the script. The block stream variant reads its version defaults from `.github/network-versions.env`; the record stream variant keeps its own.
 
 | Variable                  | Variant       | Meaning                                                         |
 | ------------------------- | ------------- | --------------------------------------------------------------- |
@@ -130,7 +130,7 @@ Every setting is an environment variable with a default at the top of the script
 | `CONSENSUS_NODE_TO`       | record stream | Released consensus node to upgrade to                           |
 | `CONSENSUS_NODE_TO_BUILD` | record stream | Consensus node build to upgrade to instead (`hedera-node/data`) |
 | `EXPECT_STATE_HASH_BITS`  | record stream | State root hash size the upgraded node must have, default `256` |
-| `CONSENSUS_NODE_BUILD`    | block stream  | Consensus node build to run (`hedera-node/data`), required      |
+| `CONSENSUS_NODE_VERSION`  | block stream  | Released consensus node to deploy and cut over                  |
 | `BLOCK_NODE_VERSION`      | block stream  | Block Node chart version                                        |
 | `MIRROR_NODE_VERSION`     | both          | Mirror node version                                             |
 | `RELAY_RELEASE`           | both          | Relay version                                                   |
@@ -143,4 +143,4 @@ The Solo names (cluster, namespace, deployment) and the config files (`local/app
 ## Choosing Versions
 
 - **Record stream upgrade:** any consensus node release that hashes with SHA-384 can be the starting point; the closest to reality is the version mainnet runs. The mirror node only reads record files, so any recent release works.
-- **Block stream upgrade:** the consensus node, the Block Node and the mirror node must be able to read each other's TSS signatures and proofs. They use the TSS library (`hedera-cryptography`), whose proof format has changed between versions. Before changing one of the three, compare the `hedera-cryptography` version each one depends on (`hiero-dependency-versions/build.gradle.kts` in the consensus node and the Block Node, `build.gradle.kts` in the mirror node) and pick versions with the same proof format. A new format can also change the ledger id publication, which then needs a new `extract-ledger-id.py` from the consensus node team's cutover scripts.
+- **Block stream upgrade:** change the versions in `.github/network-versions.env`, which the EVM functional testing workflow also uses, so a bump must pass both workflows. The consensus node, the Block Node and the mirror node must be able to read each other's TSS signatures and proofs. They use the TSS library (`hedera-cryptography`), whose proof format has changed between versions. Before changing one of the three, compare the `hedera-cryptography` version each one depends on (`hiero-dependency-versions/build.gradle.kts` in the consensus node and the Block Node, `build.gradle.kts` in the mirror node) and pick versions with the same proof format. A new format can also change the ledger id publication, which then needs a new `extract-ledger-id.py` from the consensus node team's cutover scripts.
