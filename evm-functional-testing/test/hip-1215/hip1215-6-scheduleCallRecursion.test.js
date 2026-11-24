@@ -7,7 +7,7 @@ const {
   expectScheduleCallEvent,
   getExpirySecond,
   getRecursiveScheduleStatus,
-  SUCCESS,
+  INSUFFICIENT_PAYER_BALANCE,
 } = require("./utils/hip1215-utils");
 const { beforeTests, afterTests } = require("./utils/hip1215-setup");
 const { expect } = require("chai");
@@ -57,11 +57,14 @@ describe("HIP-1215 System Contract testing. Recursive scheduling test", () => {
         ResponseCodeEnum.SUCCESS.valueOf(),
       );
       // Validate execution and recursive behaviour
-      const { finalResponse, recursiveCounter } =
-        await getRecursiveScheduleStatus(mnClient, scheduleAddress);
-      expect(finalResponse).to.not.be.null;
-      expect(finalResponse).to.not.eq(SUCCESS);
-      expect(recursiveCounter).to.eq(expectedCalls);
+      const { result, recursiveCounter } = await getRecursiveScheduleStatus(
+        mnClient,
+        scheduleAddress,
+      );
+
+      expect(result).to.eq(INSUFFICIENT_PAYER_BALANCE);
+      // expectedCalls comes from the gas estimate, not the gas charged, so allow one call either way
+      expect(recursiveCounter).to.be.closeTo(Number(expectedCalls), 1);
     }).timeout(300_000); // We are recursively querying MN so we need more time for execution of the test
   });
 });
