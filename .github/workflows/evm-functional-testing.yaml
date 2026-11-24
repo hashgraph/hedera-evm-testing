@@ -23,8 +23,6 @@ permissions:
 
 env:
   SOLO_CLUSTER_NAME: solo-evm-e2e
-  MIRROR_NODE_VERSION: '0.163.1'
-  RELAY_RELEASE: '0.79.0'
 
 jobs:
   evm-functional-regression:
@@ -32,8 +30,8 @@ jobs:
     runs-on: smart-contracts-linux-medium
     strategy:
       fail-fast: false
-      # Every shard pays the same fixed cost (runner setup, consensus-node build, solo
-      # deployment) before its first test runs, so the suites are grouped per feature area and
+      # Every shard pays the same fixed cost (runner setup, solo deployment) before its first
+      # test runs, so the suites are grouped per feature area and
       # network configuration rather than one suite per shard.
       #
       # Network configurations:
@@ -109,17 +107,6 @@ jobs:
         with:
           egress-policy: audit
 
-      - name: Setup Java
-        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00  # v4.7.1
-        with:
-          distribution: temurin
-          java-version: 25
-
-      - name: Setup Gradle
-        uses: step-security/gradle-actions/setup-gradle@c2d874d5f9d267a85a1b5829c6b5a569e33e05c8 # v5.0.0
-        with:
-          cache-read-only: false
-
       - name: Setup NodeJS Environment
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -135,34 +122,24 @@ jobs:
         run: npm ci
         working-directory: evm-testing/evm-functional-testing
 
+      - name: Read the network versions
+        id: versions
+        run: grep -vE '^[[:space:]]*(#|$)' evm-testing/.github/network-versions.env >> "${GITHUB_OUTPUT}"
+
       - name: Install Solo
-        run: npm install --global @hashgraph/solo@${SOLO_VERSION}
+        run: npm install --global "@hashgraph/solo@${SOLO_VERSION}"
         env:
-          SOLO_VERSION: 0.91.0
+          SOLO_VERSION: ${{ steps.versions.outputs.SOLO_VERSION }}
 
       - name: Setup Kind
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
         with:
           install_only: true
           node_image: kindest/node:v1.32.5@sha256:e3b2327e3a5ab8c76f5ece68936e4cafaa82edf58486b769727ab0b3b97a5b0d
-          version: v0.29.0
-          kubectl_version: v1.32.5
+          version: ${{ steps.versions.outputs.KIND_VERSION }}
+          kubectl_version: ${{ steps.versions.outputs.KUBECTL_VERSION }}
           verbosity: 3
           wait: 120s
-
-      - name: Checkout Consensus Node
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          path: hiero-consensus-node
-          repository: hiero-ledger/hiero-consensus-node
-          ref: main
-          fetch-depth: 0
-
-      - name: Build hiero-consensus-node
-        working-directory: ./hiero-consensus-node
-        run: '${GRADLE_EXEC} assemble'
-        env:
-          GRADLE_EXEC: ionice -c 2 -n 2 nice -n 19 ./gradlew
 
       - name: Configure and run solo
         id: run_solo
@@ -174,8 +151,8 @@ jobs:
           # consensus node
           solo keys consensus generate --gossip-keys --tls-keys --deployment "${SOLO_DEPLOYMENT}"
           solo cluster-ref config setup -s "${SOLO_CLUSTER_SETUP_NAMESPACE}"
-          solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}"
-          solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --local-build-path ./hiero-consensus-node/hedera-node/data
+          solo consensus network deploy --pvcs --deployment "${SOLO_DEPLOYMENT}" --application-properties "${APP_PROPERTIES_PATH}" --consensus-node-version "${CONSENSUS_NODE_VERSION}"
+          solo consensus node setup --deployment "${SOLO_DEPLOYMENT}" --consensus-node-version "${CONSENSUS_NODE_VERSION}"
           solo consensus node start --deployment "${SOLO_DEPLOYMENT}"
           # mirror node
           solo mirror node add --enable-ingress --pinger --mirror-node-version "${MIRROR_NODE_VERSION}" --values-file "${MIRROR_NODE_VALUES_PATH}" --deployment "${SOLO_DEPLOYMENT}" --cluster-ref kind-${SOLO_CLUSTER_NAME}
@@ -189,6 +166,9 @@ jobs:
           SOLO_NAMESPACE: solo-ns-hedera
           SOLO_DEPLOYMENT: solo-deployment-hedera
           SOLO_CLUSTER_SETUP_NAMESPACE: solo-setup-ns-hedera
+          CONSENSUS_NODE_VERSION: ${{ steps.versions.outputs.CONSENSUS_NODE_VERSION }}
+          MIRROR_NODE_VERSION: ${{ steps.versions.outputs.MIRROR_NODE_VERSION }}
+          RELAY_RELEASE: ${{ steps.versions.outputs.RELAY_RELEASE }}
           MIRROR_NODE_VALUES_PATH: "evm-testing/evm-functional-testing/local/mn-values.yaml"
           # Shards that set no relay_values get the default network's relay-values.yaml.
           RELAY_VALUES_PATH: ${{ matrix.relay_values || 'evm-testing/evm-functional-testing/local/relay-values.yaml' }}

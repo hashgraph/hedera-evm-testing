@@ -16,21 +16,17 @@ on:
       mirror-node:
         description: Mirror node version of the record stream upgrade
         default: 0.165.1
+      # Empty: the block stream upgrade takes these from .github/network-versions.env
       block-stream-consensus-node:
-        description: Consensus node version of the block stream upgrade
-        default: v0.79.2
+        description: Consensus node version of the block stream upgrade (empty = network-versions.env)
       block-stream-mirror-node:
-        description: Mirror node version of the block stream upgrade
-        default: 0.166.2
+        description: Mirror node version of the block stream upgrade (empty = network-versions.env)
       block-node:
-        description: Block Node version of the block stream upgrade
-        default: v0.45.1
+        description: Block Node version of the block stream upgrade (empty = network-versions.env)
       relay:
-        description: Relay version
-        default: 0.79.0
+        description: Relay version (empty = each run's default)
       solo:
-        description: Solo version
-        default: 0.92.0
+        description: Solo version (empty = each run's default)
   push:
     branches:
       - main
@@ -55,8 +51,6 @@ env:
   CONSENSUS_NODE_TO: ${{ inputs.consensus-node-to }}
   MIRROR_NODE_VERSION: ${{ inputs.mirror-node }}
   RELAY_RELEASE: ${{ inputs.relay }}
-  # Installed by this workflow, not by the script, so its default is kept here
-  SOLO_VERSION: ${{ inputs.solo || '0.92.0' }}
   RESULTS_DIR: ${{ github.workspace }}/hash-migration-results
 
 jobs:
@@ -64,6 +58,9 @@ jobs:
     name: Record stream upgrade
     runs-on: smart-contracts-linux-medium
     timeout-minutes: 150
+    env:
+      # Pinned on purpose, like the versions in its script
+      SOLO_VERSION: ${{ inputs.solo || '0.92.0' }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
@@ -143,7 +140,7 @@ jobs:
     runs-on: smart-contracts-linux-medium
     timeout-minutes: 150
     env:
-      # Empty outside manual runs (no inputs): the script then uses its own defaults
+      # Empty unless set on a manual run: the script then reads .github/network-versions.env
       CONSENSUS_NODE_VERSION: ${{ inputs.block-stream-consensus-node }}
       MIRROR_NODE_VERSION: ${{ inputs.block-stream-mirror-node }}
       BLOCK_NODE_VERSION: ${{ inputs.block-node }}
@@ -177,15 +174,21 @@ jobs:
         run: npm ci
         working-directory: evm-testing/evm-functional-testing
 
+      - name: Read the network versions
+        id: versions
+        run: grep -vE '^[[:space:]]*(#|$)' evm-testing/.github/network-versions.env >> "${GITHUB_OUTPUT}"
+
       - name: Install Solo
         run: npm install --global "@hashgraph/solo@${SOLO_VERSION}"
+        env:
+          SOLO_VERSION: ${{ inputs.solo || steps.versions.outputs.SOLO_VERSION }}
 
       - name: Setup Kind
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
         with:
           install_only: true
-          version: v0.29.0
-          kubectl_version: v1.32.5
+          version: ${{ steps.versions.outputs.KIND_VERSION }}
+          kubectl_version: ${{ steps.versions.outputs.KUBECTL_VERSION }}
 
       - name: Deploy the network
         run: scripts/hash-migration/block-stream-upgrade.sh deploy

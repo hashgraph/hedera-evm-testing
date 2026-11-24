@@ -54,8 +54,10 @@ npx hardhat test --network solo
 ### Specific Solo version install
 
 ```sh
-npm install -g @hashgraph/solo@0.91.0
+npm install -g @hashgraph/solo@0.92.0
 ```
+
+The Solo, consensus node, mirror node and relay versions used by CI and `./test.sh` are kept in [`.github/network-versions.env`](../.github/network-versions.env).
 
 ### Deploy manual
 
@@ -77,7 +79,7 @@ It will deploy:
 - JSON RPC Relay forward enabled on `localhost:37546`
 
 #### Local build
-- CN build locally by default, to disable it set `LOCAL_CN_BUILD=false`
+- CN build locally by default, to disable it set `LOCAL_CN_BUILD=false` (deploys the `CONSENSUS_NODE_VERSION` release from `.github/network-versions.env`)
 - To deploy with locally build MN, at `./test.sh` set `LOCAL_MN_BUILD=true`
   - it will build MN at your `MIRROR_NODE_DIR`
   - it will override k8s image with `kind load docker-image`
